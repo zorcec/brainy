@@ -7,7 +7,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { registerRoutes, configure, getDatabase, isConfigured, resetConfiguration, upsertDocument } from './server.js';
+import { registerRoutes } from './server.js';
+import { configure, getDatabase, isConfigured, resetConfiguration } from './db/index.js';
+import { upsertDocument } from './db/knowledge.js';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
