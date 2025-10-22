@@ -1,5 +1,9 @@
 # Brainy — Knowledge Assistant
 
+[PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) — High-level project summary, architecture, and main features.
+
+[AGENT.md](./AGENT.md) — Quick reference for agents and contributors, with key links and descriptions.
+
 A monorepo project for the Brainy knowledge assistant, including a server with SQLite vector search and a VS Code extension.
 
 ## Status
