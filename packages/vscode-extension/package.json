@@ -30,8 +30,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "brainy.helloWorld",
-        "title": "Brainy: Hello World"
+        "command": "brainy.configure",
+        "title": "Brainy: Configure Workspace"
       }
     ]
   }

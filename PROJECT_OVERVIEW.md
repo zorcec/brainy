@@ -25,4 +25,4 @@ Brainy is a knowledge assistant that enables hybrid (vector + keyword) search ov
 
 ## See Also
 - [README.md](README.md): Quickstart, setup, and development instructions
-- [AGENT.md](AGENT.md): Key links and resources for agents/contributors
+- [copilot-instructions.md](.github/copilot-instructions.md): Key links and resources for agents/contributors

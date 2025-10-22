@@ -1,25 +1,53 @@
 /**
- * Brainy VS Code Extension - Hello World Example
+ * Brainy VS Code Extension
  * 
- * This is a simple extension setup demonstrating the basic structure.
- * Integration with the Brainy server will be added in future iterations.
+ * Extension that integrates with the Brainy server for knowledge management.
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { startBrainyServer, stopBrainyServer } from './brainyServerManager';
 
 /**
  * Called when the extension is activated
  */
 export function activate(context: vscode.ExtensionContext) {
   console.log('Activating Brainy extension...');
+  
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (workspaceFolders && workspaceFolders.length > 0) {
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const brainyPath = path.join(workspaceRoot, '.brainy');
+    
+    try {
+      vscode.window.showInformationMessage('Brainy Extension Activated!');
+    } catch (error) {
+      console.error('Failed to configure Brainy database:', error);
+      vscode.window.showErrorMessage('Failed to initialize Brainy database');
+    }
+  } else {
+    vscode.window.showWarningMessage('Brainy: No workspace folder found. Please open a workspace.');
+  }
+
+  // Start the Brainy server process
+  console.log('Starting Brainy server...');
+  startBrainyServer();
   vscode.window.showInformationMessage('Brainy Extension Activated!');
 
-  // Register hello world command
-  const disposable = vscode.commands.registerCommand('brainy.helloWorld', () => {
-    vscode.window.showInformationMessage('Hello from Brainy Knowledge Assistant!');
-  });
-
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('brainy.configure', async () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        vscode.window.showErrorMessage('No workspace folder found');
+        return;
+      }
+      
+      const workspaceRoot = folders[0].uri.fsPath;
+      const brainyPath = path.join(workspaceRoot, '.brainy');
+      // Here you would send a configure request to the server if needed
+      vscode.window.showInformationMessage(`Brainy configured at ${brainyPath}`);
+    })
+  );
 }
 
 /**
@@ -27,4 +55,5 @@ export function activate(context: vscode.ExtensionContext) {
  */
 export function deactivate() {
   console.log('Deactivating Brainy extension...');
+  stopBrainyServer();
 }

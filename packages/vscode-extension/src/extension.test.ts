@@ -1,24 +1,72 @@
 /**
  * Brainy Extension - Tests
  * 
- * Unit tests for the extension activation and deactivation.
+ * Unit tests for the extension activation and configuration.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
-// Mock vscode module
-vi.mock('vscode', () => ({
-  window: { 
-    showInformationMessage: vi.fn() 
-  },
-  commands: { 
-    registerCommand: vi.fn(() => ({ dispose: vi.fn() }))
-  },
-}));
+// Mock vscode module - must be self-contained
+vi.mock('vscode', () => {
+  const mockWorkspace = {
+    workspaceFolders: undefined as any
+  };
+  
+  return {
+    window: { 
+      showInformationMessage: vi.fn(),
+      showErrorMessage: vi.fn(),
+      showWarningMessage: vi.fn()
+    },
+    commands: { 
+      registerCommand: vi.fn((id, callback) => {
+        // Store callback for testing
+        if (id === 'brainy.configure') {
+          (global as any).brainyConfigureCallback = callback;
+        }
+        return { dispose: vi.fn() };
+      })
+    },
+    workspace: mockWorkspace,
+    _mockWorkspace: mockWorkspace  // Expose for testing
+  };
+});
 
+import * as vscode from 'vscode';
 import * as extension from './extension';
+import * as brainyServerManager from './brainyServerManager';
+import { isConfigured, resetConfiguration } from '../../server/dist/server.js';
+
+const workspaceMock = (vscode as any)._mockWorkspace;
 
 describe('Extension', () => {
+  let testDir: string;
+
+  // Mock start/stopBrainyServer
+  const startSpy = vi.spyOn(brainyServerManager, 'startBrainyServer').mockImplementation(() => {});
+  const stopSpy = vi.spyOn(brainyServerManager, 'stopBrainyServer').mockImplementation(() => {});
+
+  beforeEach(() => {
+    resetConfiguration();
+    testDir = path.join(os.tmpdir(), `brainy-ext-test-${Date.now()}`);
+    workspaceMock.workspaceFolders = [{ uri: { fsPath: testDir } }];
+    startSpy.mockClear();
+    stopSpy.mockClear();
+  });
+
+  afterEach(() => {
+    resetConfiguration();
+    workspaceMock.workspaceFolders = undefined;
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+    startSpy.mockClear();
+    stopSpy.mockClear();
+  });
+
   it('should export activate as a function', () => {
     expect(typeof extension.activate).toBe('function');
   });
@@ -27,32 +75,23 @@ describe('Extension', () => {
     expect(typeof extension.deactivate).toBe('function');
   });
 
-  it('activate should not throw when called with minimal context', () => {
-    // Minimal stub for ExtensionContext
+
+  it('should register brainy.configure command', () => {
     const context = {
       subscriptions: [],
-      workspaceState: {},
-      globalState: {},
-      secrets: {},
-      extensionUri: {},
-      environmentVariableCollection: {},
-      extensionMode: 1,
-      extensionPath: '',
-      storagePath: '',
-      globalStoragePath: '',
-      logPath: '',
-      asAbsolutePath: (relativePath: string) => relativePath,
-      extension: {},
-      globalStorageUri: {},
-      logUri: {},
-      storageUri: {},
-      extensionRuntime: 1,
     } as any;
     
-    expect(() => extension.activate(context)).not.toThrow();
+    extension.activate(context);
+    
+    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
+      'brainy.configure',
+      expect.any(Function)
+    );
+    expect(startSpy).toHaveBeenCalled();
   });
 
   it('deactivate should not throw when called', () => {
     expect(() => extension.deactivate()).not.toThrow();
+    expect(stopSpy).toHaveBeenCalled();
   });
 });

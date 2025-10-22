@@ -10,7 +10,11 @@
     "build": "tsc",
     "test": "vitest"
   },
-  "keywords": ["brainy", "knowledge-assistant", "vector-search"],
+  "keywords": [
+    "brainy",
+    "knowledge-assistant",
+    "vector-search"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -21,6 +25,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "better-sqlite3": "^12.2.0"
+    "better-sqlite3": "^12.2.0",
+    "fastify": "^5.6.1",
+    "zod": "^4.1.12"
   }
 }
