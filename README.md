@@ -46,18 +46,34 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
 ```
 brainy/
+├── .github/                  # GitHub config, workflows, prompts
+│   └── prompts/              # Prompt instruction files
+├── .specify/                 # Project specification and automation configs
+│   ├── templates/            # Templates for scaffolding
+│   ├── scripts/              # Automation scripts
+│   │   └── bash/             # Bash scripts
+│   └── memory/               # Memory/cache for automation tools
+├── information/              # Research, concept, and technical docs
+│   ├── brainy-preparation/   # Foundational research and examples
+│   │   └── md-example/       # Example markdowns for search concepts
 ├── packages/
-│   ├── server/          # Server with SQLite vector search
-│   │   ├── src/         # Source files
-│   │   ├── dist/        # Built files
-│   │   └── examples/    # Example markdown knowledge base files
-│   └── vscode-extension/ # VS Code extension
-│       ├── src/         # Source files
-│       ├── e2e/         # End-to-end tests
-│       └── dist/        # Built files
-├── specs/               # Feature specifications
-├── package.json         # Root workspace config
-└── playwright.config.ts # E2E test config
+│   ├── server/               # Brainy server (API, SQLite vector search)
+│   │   ├── src/              # Source files
+│   │   │   ├── db/           # Database logic
+│   │   │   └── routes/       # API route handlers
+│   │   ├── dist/             # Built files
+│   │   └── examples/         # Example markdown knowledge base files
+│   └── vscode-extension/     # VS Code extension
+│       ├── src/              # Source files
+│       ├── e2e/              # End-to-end tests
+│       └── dist/             # Built files
+├── specs/                    # Feature specifications
+│   ├── 001-brainy-knowledge-assistant/
+│   │   ├── checklists/       # Validation checklists
+│   └── 002-brainy-project-scaffold/
+├── test-results/             # Test result outputs and logs
+├── package.json              # Root workspace config
+└── playwright.config.ts      # E2E test config
 ```
 
 ## Setup
