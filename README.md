@@ -25,6 +25,15 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 | [information/index.md](information/index.md) | Index of all information files and directories |
 | [information/brainy-preparation/README.md](information/brainy-preparation/README.md) | Foundational research and concept docs |
 | [information/brainy-preparation/md-example/README.md](information/brainy-preparation/md-example/README.md) | Example markdowns for search concepts |
+| [.github/README.md](.github/README.md) | GitHub configuration and workflow files |
+| [.github/prompts/README.md](.github/prompts/README.md) | Prompt instruction files for automation |
+| [.specify/README.md](.specify/README.md) | Project specification and automation configs |
+| [.specify/templates/README.md](.specify/templates/README.md) | Templates for scaffolding and automation |
+| [.specify/scripts/README.md](.specify/scripts/README.md) | Automation and setup scripts |
+| [.specify/scripts/bash/README.md](.specify/scripts/bash/README.md) | Bash scripts for automation |
+| [.specify/memory/README.md](.specify/memory/README.md) | Memory/cache for automation tools |
+| [test-results/README.md](test-results/README.md) | Test result outputs and logs |
+| [specs/001-brainy-knowledge-assistant/checklists/README.md](specs/001-brainy-knowledge-assistant/checklists/README.md) | Checklists for the knowledge assistant spec |
 
 ---
 
