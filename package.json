@@ -1,13 +1,13 @@
 {
-  "name": "mcp-insight-monorepo",
+  "name": "brainy-monorepo",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
+    "build": "npm run build --workspaces",
     "test": "vitest run --exclude '**/e2e/**'",
     "test:watch": "vitest --exclude '**/e2e/**'",
-    "start": "npm run start --workspaces",
     "e2e": "npx playwright test"
   },
   "dependencies": {

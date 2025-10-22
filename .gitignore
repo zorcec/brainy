@@ -1,7 +1,43 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Database
 **/.mcp-insights/data
 .mcp-insights/data.sqlite
 .mcp-insights/test-data.sqlite
 .mcp-insights/*.sqlite
 
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+.cache/
+
+# VS Code extension specific
+*.vsix

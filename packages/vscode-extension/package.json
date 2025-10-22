@@ -1,0 +1,39 @@
+{
+  "name": "brainy-vscode-extension",
+  "displayName": "Brainy Knowledge Assistant",
+  "description": "VS Code extension for Brainy knowledge assistant",
+  "version": "0.0.1",
+  "publisher": "brainy",
+  "main": "dist/extension.js",
+  "types": "dist/extension.d.ts",
+  "scripts": {
+    "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --sourcemap",
+    "check-types": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.103.0",
+    "esbuild": "^0.19.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "vscode": ">=1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "brainy.helloWorld",
+        "title": "Brainy: Hello World"
+      }
+    ]
+  }
+}
+

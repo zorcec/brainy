@@ -1,0 +1,26 @@
+{
+  "name": "brainy-server",
+  "version": "1.0.0",
+  "description": "Brainy server with SQLite vector search",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "npm run dev",
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "keywords": ["brainy", "knowledge-assistant", "vector-search"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.3.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0"
+  }
+}
