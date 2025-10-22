@@ -1,0 +1,7 @@
+node_modules
+dist
+**/.mcp-insights/data
+.mcp-insights/data.sqlite
+.mcp-insights/test-data.sqlite
+.mcp-insights/*.sqlite
+
