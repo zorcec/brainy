@@ -12,7 +12,6 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
 | Path | Description |
 |------|-------------|
-| [README.md](README.md) | Root project overview and quickstart |
 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | High-level project summary, architecture, and main features |
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Quick reference for agents and contributors |
 | [specs/README.md](specs/README.md) | Index of all feature specifications and plans |
