@@ -18,7 +18,7 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 ## Contribution
 
 - Update `information/index.md` when adding new documentation or research files
-- Update `information/specs/` when adding new specifications or checklists
+- Update `information/tickets/` when adding new epics or user stories
 - Follow best practices for code and documentation
 
 ## Project Structure
@@ -33,8 +33,14 @@ brainy/
 │   │   └── bash/             # Bash scripts
 │   └── memory/               # Memory/cache for automation tools
 ├── information/              # Research, concept, and technical docs
-│   ├── brainy-preparation/   # Foundational research and examples
-│   │   └── md-example/       # Example markdowns for search concepts
+│   ├── project/              # Project overview and preparation
+│   │   └── preparation/      # Foundational research and examples
+│   │       └── md-graph-example/ # Example markdowns for search concepts
+│   └── tickets/              # User stories and epics
+│       ├── 001-initiate-the-structure/
+│       ├── 002-markdown-parser/
+│       ├── 003-skills-system/
+│       └── 004-context-manager/
 ├── packages/
 │   ├── server/               # Brainy server (API, SQLite vector search)
 │   │   ├── src/              # Source files
@@ -47,10 +53,6 @@ brainy/
 │       │   └── parser/       # Markdown parser (annotations, flags, etc.)
 │       ├── e2e/              # End-to-end tests
 │       └── dist/             # Built files
-├── specs/                    # Feature specifications
-│   ├── 001-brainy-knowledge-assistant/
-│   │   ├── checklists/       # Validation checklists
-│   └── 002-brainy-project-scaffold/
 ├── test-results/             # Test result outputs and logs
 ├── package.json              # Root workspace config
 └── playwright.config.ts      # E2E test config
@@ -138,4 +140,4 @@ This scaffold provides the foundation for building the Brainy knowledge assistan
 3. VS Code extension commands for indexing and searching
 4. Integration between extension and server
 
-See `specs/` directory for detailed specifications and task breakdowns.
+See `information/tickets/` directory for detailed epics and user stories.
