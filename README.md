@@ -9,8 +9,8 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 ## Status
 
 **Parser Implementation:** ✅ Complete
-- Generic markdown annotation parser implemented
-- 60 unit tests, all passing
+- Generic markdown annotation parser implemented with code block support
+- 111 unit tests, all passing (includes 20 new code block tests)
 - See [parser README](./packages/vscode-extension/src/parser/README.md) for details
 
 - [Parser Manifest](./manifest.md) — Key features, requirements, and API structure for the Brainy Markdown Skills Parser
@@ -74,13 +74,13 @@ npm run build
 
 ## Test
 
-Run unit tests (72 tests passing):
+Run unit tests (127 tests passing):
 
 ```bash
 npm test
 ```
 
-**Parser Tests:** 60 tests for markdown annotation parsing
+**Parser Tests:** 111 tests for markdown annotation and code block parsing
 **Extension Tests:** 4 tests for VS Code extension
 **Server Tests:** 12 tests for API and database
 

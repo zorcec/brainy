@@ -10,10 +10,10 @@
  */
 
 /**
- * Represents a parsed block from markdown (annotation, text, or comment).
+ * Represents a parsed block from markdown (annotation, text, comment, or code block).
  */
 export type AnnotationBlock = {
-	/** Block type or annotation name (e.g., 'task', 'context', 'plainText', 'plainComment') */
+	/** Block type or annotation name (e.g., 'task', 'context', 'plainText', 'plainComment', 'plainCodeBlock') */
 	name: string;
 	/** Array of flags associated with this block */
 	flags: Array<{ name: string; value: string[] }>;
@@ -21,6 +21,11 @@ export type AnnotationBlock = {
 	content: string;
 	/** Optional line number where the block starts */
 	line?: number;
+	/** Optional metadata (e.g., language for code blocks) */
+	metadata?: {
+		/** Programming language for code blocks (e.g., 'bash', 'python', 'typescript') */
+		language?: string;
+	};
 };
 
 /**

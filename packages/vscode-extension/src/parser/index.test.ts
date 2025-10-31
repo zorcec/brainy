@@ -206,3 +206,250 @@ Line 3`;
 		expect(result.blocks[0].flags[0].value).toEqual(['https://example.com/path?query=value']);
 	});
 });
+
+describe('parseAnnotations - Code Block Integration Tests', () => {
+	test('Test 1: Basic code block and context combination', () => {
+		const md = `@execute
+\`\`\`bash
+echo "Hello World"
+\`\`\`
+@context "main" "research"`;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(3);
+		
+		// Execute annotation
+		expect(result.blocks[0].name).toBe('execute');
+		expect(result.blocks[0].flags).toEqual([]);
+		
+		// Code block
+		expect(result.blocks[1].name).toBe('plainCodeBlock');
+		expect(result.blocks[1].content).toBe('echo "Hello World"');
+		expect(result.blocks[1].metadata?.language).toBe('bash');
+		expect(result.blocks[1].flags).toEqual([]);
+		
+		// Context annotation
+		expect(result.blocks[2].name).toBe('context');
+		expect(result.blocks[2].flags).toEqual([
+			{ name: '', value: ['main', 'research'] }
+		]);
+	});
+
+	test('Test 2: Code block with no language', () => {
+		const md = `@execute
+\`\`\`
+echo "No language"
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(2);
+		expect(result.blocks[1].name).toBe('plainCodeBlock');
+		expect(result.blocks[1].content).toBe('echo "No language"');
+		expect(result.blocks[1].metadata?.language).toBeUndefined();
+	});
+
+	test('Test 3: Context with single value', () => {
+		const md = '@context "main"';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('context');
+		expect(result.blocks[0].flags).toEqual([
+			{ name: '', value: ['main'] }
+		]);
+	});
+
+	test('Test 4: Edge case - empty code block', () => {
+		const md = `@execute
+\`\`\`python
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(2);
+		expect(result.blocks[1].name).toBe('plainCodeBlock');
+		expect(result.blocks[1].content).toBe('');
+		expect(result.blocks[1].metadata?.language).toBe('python');
+	});
+
+	test('Test 5: Edge case - annotation with no code block', () => {
+		const md = `@execute
+@context "main"`;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(2);
+		expect(result.blocks[0].name).toBe('execute');
+		expect(result.blocks[1].name).toBe('context');
+	});
+
+	test('Test 6: Plain text (no annotation)', () => {
+		const md = 'This is a plain text line.';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('plainText');
+		expect(result.blocks[0].content).toBe('This is a plain text line.');
+	});
+
+	test('Test 7: Multiple code blocks after annotation', () => {
+		const md = `@execute
+\`\`\`bash
+echo "First"
+\`\`\`
+\`\`\`python
+print("Second")
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(3);
+		
+		expect(result.blocks[0].name).toBe('execute');
+		
+		expect(result.blocks[1].name).toBe('plainCodeBlock');
+		expect(result.blocks[1].content).toBe('echo "First"');
+		expect(result.blocks[1].metadata?.language).toBe('bash');
+		
+		expect(result.blocks[2].name).toBe('plainCodeBlock');
+		expect(result.blocks[2].content).toBe('print("Second")');
+		expect(result.blocks[2].metadata?.language).toBe('python');
+	});
+
+	test('Test 8: Context annotation with no quoted values (no error)', () => {
+		const md = '@context';
+		const result = parseAnnotations(md);
+		
+		// Context with no values is valid, just has empty flags
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('context');
+		expect(result.blocks[0].flags).toEqual([]);
+	});
+
+	test('Test 9: Malformed annotation (missing @)', () => {
+		const md = 'context "main"';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('plainText');
+		expect(result.blocks[0].content).toBe('context "main"');
+	});
+
+	test('Test 10: Unclosed code block (critical error)', () => {
+		const md = `@execute
+\`\`\`bash
+echo "Hello World"`;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors.length).toBe(1);
+		expect(result.errors[0].type).toBe('UnclosedCodeBlock');
+		expect(result.errors[0].message).toBe('Unclosed code block detected.');
+		expect(result.errors[0].severity).toBe('critical');
+	});
+
+	test('Test 11: Annotation with no flags', () => {
+		const md = '@execute';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('execute');
+		expect(result.blocks[0].flags).toEqual([]);
+	});
+
+	test('Code blocks preserve language case sensitivity', () => {
+		const md = `\`\`\`TypeScript
+const x = 1;
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks[0].metadata?.language).toBe('TypeScript');
+	});
+
+	test('Multiple code blocks with different languages', () => {
+		const md = `\`\`\`javascript
+console.log('test');
+\`\`\`
+
+\`\`\`python
+print('test')
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(2);
+		expect(result.blocks[0].metadata?.language).toBe('javascript');
+		expect(result.blocks[1].metadata?.language).toBe('python');
+	});
+
+	test('Code block with special characters and quotes', () => {
+		const md = `\`\`\`bash
+echo "Hello $VAR" && echo 'test'
+\`\`\``;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks[0].content).toBe('echo "Hello $VAR" && echo \'test\'');
+	});
+
+	test('Context combination with multiple contexts', () => {
+		const md = '@context "main" "research" "development"';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks[0].flags).toEqual([
+			{ name: '', value: ['main', 'research', 'development'] }
+		]);
+	});
+
+	test('Full workflow from story example', () => {
+		const md = `@execute
+\`\`\`bash
+echo "Hello World"
+\`\`\`
+@context "main" "research"`;
+
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(3);
+		
+		// Verify structure matches expected output
+		expect(result.blocks[0]).toMatchObject({
+			name: 'execute',
+			flags: [],
+			line: 1
+		});
+		
+		expect(result.blocks[1]).toMatchObject({
+			name: 'plainCodeBlock',
+			content: 'echo "Hello World"',
+			metadata: { language: 'bash' },
+			flags: [],
+			line: 2
+		});
+		
+		expect(result.blocks[2]).toMatchObject({
+			name: 'context',
+			flags: [{ name: '', value: ['main', 'research'] }],
+			line: 5
+		});
+	});
+});
+

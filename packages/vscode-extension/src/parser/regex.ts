@@ -39,4 +39,10 @@ export const PATTERNS = {
 
 	/** Checks if content starts with single dash (potential malformed flag) */
 	STARTS_WITH_SINGLE_DASH: /^-/,
+
+	/** Matches code fence opening (triple backticks with optional language) */
+	CODE_FENCE_OPEN: /^```(\w*)$/,
+
+	/** Matches code fence closing (triple backticks) */
+	CODE_FENCE_CLOSE: /^```$/,
 } as const;

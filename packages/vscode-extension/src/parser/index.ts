@@ -3,11 +3,14 @@
  *
  * Description:
  *   Main entry point for the Brainy markdown parser. Parses markdown files to extract
- *   annotation blocks, flags, comments, and plain text sections. Uses a function-based
- *   approach with regular expressions for pattern matching.
+ *   annotation blocks, flags, comments, code blocks, and plain text sections. Uses a
+ *   function-based approach with regular expressions for pattern matching.
  *
  *   The parser is generic and does not hardcode annotation names or types. It extracts
  *   any annotation pattern (@annotation_name) and associated flags (--flag_name value).
+ *
+ *   Code blocks (triple backticks) are detected and extracted with language metadata.
+ *   Unclosed code blocks result in critical parsing errors.
  *
  *   Returns a ParseResult with blocks and errors. If errors is non-empty, the playbook
  *   will not be executed.
@@ -26,6 +29,7 @@ import { type ParserError } from './errors';
 import { type AnnotationBlock, createPlainTextBlock, createCommentBlock } from './blocks/plainText';
 import { parseAnnotationBlock } from './blocks/annotation';
 import { isComment, extractCommentContent } from './blocks/comment';
+import { isCodeFenceOpen, parseCodeBlock } from './blocks/codeBlock';
 import { isEmptyLine, trimLine, startsWith } from './utils';
 
 // Re-export types for convenience
@@ -69,6 +73,18 @@ export function parseAnnotations(markdown: string): ParseResult {
 		// Skip empty lines
 		if (isEmptyLine(line)) {
 			currentLineNumber++;
+			continue;
+		}
+
+		// Try to parse as code block
+		if (isCodeFenceOpen(trimmedLine)) {
+			const result = parseCodeBlock(lines, currentLineNumber);
+			if (result.error) {
+				errors.push(result.error);
+			} else if (result.block) {
+				blocks.push(result.block);
+			}
+			currentLineNumber = result.nextLine;
 			continue;
 		}
 

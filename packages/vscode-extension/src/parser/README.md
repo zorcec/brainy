@@ -19,13 +19,15 @@ parser/
 ├── blocks/                     # Block extraction modules
 │   ├── annotation.ts           # Annotation extraction logic
 │   ├── annotation.test.ts      # Annotation tests (11 tests)
+│   ├── codeBlock.ts            # Code block extraction logic
+│   ├── codeBlock.test.ts       # Code block tests (20 tests)
 │   ├── flag.ts                 # Flag parsing logic
 │   ├── flag.test.ts            # Flag tests (20 tests)
 │   ├── comment.ts              # Comment extraction
 │   ├── comment.test.ts         # Comment tests (8 tests)
 │   ├── plainText.ts            # Plain text blocks
 │   └── plainText.test.ts       # Plain text tests (6 tests)
-├── index.test.ts               # Integration tests (17 tests)
+├── index.test.ts               # Integration tests (33 tests)
 ├── examples.ts                 # Usage examples
 └── README.md                   # This file
 ```
@@ -37,6 +39,7 @@ parser/
 - **Direct Values**: `"value1" "value2"` without flag names
 - **Comments**: `<!-- comment -->`
 - **Plain Text**: Any text between annotations
+- **Code Blocks**: Triple-backtick fenced code with optional language metadata
 
 ## Installation
 
@@ -100,11 +103,14 @@ type ParseResult = {
 ### AnnotationBlock
 
 ```typescript
-type AnnotationBlock = {
+export type AnnotationBlock = {
   name: string;           // Block type or annotation name
   flags: Flag[];          // Array of flags
   content: string;        // Original markdown content
   line?: number;          // Optional line number (1-indexed)
+  metadata?: {            // Optional metadata
+    language?: string;    // Language for code blocks (e.g., 'bash', 'python')
+  };
 };
 ```
 
@@ -206,6 +212,59 @@ Any text that is not an annotation or comment is parsed as plain text:
 }
 ```
 
+### Code Blocks
+
+Code blocks are fenced with triple backticks and can include optional language metadata:
+
+```markdown
+@execute
+\`\`\`bash
+echo "Hello World"
+\`\`\`
+```
+
+Parsed as:
+```typescript
+[
+  {
+    name: 'execute',
+    flags: [],
+    content: '@execute',
+    line: 1
+  },
+  {
+    name: 'plainCodeBlock',
+    flags: [],
+    content: 'echo "Hello World"',
+    metadata: { language: 'bash' },
+    line: 2
+  }
+]
+```
+
+**Code Block Features:**
+- Language metadata is preserved exactly as written (no normalization)
+- Empty code blocks are valid: `\`\`\`python\n\`\`\``
+- Code blocks without language metadata have `language: undefined`
+- All code blocks are parsed; execution logic decides which to run
+- Unclosed code blocks result in critical parsing errors
+
+**Example without language:**
+```markdown
+\`\`\`
+echo "No language"
+\`\`\`
+```
+
+Parsed as:
+```typescript
+{
+  name: 'plainCodeBlock',
+  content: 'echo "No language"',
+  metadata: { language: undefined }
+}
+```
+
 ## Variable Substitution
 
 The parser preserves variable substitution patterns without evaluation:
@@ -286,6 +345,7 @@ if (result.errors.length > 0) {
 ### Block Extraction Modules
 
 - **blocks/annotation.ts**: Parses annotation blocks (@task, @context, etc.)
+- **blocks/codeBlock.ts**: Extracts code blocks with language metadata
 - **blocks/flag.ts**: Extracts and validates flags (--flag "value")
 - **blocks/comment.ts**: HTML comment extraction (<!-- -->)
 - **blocks/plainText.ts**: Plain text and comment block creation
@@ -306,11 +366,12 @@ npm test
 
 ### Test Coverage
 
-**Total: 135 tests, all passing**
+**Total: 127 tests, all passing**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
-| Integration (index.test.ts) | 17 | Core workflows |
+| Integration (index.test.ts) | 33 | Core workflows + code blocks |
+| Code block extraction | 20 | All code block patterns |
 | Flag extraction | 20 | All flag patterns |
 | Annotation parsing | 11 | Single/multi-line |
 | Comment extraction | 8 | HTML comments |
@@ -328,12 +389,10 @@ npm test
 
 1. **Escaped Quotes**: Not currently supported in quoted values
 2. **Nested Structures**: Flat parsing only, no nested annotations
-3. **Code Blocks**: Treated as plain text unless wrapped in annotations
 
 ## Future Enhancements
 
 - Support for escaped quotes in values
-- Code block extraction and execution context
 - Link resolution and file inclusion
 - Context chaining and combination logic
 - Performance optimizations for very large files
