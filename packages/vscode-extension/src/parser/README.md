@@ -13,9 +13,9 @@ parser/
 ├── index.ts                    # Main entry point, exports parseAnnotations
 ├── regex.ts                    # Centralized regex patterns
 ├── errors.ts                   # Error handling utilities
-├── errors.test.ts              # Error utilities tests
+├── errors.test.ts              # Error utilities tests (4 tests)
 ├── utils.ts                    # Shared utility functions
-├── utils.test.ts               # Utility tests
+├── utils.test.ts               # Utility tests (9 tests)
 ├── blocks/                     # Block extraction modules
 │   ├── annotation.ts           # Annotation extraction logic
 │   ├── annotation.test.ts      # Annotation tests (11 tests)
@@ -27,7 +27,8 @@ parser/
 │   ├── comment.test.ts         # Comment tests (23 tests)
 │   ├── plainText.ts            # Plain text blocks
 │   └── plainText.test.ts       # Plain text tests (6 tests)
-├── index.test.ts               # Integration tests (33 tests)
+├── index.test.ts               # Integration tests (44 tests)
+├── edgeCases.test.ts           # Edge case & error handling tests (35 tests)
 ├── examples.ts                 # Usage examples
 └── README.md                   # This file
 ```
@@ -334,15 +335,195 @@ Returns: `{ name: 'prompt', value: ['  extra  spaces  '] }`
 
 ## Error Handling
 
-The parser returns errors for invalid syntax but does not throw exceptions:
+The parser is designed to handle malformed input gracefully and return structured error information. **Critical rule**: If the `errors` array is non-empty, the playbook will not execute, regardless of whether blocks were parsed.
 
+### Error Types and Severity Levels
+
+Errors are classified by severity:
+
+- **critical**: Prevents parsing or execution (e.g., unclosed code block, invalid annotation syntax)
+- **warning**: Non-critical issues that may indicate problems (future use)
+- **info**: Informational messages (future use)
+
+### Supported Error Types
+
+#### 1. UnclosedCodeBlock (Critical)
+
+Occurs when a code block is opened with ``` but never closed.
+
+**Example:**
+```markdown
+@execute
+```bash
+echo "Hello World"
+```
+
+**Error:**
 ```typescript
-const result = parseAnnotations('@');
-
-if (result.errors.length > 0) {
-  console.error(result.errors[0].message); // "Invalid annotation syntax: @"
+{
+  type: 'UnclosedCodeBlock',
+  message: 'Unclosed code block detected.',
+  line: 2,
+  severity: 'critical'
 }
 ```
+
+**Behavior**: Parser stops processing the file and returns only the error. No blocks are returned for critical parsing errors.
+
+#### 2. INVALID_ANNOTATION (Critical)
+
+Occurs when an annotation has invalid syntax (e.g., `@` without a name).
+
+**Example:**
+```markdown
+@
+```
+
+**Error:**
+```typescript
+{
+  type: 'INVALID_ANNOTATION',
+  message: 'Invalid annotation syntax: @',
+  line: 1,
+  severity: 'critical',
+  context: '@'
+}
+```
+
+**Behavior**: Error is reported, and the line is skipped. Other valid blocks continue to be parsed, but the playbook will not execute due to the error.
+
+### Error Object Structure
+
+```typescript
+type ParserError = {
+  type: string;           // Error type identifier (e.g., 'UnclosedCodeBlock')
+  message: string;        // Human-readable error description
+  line?: number;          // Line number where error occurred (1-indexed)
+  severity?: 'critical' | 'warning' | 'info';  // Error severity
+  context?: string;       // Additional context (e.g., the problematic line content)
+};
+```
+
+### Handling Errors in Your Code
+
+Always check for errors before processing blocks:
+
+```typescript
+const result = parseAnnotations(markdown);
+
+if (result.errors.length > 0) {
+  // Errors present - playbook will not execute
+  console.error('Parsing failed with errors:');
+  result.errors.forEach(error => {
+    console.error(`[${error.severity}] ${error.type} at line ${error.line}: ${error.message}`);
+  });
+  return; // Stop processing
+}
+
+// No errors - safe to process blocks
+result.blocks.forEach(block => {
+  // Process block...
+});
+```
+
+### Edge Cases Handled
+
+The parser handles a wide range of edge cases gracefully:
+
+#### Malformed Annotations
+
+- **`@` alone**: Returns `INVALID_ANNOTATION` error
+- **`@task!invalid`**: Parses as `@task` (only word characters captured)
+- **`context "main"` (missing @)**: Treated as plain text
+
+#### Malformed Flags
+
+- **`--flag` (no value)**: Valid, returns `{ name: 'flag', value: [] }`
+- **`--` alone**: Parsed but may have empty flag name
+- **`@task --flag "unbalanced`: Regex doesn't match unbalanced quotes; flag may be empty
+
+#### Code Block Edge Cases
+
+- **Empty code block**: Valid, returns empty content
+- **Nested backticks**: Treated as part of code content
+- **Multiple consecutive unclosed blocks**: First error is reported
+- **Code block with no language**: Valid, `language` is `undefined`
+
+#### Comment Edge Cases
+
+- **Unclosed HTML comment** (`<!-- text`): Treated as plain text
+- **Nested comments**: HTML doesn't support them; parsed as single comment
+- **Empty comments** (`<!-- -->`): Valid, content is empty string
+- **Comments inside code blocks**: NOT parsed as standalone comments
+
+#### Content Edge Cases
+
+- **Unicode characters**: Non-ASCII annotation names don't match `\w` and are treated as plain text or errors
+- **Excessive whitespace**: Trimmed and handled correctly
+- **Empty file**: Returns empty blocks and errors arrays
+- **Very large files**: Handles 10,000+ lines efficiently
+- **Very long lines**: No hard limit, handled gracefully
+
+### Edge Case Test Coverage
+
+All edge cases are covered by comprehensive unit tests in `edgeCases.test.ts` (35 tests):
+
+- Error handling for all story examples
+- Malformed input (15 test cases)
+- Flag combinations (5 test cases)
+- Comment edge cases (3 test cases)
+- Mixed content stress tests (4 test cases)
+- Line number tracking (2 test cases)
+- Performance and limits (2 test cases)
+
+### Non-Standard Markdown Features
+
+The parser is designed for Brainy-specific markdown extensions. Standard markdown features not explicitly supported include:
+
+- Indented code blocks (use fenced code blocks with ```)
+- HTML-style comments as standalone comments (use `<!-- -->`)
+- Custom annotation syntax beyond `@annotation_name`
+
+These are parsed as plain text.
+
+### Error Recovery Strategy
+
+The parser uses an error recovery strategy:
+
+1. **Critical errors** (e.g., unclosed code block): Stop parsing, return error only
+2. **Non-critical errors** (e.g., invalid annotation): Report error, continue parsing other blocks
+3. **Consistency rule**: If any errors are returned, the playbook will not execute, even if some blocks were successfully parsed
+
+This ensures that playbooks are only executed when fully valid.
+
+### Example: Mixed Content with Errors
+
+```markdown
+@execute
+```bash
+echo "Test"
+<!-- Missing closing for code block -->
+@task --prompt "Valid annotation"
+```
+
+**Result:**
+```typescript
+{
+  blocks: [],  // No blocks returned for critical errors
+  errors: [
+    {
+      type: 'UnclosedCodeBlock',
+      message: 'Unclosed code block detected.',
+      line: 2,
+      severity: 'critical'
+    }
+  ]
+}
+```
+
+**Outcome**: Playbook will not execute due to the critical error.
+
+
 
 ## Design Principles
 
@@ -387,17 +568,18 @@ npm test
 
 ### Test Coverage
 
-**Total: 137 tests, all passing**
+**Total: 172 tests, all passing**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | Integration (index.test.ts) | 44 | Core workflows, code blocks & comments |
+| Edge cases (edgeCases.test.ts) | 35 | Error handling, malformed input, stress tests |
 | Code block extraction | 20 | All code block patterns |
 | Flag extraction | 20 | All flag patterns |
 | Comment extraction | 23 | Single & multi-line comments |
 | Annotation parsing | 11 | Single/multi-line |
-| Plain text blocks | 6 | Text & comments |
 | Utilities | 9 | Helper functions |
+| Plain text blocks | 6 | Text & comments |
 | Error handling | 4 | Error creation |
 
 ### Test Organization
