@@ -6,7 +6,108 @@ date: "2025-10-30"
 
 # Brainy Skills Parser: Required Use-Cases
 
-This document lists all the use-cases and annotation patterns the Brainy skills parser must reliably support for deterministic, agentic workflows.
+
+## Supported Annotation Situations
+
+The Brainy parser must support the following annotation patterns and situations:
+
+### 1. Single-Line Annotation with Flags
+```
+@annotation_name --flag1 value1 --flag2 value2
+```
+
+### 2. Multi-Line Annotation Block
+```
+@annotation_name
+   --flag1 value1
+   --flag2 value2
+```
+
+### 3. Flags with Quoted Values or Multiple Values
+```
+@annotation_name --flag1 "value with spaces" --flag2 value2
+@annotation_name
+   --flag1 "value with spaces"
+   --flag2 value2
+```
+
+### 4. Inline Comments
+```
+@annotation_name --flag1 value1 <!-- comment -->
+@annotation_name
+   --flag1 value1
+   <!-- comment -->
+   --flag2 value2
+```
+
+### 5. Variable and Parameter Substitution
+```
+@task --prompt "Do something with {{variable}}"
+```
+
+### 6. All annotation types
+Supports all annotation types, including:
+- @task
+- @context
+- @model
+- @execute
+- @link
+- @gh-copilot-context
+- ...and any future custom annotation
+
+### 7. Single Line Comments
+```
+// This is a comment
+```
+
+### 8. Code Execution Blocks
+```
+@execute
+   ```bash
+   echo "Hello World"
+   ```
+```
+
+### 9. File Operations
+```
+@execute
+   ```bash
+   echo "{{technical_specification}}" > ./output/api_authentication_spec.md
+   ```
+```
+
+### 10. Context Combination
+```
+@context "name1" "name2"
+```
+
+---
+
+## Unified Output Structure
+
+All annotation situations must be parsed into the following structure:
+```js
+{
+   name: "annotation_name",
+   flags: [
+      {
+         name: "flag1",
+         value: "value1"
+      },
+      {
+         name: "flag2",
+         value: "value2"
+      }
+      // ...more flags
+   ]
+   // Optionally, comments or metadata can be included if needed
+}
+```
+- Flags can be single or multi-line, with or without quotes.
+- Comments are ignored for parsing, but can be captured as metadata if required.
+- Variable/parameter substitution is handled in flag values.
+
+---
 
 ## Use-Cases
 

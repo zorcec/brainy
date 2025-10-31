@@ -131,12 +131,13 @@ This creates (or reuses, if it already exists) a named context called "research-
 - `@task "prompt text"`: Defines a prompt for the agent to respond to.
 - `@task --variable`: Output will be stored in a variable for later use.
 - `@task --prompt`: Flag to specify the prompt for the agent.
+- `@task --tools "name1" "name2"`: Flag to specify the tools available to the agent.
 - `@link "./deploy.brainy.md"`: Link to another Brainy playbook to include its context and steps. (will be executed as part of the current playbook)
 - `@link "./coding-workflow.md"`: Link to another md file that will be loaded into the context.
 - `@link "./diagram.jpg"`: Link to other files will be loaded into the context.
 - `@model "gpt-4.1"`: Switches the LLM model used for subsequent prompts. (default)
 - `{{name}}`: Vriable from previous tasks, or a passed in parameter.
-- `//` : Single line comments.
+- `<!-- -->` : Comments.
 - `@execute`: Execute the code block below and return the output to the agent.
 - `@gh-copilot-context "name"` - Prepares and shares and ID for the current Brainy context to be used in GitHub Copilot.
 - Interactive scripts executions for the agent (low priority)
@@ -190,4 +191,15 @@ In the standard VS Code markdown editor, you can implement the following feature
 These features provide basic interactivity and feedback, but for advanced UI and full control over layout, a custom Webview-based markdown preview is required.
 
 ## Outcome
-You will be able to author markdown playbooks that mix agent instructions and executable code, with fine-grained control over agent context, enabling deterministic, automated, and context-rich workflows in VS Code.
+You will be able to author markdown playbooks that mix agent instructions and executable code, with fine-grained control over agent context, enabling deterministic, automated, and context-rich workflows in VS Code. Basically, this allows you to build an agent out of markdown files.
+
+## Related Project Files
+
+For further details and related workflows, see:
+
+- [Annotations Workflow](./annotations-workflow.md): Annotation and workflow strategies for Brainy playbooks.
+- [Exposing Language Model API to Skills](./exposing-language-model-api-to-skills.md): How to expose LLM APIs to custom Brainy skills.
+- [HTML Workflow](./html-workflow.md): HTML-based workflow integration in Brainy.
+- [Learning Ideas](./learing-ideas.md): Learning and improvement ideas for Brainy agents.
+- [Parser](./parser.md): Details on the markdown and skill parser implementation.
+- [RAG Ideas](./rag_ideas.md): Concepts and ideas for Retrieval-Augmented Generation in Brainy.
