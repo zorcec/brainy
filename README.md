@@ -8,6 +8,10 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
 ## Status
 
+**Parser Implementation:** ✅ Complete
+- Generic markdown annotation parser implemented
+- 60 unit tests, all passing
+- See [parser README](./packages/vscode-extension/src/parser/README.md) for details
 
 - [Parser Manifest](./manifest.md) — Key features, requirements, and API structure for the Brainy Markdown Skills Parser
 
@@ -40,6 +44,7 @@ brainy/
 │   │   └── examples/         # Example markdown knowledge base files
 │   └── vscode-extension/     # VS Code extension
 │       ├── src/              # Source files
+│       │   └── parser/       # Markdown parser (annotations, flags, etc.)
 │       ├── e2e/              # End-to-end tests
 │       └── dist/             # Built files
 ├── specs/                    # Feature specifications
@@ -69,11 +74,15 @@ npm run build
 
 ## Test
 
-Run unit tests (7 tests passing):
+Run unit tests (72 tests passing):
 
 ```bash
 npm test
 ```
+
+**Parser Tests:** 60 tests for markdown annotation parsing
+**Extension Tests:** 4 tests for VS Code extension
+**Server Tests:** 12 tests for API and database
 
 Run E2E tests:
 
@@ -115,10 +124,17 @@ node packages/server/dist/server.js
 
 ## Next Steps
 
-This scaffold provides the foundation for building the Brainy knowledge assistant. The next phase involves implementing:
+This scaffold provides the foundation for building the Brainy knowledge assistant. 
 
-1. Vector embedding generation and storage
-2. Hybrid search functionality
+**Completed:**
+- ✅ Markdown parser for annotations, flags, and workflow definitions
+
+**Next Phase:**
+
+1. Code block extraction and execution context
+2. Context combination and management
+3. Vector embedding generation and storage
+4. Hybrid search functionality
 3. VS Code extension commands for indexing and searching
 4. Integration between extension and server
 
