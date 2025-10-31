@@ -2,44 +2,48 @@
  * Module: skills/sessionStore.ts
  *
  * Description:
- *   In-memory session store for persisting selected model ID.
- *   Provides factory function to create isolated store instances for testing and injection.
+ *   Singleton in-memory session store for persisting selected model ID.
+ *   Provides functions to get, set, and clear the selected model.
  *
  * Usage:
- *   import { createSessionStore } from './sessionStore';
- *   const store = createSessionStore();
- *   store.setSelectedModel('gpt-4o');
- *   const modelId = store.getSelectedModel();
+ *   import { getSelectedModel, setSelectedModel, clearSelectedModel } from './sessionStore';
+ *   setSelectedModel('gpt-4o');
+ *   const modelId = getSelectedModel();
  */
 
 /**
- * Session store interface for model selection persistence.
+ * Singleton state for selected model ID.
  */
-export type SessionStore = {
-	/** Sets the selected model ID */
-	setSelectedModel: (modelId: string) => void;
-	/** Gets the currently selected model ID, or undefined if none selected */
-	getSelectedModel: () => string | undefined;
-	/** Clears the selected model */
-	clearSelectedModel: () => void;
-};
+let selectedModel: string | undefined = undefined;
 
 /**
- * Creates a new session store instance.
- * Each instance maintains its own isolated state.
+ * Gets the currently selected model ID.
  *
- * @returns SessionStore instance
+ * @returns The selected model ID, or undefined if none selected
  */
-export function createSessionStore(): SessionStore {
-	let selectedModel: string | undefined = undefined;
+export function getSelectedModel(): string | undefined {
+	return selectedModel;
+}
 
-	return {
-		setSelectedModel: (modelId: string) => {
-			selectedModel = modelId;
-		},
-		getSelectedModel: () => selectedModel,
-		clearSelectedModel: () => {
-			selectedModel = undefined;
-		}
-	};
+/**
+ * Sets the selected model ID.
+ *
+ * @param modelId - The model ID to select
+ */
+export function setSelectedModel(modelId: string): void {
+	selectedModel = modelId;
+}
+
+/**
+ * Clears the selected model.
+ */
+export function clearSelectedModel(): void {
+	selectedModel = undefined;
+}
+
+/**
+ * Resets the session store state. Used for testing.
+ */
+export function resetSessionStore(): void {
+	selectedModel = undefined;
 }

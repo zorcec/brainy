@@ -2,13 +2,12 @@
  * Module: skills/modelClient.ts
  *
  * Description:
- *   Model client for LLM provider calls with timeout and error normalization.
- *   Provides factory function to create client instances with configurable behavior.
+ *   Singleton model client for LLM provider calls with timeout and error handling.
+ *   Provides sendRequest function and configuration for timeout and custom providers.
  *
  * Usage:
- *   import { createModelClient } from './modelClient';
- *   const client = createModelClient({ defaultTimeoutMs: 8000 });
- *   const response = await client.sendRequest({
+ *   import { sendRequest, configureModelClient } from './modelClient';
+ *   const response = await sendRequest({
  *     modelId: 'gpt-4o',
  *     role: 'user',
  *     content: 'Hello!',
@@ -41,53 +40,67 @@ export type ModelResponse = {
 };
 
 /**
- * Model client interface for sending requests to LLM providers.
+ * Provider function type for custom implementations.
  */
-export type ModelClient = {
-	/** Sends a request to the model and returns the response */
-	sendRequest: (params: SendRequestParams) => Promise<ModelResponse>;
-};
+export type ProviderFunction = (params: SendRequestParams) => Promise<ModelResponse>;
 
 /**
- * Configuration options for creating a model client.
+ * Singleton configuration state.
  */
-export type ModelClientConfig = {
-	/** Default timeout in milliseconds (default: 8000) */
-	defaultTimeoutMs?: number;
-	/** Optional custom provider implementation for testing */
-	provider?: (params: SendRequestParams) => Promise<ModelResponse>;
-};
+let defaultTimeoutMs = 8000;
+let providerFunction: ProviderFunction = defaultProvider;
 
 /**
- * Creates a new model client instance.
+ * Configures the model client singleton.
  *
- * @param config - Optional configuration
- * @returns ModelClient instance
+ * @param config - Configuration options
+ * @param config.defaultTimeoutMs - Default timeout in milliseconds
+ * @param config.provider - Custom provider implementation
  */
-export function createModelClient(config?: ModelClientConfig): ModelClient {
-	const defaultTimeoutMs = config?.defaultTimeoutMs ?? 8000;
-	const provider = config?.provider ?? defaultProvider;
+export function configureModelClient(config: {
+	defaultTimeoutMs?: number;
+	provider?: ProviderFunction;
+}): void {
+	if (config.defaultTimeoutMs !== undefined) {
+		defaultTimeoutMs = config.defaultTimeoutMs;
+	}
+	if (config.provider !== undefined) {
+		providerFunction = config.provider;
+	}
+}
 
-	return {
-		sendRequest: async (params: SendRequestParams): Promise<ModelResponse> => {
-			const timeoutMs = params.timeoutMs ?? defaultTimeoutMs;
+/**
+ * Resets the model client configuration. Used for testing.
+ */
+export function resetModelClient(): void {
+	defaultTimeoutMs = 8000;
+	providerFunction = defaultProvider;
+}
 
-			try {
-				const response = await withTimeout(
-					provider(params),
-					timeoutMs,
-					`Request timed out after ${timeoutMs}ms`
-				);
-				return response;
-			} catch (error) {
-				// Preserve and rethrow original errors to keep upstream behavior and types.
-				if (error instanceof Error) {
-					throw error;
-				}
-				throw new Error(String(error));
-			}
+/**
+ * Sends a request to the model and returns the response.
+ *
+ * @param params - Request parameters
+ * @returns Promise with model response
+ * @throws Error for validation, timeout, or provider failures
+ */
+export async function sendRequest(params: SendRequestParams): Promise<ModelResponse> {
+	const timeoutMs = params.timeoutMs ?? defaultTimeoutMs;
+
+	try {
+		const response = await withTimeout(
+			providerFunction(params),
+			timeoutMs,
+			`Request timed out after ${timeoutMs}ms`
+		);
+		return response;
+	} catch (error) {
+		// Preserve and rethrow original errors to keep upstream behavior and types.
+		if (error instanceof Error) {
+			throw error;
 		}
-	};
+		throw new Error(String(error));
+	}
 }
 
 /**
@@ -112,7 +125,7 @@ async function defaultProvider(params: SendRequestParams): Promise<ModelResponse
  * @param promise - Promise to wrap
  * @param timeoutMs - Timeout in milliseconds
  * @param message - Error message if timeout occurs
- * @returns Promise that rejects with TimeoutError if timeout is exceeded
+ * @returns Promise that rejects with Error if timeout is exceeded
  */
 function withTimeout<T>(
 	promise: Promise<T>,

@@ -2,13 +2,23 @@
  * Unit tests for model client.
  */
 
-import { describe, test, expect, vi } from 'vitest';
-import { createModelClient, type SendRequestParams, type ModelResponse } from './modelClient';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import {
+	sendRequest,
+	configureModelClient,
+	resetModelClient,
+	type SendRequestParams,
+	type ModelResponse
+} from './modelClient';
 
-describe('createModelClient', () => {
+describe('modelClient', () => {
+	beforeEach(() => {
+		// Reset singleton state before each test
+		resetModelClient();
+	});
+
 	test('sends request with default provider', async () => {
-		const client = createModelClient();
-		const response = await client.sendRequest({
+		const response = await sendRequest({
 			modelId: 'gpt-4o',
 			role: 'user',
 			content: 'Hello!'
@@ -19,14 +29,15 @@ describe('createModelClient', () => {
 		expect(typeof response.reply).toBe('string');
 	});
 
-	test('uses custom provider when provided', async () => {
+	test('uses custom provider when configured', async () => {
 		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
 			reply: `Mock response to: ${params.content}`,
 			raw: { model: params.modelId, test: true }
 		}));
 
-		const client = createModelClient({ provider: mockProvider });
-		const response = await client.sendRequest({
+		configureModelClient({ provider: mockProvider });
+
+		const response = await sendRequest({
 			modelId: 'test-model',
 			role: 'user',
 			content: 'Test message'
@@ -48,12 +59,12 @@ describe('createModelClient', () => {
 			raw: {}
 		}));
 
-		const client = createModelClient({ 
+		configureModelClient({
 			defaultTimeoutMs: 5000,
 			provider: mockProvider
 		});
 
-		await client.sendRequest({
+		await sendRequest({
 			modelId: 'gpt-4o',
 			role: 'user',
 			content: 'Hello'
@@ -69,8 +80,9 @@ describe('createModelClient', () => {
 			raw: {}
 		}));
 
-		const client = createModelClient({ provider: mockProvider });
-		await client.sendRequest({
+		configureModelClient({ provider: mockProvider });
+
+		await sendRequest({
 			modelId: 'gpt-4o',
 			role: 'user',
 			content: 'Hello',
@@ -86,10 +98,10 @@ describe('createModelClient', () => {
 			return { reply: 'Late response', raw: {} };
 		};
 
-		const client = createModelClient({ provider: slowProvider });
+		configureModelClient({ provider: slowProvider });
 
 		await expect(
-			client.sendRequest({
+			sendRequest({
 				modelId: 'gpt-4o',
 				role: 'user',
 				content: 'Hello',
@@ -103,10 +115,10 @@ describe('createModelClient', () => {
 			throw new Error('Provider API error');
 		};
 
-		const client = createModelClient({ provider: failingProvider });
+		configureModelClient({ provider: failingProvider });
 
 		await expect(
-			client.sendRequest({
+			sendRequest({
 				modelId: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
@@ -120,10 +132,10 @@ describe('createModelClient', () => {
 			throw error;
 		};
 
-		const client = createModelClient({ provider: networkFailProvider });
+		configureModelClient({ provider: networkFailProvider });
 
 		await expect(
-			client.sendRequest({
+			sendRequest({
 				modelId: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
@@ -136,10 +148,10 @@ describe('createModelClient', () => {
 			throw new Error('Test error');
 		};
 
-		const client = createModelClient({ provider: failingProvider });
+		configureModelClient({ provider: failingProvider });
 
 		try {
-			await client.sendRequest({
+			await sendRequest({
 				modelId: 'test-model-id',
 				role: 'user',
 				content: 'Hello'
@@ -156,10 +168,10 @@ describe('createModelClient', () => {
 			throw originalError;
 		};
 
-		const client = createModelClient({ provider: failingProvider });
+		configureModelClient({ provider: failingProvider });
 
 		try {
-			await client.sendRequest({
+			await sendRequest({
 				modelId: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
