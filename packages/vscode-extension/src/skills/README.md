@@ -1,60 +1,58 @@
 # Skills System API
 
-A minimal, testable skills API for VS Code extension authors. This module provides factory functions for creating isolated API instances with model selection and LLM request capabilities.
+A minimal, testable skills API for VS Code extension authors. This module provides singleton functions for model selection and LLM request handling.
 
 > **⚠️ Maintainer Note**: This module follows the parser's function-based, test-adjacent style. Use pure functions, avoid classes, and keep implementations modular and focused.
 
 ## Overview
 
-The skills system provides a simple API for interacting with language models in the Brainy VS Code extension. It follows a factory-based pattern for dependency injection and testing, with explicit error handling and timeout support.
+The skills system provides a simple API for interacting with language models in the Brainy VS Code extension. It follows a singleton pattern with configuration-based dependency injection for testing, with explicit error handling and timeout support.
 
 ## Module Structure
 
 ```
 skills/
-├── index.ts                    # Main entry point, API factory
+├── index.ts                    # Public API singleton exports
 ├── index.test.ts               # API integration tests
 ├── modelClient.ts              # Provider calls, timeout & error handling
 ├── modelClient.test.ts         # Model client tests
 ├── sessionStore.ts             # In-memory model selection persistence
 ├── sessionStore.test.ts        # Session store tests
-├── errors.ts                   # Typed error constructors
-├── errors.test.ts              # Error handling tests
 └── README.md                   # This file
 ```
 
 ## API Contract
 
-### Factory Function
-
-```typescript
-function createSkillsAPI(config?: SkillsAPIConfig): SkillsAPI
-```
-
-Creates a new skills API instance with injected dependencies.
-
-**Config Options:**
-- `defaultModelId?: string` - Default model to use when none is selected
-- `defaultTimeoutMs?: number` - Default timeout in milliseconds (default: 8000)
-- `sessionStore?: SessionStore` - Custom session store for testing
-- `modelClient?: ModelClient` - Custom model client for testing
+The skills system provides a singleton API with direct function exports. All functions operate on module-level state and use dependency injection through configuration functions for testing.
 
 ### Public API
 
 ```typescript
-type SkillsAPI = {
-  selectChatModel: (modelId: string) => void;
-  sendRequest: (
-    role: 'user' | 'assistant',
-    content: string,
-    opts?: { timeoutMs?: number }
-  ) => Promise<ModelResponse>;
+// Main API functions
+export function selectChatModel(modelId: string): void;
+
+export async function sendRequest(
+  role: 'user' | 'assistant',
+  content: string,
+  opts?: { timeoutMs?: number }
+): Promise<ModelResponse>;
+
+// Configuration and testing utilities
+export function resetSkills(): void;
+```
+
+### Types
+
+```typescript
+type ModelResponse = {
+  reply: string;      // Normalized response text
+  raw: unknown;       // Raw provider response
 };
 ```
 
-#### `selectChatModel(modelId: string): void`
+### `selectChatModel(modelId: string): void`
 
-Selects the chat model to use for subsequent requests.
+Selects the chat model to use for subsequent requests. The selection is persisted in module-level state.
 
 **Parameters:**
 - `modelId` - Model identifier (e.g., 'gpt-4o', 'claude-3')
@@ -64,18 +62,19 @@ Selects the chat model to use for subsequent requests.
 
 **Example:**
 ```typescript
-const api = createSkillsAPI();
-api.selectChatModel('gpt-4o');
+import { selectChatModel } from './skills';
+
+selectChatModel('gpt-4o');
 ```
 
-#### `sendRequest(role, content, opts?): Promise<ModelResponse>`
+### `sendRequest(role, content, opts?): Promise<ModelResponse>`
 
-Sends a request to the selected (or default) model.
+Sends a request to the selected (or default) model. Uses a hardcoded default model ('gpt-4.1') if no model has been selected.
 
 **Parameters:**
 - `role` - Message role: 'user' or 'assistant'
 - `content` - Message content (non-empty string)
-- `opts.timeoutMs` - Optional timeout override in milliseconds
+- `opts.timeoutMs` - Optional timeout override in milliseconds (default: 8000ms)
 
 **Returns:**
 ```typescript
@@ -87,16 +86,18 @@ type ModelResponse = {
 
 **Throws:**
 - `Error` - For all error conditions including:
-  - Invalid role or empty content
-  - No model selected and no default configured
-  - Request timeout
+  - Invalid role (must be 'user' or 'assistant')
+  - Empty or whitespace-only content
+  - Request timeout (after specified timeout)
   - LLM provider errors
   - Network-related errors
 
 **Example:**
 ```typescript
-const api = createSkillsAPI({ defaultModelId: 'gpt-4o' });
-const response = await api.sendRequest('user', 'Hello!', { timeoutMs: 5000 });
+import { selectChatModel, sendRequest } from './skills';
+
+selectChatModel('gpt-4o');
+const response = await sendRequest('user', 'Hello!', { timeoutMs: 5000 });
 console.log(response.reply);
 ```
 
@@ -132,30 +133,40 @@ try {
 ### Basic Usage
 
 ```typescript
-import { createSkillsAPI } from './skills';
+import { selectChatModel, sendRequest } from './skills';
 
-// Create API with default model
-const api = createSkillsAPI({ defaultModelId: 'gpt-4o' });
+// Select a model
+selectChatModel('gpt-4o');
 
 // Send a request
-const response = await api.sendRequest('user', 'Summarize this document');
+const response = await sendRequest('user', 'Summarize this document');
 console.log(response.reply);
 ```
 
 ### Model Selection
 
 ```typescript
-const api = createSkillsAPI();
+import { selectChatModel, sendRequest } from './skills';
 
 // Select a model
-api.selectChatModel('gpt-4o');
+selectChatModel('gpt-4o');
 
 // Send request to selected model
-const response = await api.sendRequest('user', 'Hello!');
+const response = await sendRequest('user', 'Hello!');
 
 // Switch models
-api.selectChatModel('claude-3');
-const response2 = await api.sendRequest('user', 'Same question, different model');
+selectChatModel('claude-3');
+const response2 = await sendRequest('user', 'Same question, different model');
+```
+
+### Using Default Model
+
+```typescript
+import { sendRequest } from './skills';
+
+// Use hardcoded default model ('gpt-4.1') without selecting
+const response = await sendRequest('user', 'Hello!');
+console.log(response.reply);
 ```
 
 ### Skills Can Override Model (Internal API)
@@ -164,10 +175,11 @@ Skills have access to the lower-level `modelClient.sendRequest` which accepts an
 
 ```typescript
 // Inside a skill implementation
+import { sendRequest } from './skills';
 import { sendRequest as clientSendRequest } from './modelClient';
 
-// Skill uses the global model (via index.ts)
-const response1 = await api.sendRequest('user', 'Hello!');
+// Skill uses the global model
+const response1 = await sendRequest('user', 'Hello!');
 
 // Or skill can call modelClient directly to override the model
 const response2 = await clientSendRequest({
@@ -178,18 +190,20 @@ const response2 = await clientSendRequest({
 ```
 
 **Architecture:**
-- `@model` skill or `selectChatModel()` sets the **global default model** for all skills
-- High-level API (`index.ts sendRequest`) uses the globally selected/default model
+- `selectChatModel()` sets the **global default model** for all skills
+- High-level API (`sendRequest`) uses the globally selected/default model
 - Skills can import `modelClient.sendRequest` directly to override the model per-request
 - This allows flexible per-skill model selection while maintaining a global default
 
 ### Error Handling
 
 ```typescript
-const api = createSkillsAPI({ defaultModelId: 'gpt-4o' });
+import { selectChatModel, sendRequest } from './skills';
+
+selectChatModel('gpt-4o');
 
 try {
-  const response = await api.sendRequest('user', 'My question', { timeoutMs: 3000 });
+  const response = await sendRequest('user', 'My question', { timeoutMs: 3000 });
   console.log(response.reply);
 } catch (error) {
   if (error instanceof Error) {
@@ -197,10 +211,8 @@ try {
       console.error('Validation error:', error.message);
     } else if (error.message.includes('timed out')) {
       console.error('Request timed out');
-    } else if (error.message.includes('Provider error')) {
-      console.error('Provider error:', error.message);
-    } else if (error.message.includes('Network error')) {
-      console.error('Network error:', error.message);
+    } else {
+      console.error('Provider or network error:', error.message);
     }
   }
 }
@@ -209,54 +221,82 @@ try {
 ### Testing with Mocks
 
 ```typescript
-import { createSkillsAPI } from './skills';
-import { createModelClient } from './modelClient';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { selectChatModel, sendRequest, resetSkills } from './skills';
+import { configureModelClient } from './modelClient';
 
-// Create mock provider
-const mockProvider = async (params) => ({
-  reply: `Mock response to: ${params.content}`,
-  raw: { model: params.modelId }
+describe('skills API tests', () => {
+  beforeEach(() => {
+    // Reset singleton state before each test
+    resetSkills();
+  });
+
+  test('uses mock provider', async () => {
+    // Create and configure mock provider
+    const mockProvider = vi.fn(async (params) => ({
+      reply: `Mock response to: ${params.content}`,
+      raw: { model: params.modelId }
+    }));
+
+    configureModelClient({ provider: mockProvider });
+
+    // Test with mock
+    selectChatModel('test-model');
+    const response = await sendRequest('user', 'Test message');
+    
+    expect(response.reply).toBe('Mock response to: Test message');
+    expect(mockProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelId: 'test-model',
+        role: 'user',
+        content: 'Test message'
+      })
+    );
+  });
 });
-
-// Inject mock into API
-const api = createSkillsAPI({
-  modelClient: createModelClient({ provider: mockProvider })
-});
-
-// Test with mock
-api.selectChatModel('test-model');
-const response = await api.sendRequest('user', 'Test message');
-expect(response.reply).toBe('Mock response to: Test message');
 ```
 
 ## Test Harness Example
 
-The test suite includes comprehensive test harnesses that demonstrate API usage patterns:
+The test suite includes comprehensive test harnesses that demonstrate API usage patterns. Here's an integration test example from `index.test.ts`:
 
 ```typescript
+import { selectChatModel, sendRequest, resetSkills } from './skills';
+import { configureModelClient } from './modelClient';
+
+// Setup mock provider
+const mockProvider = vi.fn(async (params) => ({
+  reply: `Response from ${params.modelId}`,
+  raw: {}
+}));
+
+configureModelClient({ provider: mockProvider });
+
 // Complete workflow test
-const api = createSkillsAPI({
-  modelClient: createModelClient({ provider: mockProvider })
+beforeEach(() => resetSkills());
+
+test('complete workflow: select model and send multiple requests', async () => {
+  // Select model
+  selectChatModel('gpt-4o');
+
+  // Send multiple requests
+  const response1 = await sendRequest('user', 'First message');
+  const response2 = await sendRequest('assistant', 'Previous response');
+  const response3 = await sendRequest('user', 'Follow-up question');
+
+  // Switch models
+  selectChatModel('claude-3');
+  const response4 = await sendRequest('user', 'New model request');
+
+  expect(mockProvider).toHaveBeenCalledTimes(4);
 });
-
-// Select model
-api.selectChatModel('gpt-4o');
-
-// Send multiple requests
-const response1 = await api.sendRequest('user', 'First message');
-const response2 = await api.sendRequest('assistant', 'Previous response');
-const response3 = await api.sendRequest('user', 'Follow-up question');
-
-// Switch models
-api.selectChatModel('claude-3');
-const response4 = await api.sendRequest('user', 'New model request');
 ```
 
 ## Design Principles
 
-- **Function-based**: Use pure functions and factory patterns, avoid classes
-- **Dependency Injection**: All dependencies are injected for easy testing
-- **Explicit Errors**: Typed errors with context for debugging
+- **Function-based**: Use pure functions and singleton pattern, avoid classes
+- **Dependency Injection**: Dependencies injected via configuration functions for testing
+- **Explicit Errors**: Plain Error objects with descriptive messages
 - **Test-adjacent**: Tests are next to implementation files
 - **Minimal API**: Only essential functionality, extensible for future needs
 
@@ -275,17 +315,17 @@ npm test -- skills/index.test.ts
 
 ## Module Files
 
-- [index.ts](./index.ts) - API factory and public interface
-- [modelClient.ts](./modelClient.ts) - Model client implementation
-- [sessionStore.ts](./sessionStore.ts) - Session persistence
-- [errors.ts](./errors.ts) - Error types and constructors
+- [index.ts](./index.ts) - Public API and singleton exports
+- [modelClient.ts](./modelClient.ts) - Model client implementation with timeout and error handling
+- [sessionStore.ts](./sessionStore.ts) - Session persistence for selected model
 
 ## Test Files
 
-- [index.test.ts](./index.test.ts) - API integration tests (16 tests)
-- [modelClient.test.ts](./modelClient.test.ts) - Model client tests (11 tests)
+- [index.test.ts](./index.test.ts) - API integration tests (20 tests)
+- [modelClient.test.ts](./modelClient.test.ts) - Model client tests (15 tests)
 - [sessionStore.test.ts](./sessionStore.test.ts) - Session store tests (6 tests)
-- [errors.test.ts](./errors.test.ts) - Error handling tests (3 tests)
+
+**Total: 41 tests, all passing**
 
 ## Future Extensions
 
