@@ -26,9 +26,9 @@
  */
 
 import { type ParserError } from './errors';
-import { type AnnotationBlock, createPlainTextBlock, createCommentBlock } from './blocks/plainText';
+import { type AnnotationBlock, createPlainTextBlock } from './blocks/plainText';
 import { parseAnnotationBlock } from './blocks/annotation';
-import { isComment, extractCommentContent } from './blocks/comment';
+import { isCommentStart, parseCommentBlock } from './blocks/comment';
 import { isCodeFenceOpen, parseCodeBlock } from './blocks/codeBlock';
 import { isEmptyLine, trimLine, startsWith } from './utils';
 
@@ -88,11 +88,13 @@ export function parseAnnotations(markdown: string): ParseResult {
 			continue;
 		}
 
-		// Try to parse as comment
-		if (isComment(trimmedLine)) {
-			const commentContent = extractCommentContent(trimmedLine);
-			blocks.push(createCommentBlock(commentContent, currentLineNumber + 1));
-			currentLineNumber++;
+		// Try to parse as comment (single-line or multi-line)
+		if (isCommentStart(trimmedLine)) {
+			const result = parseCommentBlock(lines, currentLineNumber);
+			if (result.block) {
+				blocks.push(result.block);
+			}
+			currentLineNumber = result.nextLine;
 			continue;
 		}
 

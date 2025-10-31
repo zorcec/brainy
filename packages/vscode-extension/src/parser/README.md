@@ -23,8 +23,8 @@ parser/
 │   ├── codeBlock.test.ts       # Code block tests (20 tests)
 │   ├── flag.ts                 # Flag parsing logic
 │   ├── flag.test.ts            # Flag tests (20 tests)
-│   ├── comment.ts              # Comment extraction
-│   ├── comment.test.ts         # Comment tests (8 tests)
+│   ├── comment.ts              # Comment extraction (single & multi-line)
+│   ├── comment.test.ts         # Comment tests (23 tests)
 │   ├── plainText.ts            # Plain text blocks
 │   └── plainText.test.ts       # Plain text tests (6 tests)
 ├── index.test.ts               # Integration tests (33 tests)
@@ -37,7 +37,7 @@ parser/
 - **Annotations**: `@annotation_name` with optional flags
 - **Flags**: `--flag_name "value"` format (single or multi-line)
 - **Direct Values**: `"value1" "value2"` without flag names
-- **Comments**: `<!-- comment -->`
+- **Comments**: `<!-- comment -->` (single-line and multi-line)
 - **Plain Text**: Any text between annotations
 - **Code Blocks**: Triple-backtick fenced code with optional language metadata
 
@@ -185,6 +185,7 @@ Parsed as flags with empty name:
 
 ### Comments
 
+**Single-line comments:**
 ```markdown
 <!-- This is a comment -->
 ```
@@ -198,6 +199,26 @@ Parsed as:
   line: 1
 }
 ```
+
+**Multi-line comments:**
+```markdown
+<!--
+Multi-line
+comment
+-->
+```
+
+Parsed as:
+```typescript
+{
+  name: 'plainComment',
+  flags: [],
+  content: 'Multi-line\ncomment',
+  line: 1
+}
+```
+
+**Important:** Comments inside code blocks are NOT parsed as standalone comments. They are treated as part of the code block content.
 
 ### Plain Text
 
@@ -366,15 +387,15 @@ npm test
 
 ### Test Coverage
 
-**Total: 127 tests, all passing**
+**Total: 137 tests, all passing**
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
-| Integration (index.test.ts) | 33 | Core workflows + code blocks |
+| Integration (index.test.ts) | 44 | Core workflows, code blocks & comments |
 | Code block extraction | 20 | All code block patterns |
 | Flag extraction | 20 | All flag patterns |
+| Comment extraction | 23 | Single & multi-line comments |
 | Annotation parsing | 11 | Single/multi-line |
-| Comment extraction | 8 | HTML comments |
 | Plain text blocks | 6 | Text & comments |
 | Utilities | 9 | Helper functions |
 | Error handling | 4 | Error creation |

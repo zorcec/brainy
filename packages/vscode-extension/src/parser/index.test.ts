@@ -453,3 +453,173 @@ echo "Hello World"
 	});
 });
 
+describe('parseAnnotations - Comment Integration Tests', () => {
+	test('parses single-line comment (from story example)', () => {
+		const md = '<!-- This is a comment -->';
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0]).toMatchObject({
+			name: 'plainComment',
+			flags: [],
+			content: 'This is a comment'
+		});
+	});
+
+	test('parses multi-line comment (from story example)', () => {
+		const md = `<!--
+Multi-line
+comment
+-->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0]).toMatchObject({
+			name: 'plainComment',
+			flags: [],
+			content: 'Multi-line\ncomment'
+		});
+	});
+
+	test('comments inside code blocks are NOT parsed as standalone comments', () => {
+		const md = `\`\`\`bash
+<!-- This is inside a code block -->
+echo "test"
+\`\`\``;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('plainCodeBlock');
+		expect(result.blocks[0].content).toContain('<!-- This is inside a code block -->');
+		
+		// Verify no comment blocks were created
+		const commentBlocks = result.blocks.filter(b => b.name === 'plainComment');
+		expect(commentBlocks.length).toBe(0);
+	});
+
+	test('comments before and after code blocks are parsed correctly', () => {
+		const md = `<!-- Comment before -->
+\`\`\`bash
+echo "code"
+\`\`\`
+<!-- Comment after -->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(3);
+		
+		expect(result.blocks[0].name).toBe('plainComment');
+		expect(result.blocks[0].content).toBe('Comment before');
+		
+		expect(result.blocks[1].name).toBe('plainCodeBlock');
+		expect(result.blocks[1].content).toBe('echo "code"');
+		
+		expect(result.blocks[2].name).toBe('plainComment');
+		expect(result.blocks[2].content).toBe('Comment after');
+	});
+
+	test('multi-line comment with annotations inside is not parsed as annotations', () => {
+		const md = `<!--
+@task --flag "value"
+@context "main"
+-->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('plainComment');
+		expect(result.blocks[0].content).toContain('@task');
+		expect(result.blocks[0].content).toContain('@context');
+		
+		// Verify no annotation blocks were created
+		const annotationBlocks = result.blocks.filter(b => b.name !== 'plainComment');
+		expect(annotationBlocks.length).toBe(0);
+	});
+
+	test('mixed content with comments, annotations, and code blocks', () => {
+		const md = `@task --prompt "Test"
+<!-- This is a comment -->
+\`\`\`bash
+# Shell comment, not HTML
+echo "test"
+\`\`\`
+<!-- Another comment -->
+@context "main"`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(5);
+		
+		expect(result.blocks[0].name).toBe('task');
+		expect(result.blocks[1].name).toBe('plainComment');
+		expect(result.blocks[1].content).toBe('This is a comment');
+		expect(result.blocks[2].name).toBe('plainCodeBlock');
+		expect(result.blocks[3].name).toBe('plainComment');
+		expect(result.blocks[3].content).toBe('Another comment');
+		expect(result.blocks[4].name).toBe('context');
+	});
+
+	test('empty comments are handled correctly', () => {
+		const md = `<!-- -->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].name).toBe('plainComment');
+		expect(result.blocks[0].content).toBe('');
+	});
+
+	test('comment with special characters and symbols', () => {
+		const md = `<!-- Special: @#$%^&*() <>"'{}[] -->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(1);
+		expect(result.blocks[0].content).toBe('Special: @#$%^&*() <>"\'{}[]');
+	});
+
+	test('multiple consecutive comments', () => {
+		const md = `<!-- Comment 1 -->
+<!-- Comment 2 -->
+<!-- Comment 3 -->`;
+		const result = parseAnnotations(md);
+		
+		expect(result.errors).toEqual([]);
+		expect(result.blocks.length).toBe(3);
+		expect(result.blocks.every(b => b.name === 'plainComment')).toBe(true);
+		expect(result.blocks[0].content).toBe('Comment 1');
+		expect(result.blocks[1].content).toBe('Comment 2');
+		expect(result.blocks[2].content).toBe('Comment 3');
+	});
+
+	test('comment line numbers are tracked correctly', () => {
+		const md = `Line 1
+<!-- Comment on line 2 -->
+Line 3`;
+		const result = parseAnnotations(md);
+		
+		expect(result.blocks[0].line).toBe(1);
+		expect(result.blocks[1].line).toBe(2);
+		expect(result.blocks[1].name).toBe('plainComment');
+		expect(result.blocks[2].line).toBe(3);
+	});
+
+	test('multi-line comment line numbers are tracked correctly', () => {
+		const md = `Line 1
+<!--
+Comment starts line 2
+Comment ends line 4
+-->
+Line 5`;
+		const result = parseAnnotations(md);
+		
+		expect(result.blocks[0].line).toBe(1);
+		expect(result.blocks[1].line).toBe(2); // Comment starts on line 2
+		expect(result.blocks[1].name).toBe('plainComment');
+		expect(result.blocks[2].line).toBe(6); // Line 5 in content, line 6 in 1-indexed
+	});
+});
+
