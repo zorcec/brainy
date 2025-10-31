@@ -4,6 +4,25 @@ keywords: ["brainy", "agent playbook", "markdown", "VS Code extension", "context
 date: "2025-10-30"
 ---
 
+# Project Mission Statement
+
+**Brainy’s mission is to enable developers to build reproducible, inspectable, and context-rich agent workflows using markdown, combining deterministic scripting with LLM-powered reasoning.**
+
+# Role of the AI Agent
+
+The AI agent acts as the orchestrator, parsing playbooks, executing scripts, managing context transitions, and invoking LLMs for complex reasoning steps. It interprets playbooks, executes code blocks, manages context, and interacts with LLMs for reasoning and decision-making.
+
+# Implementation Philosophy
+
+Every workflow is designed to be repeatable and inspectable, with explicit context boundaries and modular skills for extensibility. Deterministic execution, context hygiene, and modularity are core principles.
+
+# Key Design Principles
+
+- **Determinism:** Every run produces the same result given the same inputs.
+- **Context Isolation:** Prevents context leakage between steps.
+- **Extensibility:** New skills/scripts can be added easily.
+- **Interoperability:** Seamless handoff between Brainy and Copilot.
+
 # Brainy: Deterministic Agent Playbooks in VS Code
 
 ## Concept Overview
@@ -197,9 +216,9 @@ You will be able to author markdown playbooks that mix agent instructions and ex
 
 For further details and related workflows, see:
 
-- [Annotations Workflow](./annotations-workflow.md): Annotation and workflow strategies for Brainy playbooks.
-- [Exposing Language Model API to Skills](./exposing-language-model-api-to-skills.md): How to expose LLM APIs to custom Brainy skills.
-- [HTML Workflow](./html-workflow.md): HTML-based workflow integration in Brainy.
-- [Learning Ideas](./learing-ideas.md): Learning and improvement ideas for Brainy agents.
-- [Parser](./parser.md): Details on the markdown and skill parser implementation.
-- [RAG Ideas](./rag_ideas.md): Concepts and ideas for Retrieval-Augmented Generation in Brainy.
+   - [Annotations Workflow](./preparation/annotations-workflow.md): Annotation and workflow strategies for Brainy playbooks.
+   - [Exposing Language Model API to Skills](./preparation/exposing-language-model-api-to-skills.md): How to expose LLM APIs to custom Brainy skills.
+   - [HTML Workflow](./preparation/html-workflow.md): HTML-based workflow integration in Brainy.
+   - [Learning Ideas](./preparation/learning-ideas.md): Learning and improvement ideas for Brainy agents.
+   - [Parser](./preparation/parser.md): Details on the markdown and skill parser implementation.
+   - [RAG Ideas](./preparation/rag_ideas.md): Concepts and ideas for Retrieval-Augmented Generation in Brainy.
