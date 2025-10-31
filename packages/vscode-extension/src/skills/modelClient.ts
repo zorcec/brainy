@@ -19,8 +19,8 @@
  * Request parameters for sending a message to the model.
  */
 export type SendRequestParams = {
-	/** Model ID to use (e.g., 'gpt-4o', 'claude-3') */
-	modelId: string;
+	/** Optional model ID override (e.g., 'gpt-4o', 'claude-3'). If not provided, uses the selected or default model. */
+	modelId?: string;
 	/** Role of the message sender */
 	role: 'user' | 'assistant';
 	/** Message content */

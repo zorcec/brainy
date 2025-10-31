@@ -12,6 +12,8 @@
 - All code must be documented. Use clear comments and JSDoc for public functions.
 - At the beginning of every file, include a detailed explanation of how the module works and its purpose.
 - After every story all tests have to pass.
+- Before implementation read the existing code and structure and reflect the same patterns.
+- Consistency is key.
 
 ## Module Patterns
 

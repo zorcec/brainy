@@ -158,6 +158,31 @@ api.selectChatModel('claude-3');
 const response2 = await api.sendRequest('user', 'Same question, different model');
 ```
 
+### Skills Can Override Model (Internal API)
+
+Skills have access to the lower-level `modelClient.sendRequest` which accepts an optional `modelId` parameter. This allows individual skills to override the globally selected model:
+
+```typescript
+// Inside a skill implementation
+import { sendRequest as clientSendRequest } from './modelClient';
+
+// Skill uses the global model (via index.ts)
+const response1 = await api.sendRequest('user', 'Hello!');
+
+// Or skill can call modelClient directly to override the model
+const response2 = await clientSendRequest({
+  modelId: 'skill-specific-model', // Override for this request only
+  role: 'user',
+  content: 'Hello with specific model!'
+});
+```
+
+**Architecture:**
+- `@model` skill or `selectChatModel()` sets the **global default model** for all skills
+- High-level API (`index.ts sendRequest`) uses the globally selected/default model
+- Skills can import `modelClient.sendRequest` directly to override the model per-request
+- This allows flexible per-skill model selection while maintaining a global default
+
 ### Error Handling
 
 ```typescript

@@ -24,9 +24,9 @@ import {
 } from './modelClient';
 
 /**
- * Configuration state for default model.
+ * Default model ID (hardcoded).
  */
-let defaultModelId: string | undefined = undefined;
+const defaultModelId = 'gpt-4.1';
 
 /**
  * Selects the chat model to use for subsequent requests.
@@ -66,11 +66,8 @@ export async function sendRequest(
 		throw new Error('Content must be a non-empty string');
 	}
 
-	// Get model ID from session or default
+	// Get model ID from session or use hardcoded default
 	const modelId = getSelectedModel() ?? defaultModelId;
-	if (!modelId) {
-		throw new Error('No model selected and no default model configured');
-	}
 
 	// Send request
 	return await clientSendRequest({
@@ -82,34 +79,9 @@ export async function sendRequest(
 }
 
 /**
- * Configures the skills system. Used for setting defaults and testing.
- *
- * @param config - Configuration options
- * @param config.defaultModelId - Default model to use when none is selected
- * @param config.defaultTimeoutMs - Default timeout in milliseconds
- * @param config.provider - Custom provider implementation for testing
- */
-export function configureSkills(config: {
-	defaultModelId?: string;
-	defaultTimeoutMs?: number;
-	provider?: (params: any) => Promise<ModelResponse>;
-}): void {
-	if (config.defaultModelId !== undefined) {
-		defaultModelId = config.defaultModelId;
-	}
-	if (config.defaultTimeoutMs !== undefined || config.provider !== undefined) {
-		configureModelClient({
-			defaultTimeoutMs: config.defaultTimeoutMs,
-			provider: config.provider
-		});
-	}
-}
-
-/**
  * Resets the skills system state. Used for testing.
  */
 export function resetSkills(): void {
-	defaultModelId = undefined;
 	resetSessionStore();
 	resetModelClient();
 }

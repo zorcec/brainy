@@ -29,6 +29,59 @@ describe('modelClient', () => {
 		expect(typeof response.reply).toBe('string');
 	});
 
+	test('sends request without modelId when optional', async () => {
+		const response = await sendRequest({
+			role: 'user',
+			content: 'Hello!'
+		});
+
+		expect(response).toHaveProperty('reply');
+		expect(response).toHaveProperty('raw');
+	});
+
+	test('allows skill to override model by passing modelId', async () => {
+		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
+			reply: `Response from ${params.modelId}`,
+			raw: { model: params.modelId }
+		}));
+
+		configureModelClient({ provider: mockProvider });
+
+		// Skill can specify which model to use
+		const response = await sendRequest({
+			modelId: 'skill-specific-model',
+			role: 'user',
+			content: 'Hello!'
+		});
+
+		expect(mockProvider).toHaveBeenCalledWith(
+			expect.objectContaining({ modelId: 'skill-specific-model' })
+		);
+		expect(response.reply).toBe('Response from skill-specific-model');
+	});
+
+	test('skill can omit modelId and rely on higher-level logic', async () => {
+		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
+			reply: 'Response',
+			raw: {}
+		}));
+
+		configureModelClient({ provider: mockProvider });
+
+		// Skill doesn't specify model - higher level (index.ts) will provide it
+		await sendRequest({
+			role: 'user',
+			content: 'Hello!'
+		});
+
+		// Verify provider was called with the params (modelId will be undefined)
+		expect(mockProvider).toHaveBeenCalledWith({
+			role: 'user',
+			content: 'Hello!'
+			// modelId is omitted/undefined when not provided
+		});
+	});
+
 	test('uses custom provider when configured', async () => {
 		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
 			reply: `Mock response to: ${params.content}`,
@@ -179,6 +232,72 @@ describe('modelClient', () => {
 			expect.fail('Should have thrown an error');
 		} catch (error: any) {
 			expect(error.message).toContain('Original API error');
+			// Verify the original error instance is preserved
+			expect(error).toBe(originalError);
+		}
+	});
+
+	test('error message explicitly contains "timed out" on timeout', async () => {
+		const slowProvider = async (): Promise<ModelResponse> => {
+			await new Promise(resolve => setTimeout(resolve, 200));
+			return { reply: 'Late response', raw: {} };
+		};
+
+		configureModelClient({ provider: slowProvider });
+
+		try {
+			await sendRequest({
+				modelId: 'gpt-4o',
+				role: 'user',
+				content: 'Hello',
+				timeoutMs: 50
+			});
+			expect.fail('Should have thrown a timeout error');
+		} catch (error: any) {
+			expect(error.message).toContain('timed out');
+			expect(error.message).toContain('50ms');
+		}
+	});
+
+	test('handles malformed response from provider', async () => {
+		const malformedProvider = async (): Promise<any> => {
+			// Return invalid response shape (missing required fields)
+			return { wrongField: 'data' };
+		};
+
+		configureModelClient({ provider: malformedProvider as any });
+
+		// The system should still return the response, but it might not be valid
+		// In a real implementation, you might want to validate the response shape
+		const response = await sendRequest({
+			modelId: 'gpt-4o',
+			role: 'user',
+			content: 'Hello'
+		});
+
+		// Verify the response structure (even if malformed)
+		expect(response).toBeDefined();
+	});
+
+	test('preserves error stack traces when re-throwing', async () => {
+		const providerError = new Error('Provider API failure');
+		const failingProvider = async (): Promise<ModelResponse> => {
+			throw providerError;
+		};
+
+		configureModelClient({ provider: failingProvider });
+
+		try {
+			await sendRequest({
+				modelId: 'gpt-4o',
+				role: 'user',
+				content: 'Hello'
+			});
+			expect.fail('Should have thrown an error');
+		} catch (error: any) {
+			// Verify the error instance is the same (not wrapped)
+			expect(error).toBe(providerError);
+			expect(error.stack).toBeDefined();
 		}
 	});
 });
