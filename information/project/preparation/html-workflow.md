@@ -1,0 +1,56 @@
+---
+description: "Brainy workflow example: research, spec writing, implementation, and testing using deterministic and agentic steps."
+keywords: ["brainy", "workflow", "example", "spec", "test", "LLM", "automation"]
+date: "2025-10-30"
+---
+
+# Example: Research, Spec, Implement, Test Workflow
+
+<!-- gpt-4.1 is the default model used for agent prompts. -->
+<model name="gpt-4.1" />
+
+<context name="main">
+
+  You're a senior software engineer tasked with developing an API authentication module. The workflow involves researching best practices, identifying relevant specifications, writing a technical specification, implementing the module, and running tests.
+
+  ## Start with the research
+
+  <!-- {{topic}} is a parameter passed to the workflow -->
+  <task>
+    Research {{topic}} online and summarize key points, technologies, and best practices.
+  </task>
+
+  ## Find out the relevant specifications
+  You're a specification analyst. Based on the research about ${topic}, identify relevant technical specifications that should be considered for the API authentication module.
+
+</context>
+
+<context name="specifications">
+  
+  <!-- Clean context for specification analysis -->
+
+  <execute language="bash">
+    find ./specs -type f -name "*.md" and save to spec_files
+  </execut>
+
+  <task>
+    Check which specifications are relevant to {{topic}} and summarize only what is relevant. Save to relevant_specs.
+  </task>
+
+</context>
+
+<context name="spec-writing" name="main" >
+
+  <reference path="./references/implementation-guidelines.md" />
+
+  <task>
+    Write a technical specification for an API authentication module based on the research and relevant specifications. Use markdown format. Relevant specifications: ${relevant_specs}. Save to technical_specification.
+  </task>
+
+</context>
+
+<context name="output">
+  <execute language="bash">
+    echo "{{technical_specification}}" > ./output/api_authentication_spec.md
+  </task>
+</context>
