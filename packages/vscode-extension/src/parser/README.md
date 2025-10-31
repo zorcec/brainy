@@ -2,9 +2,26 @@
 
 A modular, function-based, regex-powered parser for extracting annotations, flags, comments, and text from Brainy markdown playbooks.
 
+> **⚠️ Maintainer Note**: When making changes to this module, always update this README and the JSDoc comments in the relevant module files.
+
 ## Overview
 
 The Brainy parser extracts structured data from markdown files containing agent workflow instructions. It follows a clean, modular architecture with separate modules for different concerns.
+
+## API Contract
+
+The parser exposes a single primary function `parseAnnotations()` that returns a `ParseResult`:
+
+```typescript
+type ParseResult = {
+  blocks: AnnotationBlock[];
+  errors: ParserError[];
+};
+```
+
+**Critical Consistency Rule**: If the `errors` array is non-empty, **the playbook will not be executed**, regardless of what blocks were successfully parsed. Any non-empty `errors` array is authoritative, and any returned `blocks` must be ignored by the consumer.
+
+This ensures that only fully valid playbooks are executed, preventing partial or corrupted execution.
 
 ### Module Structure
 
@@ -32,6 +49,23 @@ parser/
 ├── examples.ts                 # Usage examples
 └── README.md                   # This file
 ```
+
+**Quick Links to Module Files**:
+- [index.ts](./index.ts) - Main parser entry point
+- [errors.ts](./errors.ts) - Error types and utilities
+- [regex.ts](./regex.ts) - Regex patterns
+- [utils.ts](./utils.ts) - Utility functions
+- [blocks/annotation.ts](./blocks/annotation.ts) - Annotation parsing
+- [blocks/flag.ts](./blocks/flag.ts) - Flag parsing
+- [blocks/codeBlock.ts](./blocks/codeBlock.ts) - Code block parsing
+- [blocks/comment.ts](./blocks/comment.ts) - Comment parsing
+- [blocks/plainText.ts](./blocks/plainText.ts) - Plain text blocks
+
+**Test Files**:
+- [index.test.ts](./index.test.ts) - Integration tests
+- [edgeCases.test.ts](./edgeCases.test.ts) - Edge cases
+- [errors.test.ts](./errors.test.ts) - Error handling tests
+- [utils.test.ts](./utils.test.ts) - Utility tests
 
 ### Supported Features
 
@@ -88,25 +122,49 @@ Parses markdown and returns structured blocks and errors.
 - `blocks` (AnnotationBlock[]): Array of parsed blocks
 - `errors` (ParserError[]): Array of parsing errors
 
-**Note:** If `errors` is non-empty, the playbook will not execute. Always check the errors array before processing blocks.
+**Critical Rule**: If `errors` is non-empty, the playbook will not execute. Always check the errors array before processing blocks. The consistency rule dictates that any non-empty `errors` array is authoritative, and consumers must ignore the `blocks` array in this case.
+
+**Example Usage:**
+```typescript
+import { parseAnnotations } from './parser';
+
+const result = parseAnnotations(markdown);
+
+if (result.errors.length > 0) {
+  // Handle errors - playbook won't execute
+  console.error('Cannot execute playbook due to errors:', result.errors);
+  return;
+}
+
+// Safe to process blocks - no errors
+result.blocks.forEach(block => {
+  // ... process block
+});
+```
 
 ## Types
 
 ### ParseResult
 
+The primary return type from `parseAnnotations()`.
+
 ```typescript
 type ParseResult = {
-  blocks: AnnotationBlock[];
-  errors: ParserError[];
+  blocks: AnnotationBlock[];  // Array of parsed blocks
+  errors: ParserError[];      // Array of parsing errors
 };
 ```
 
+**Contract**: If `errors.length > 0`, the playbook will not execute. Consumers must check the errors array before processing blocks.
+
 ### AnnotationBlock
+
+Represents a parsed block from markdown.
 
 ```typescript
 export type AnnotationBlock = {
-  name: string;           // Block type or annotation name
-  flags: Flag[];          // Array of flags
+  name: string;           // Block type or annotation name (e.g., 'task', 'plainText', 'plainComment')
+  flags: Flag[];          // Array of flags associated with this block
   content: string;        // Original markdown content
   line?: number;          // Optional line number (1-indexed)
   metadata?: {            // Optional metadata
@@ -115,26 +173,36 @@ export type AnnotationBlock = {
 };
 ```
 
+**Defined in**: [blocks/plainText.ts](./blocks/plainText.ts)
+
 ### Flag
+
+Represents a flag with name and value(s).
 
 ```typescript
 type Flag = {
   name: string;           // Flag name (empty string for direct values)
-  value: string[];        // Array of values (always an array)
+  value: string[];        // Array of values (always an array, even for single values)
 };
 ```
+
+**Defined in**: [blocks/flag.ts](./blocks/flag.ts)
 
 ### ParserError
 
+Represents errors encountered during parsing.
+
 ```typescript
 type ParserError = {
-  type: string;           // Error type identifier
-  message: string;        // Human-readable message
-  line?: number;          // Optional line number
-  severity?: 'critical' | 'warning' | 'info';
-  context?: string;       // Additional context
+  type: string;           // Error type identifier (e.g., 'UnclosedCodeBlock', 'INVALID_ANNOTATION')
+  message: string;        // Human-readable error description
+  line?: number;          // Line number where error occurred (1-indexed)
+  severity?: 'critical' | 'warning' | 'info';  // Error severity
+  context?: string;       // Additional context (e.g., the problematic line content)
 };
 ```
+
+**Defined in**: [errors.ts](./errors.ts)
 
 ## Supported Patterns
 
@@ -336,6 +404,8 @@ Returns: `{ name: 'prompt', value: ['  extra  spaces  '] }`
 ## Error Handling
 
 The parser is designed to handle malformed input gracefully and return structured error information. **Critical rule**: If the `errors` array is non-empty, the playbook will not execute, regardless of whether blocks were parsed.
+
+**Consistency Rule**: When `errors.length > 0`, those errors are authoritative, and any `blocks` returned must be ignored by the consumer. The playbook will not be executed under any circumstances if errors are present.
 
 ### Error Types and Severity Levels
 
@@ -560,10 +630,20 @@ echo "Test"
 
 ## Testing
 
-Run the test suite:
+Run the test suite with Vitest:
 
 ```bash
+# From the vscode-extension directory
 npm test
+
+# Or with watch mode
+npm test -- --watch
+
+# Run specific test file
+npm test -- parser/index.test.ts
+
+# Run with coverage
+npm test -- --coverage
 ```
 
 ### Test Coverage
