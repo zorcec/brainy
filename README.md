@@ -10,12 +10,11 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
 - [Information File Index](information/index.md)
 - [Project Overview](information/project/overview.md)
-- [Spec-driven Development Workflow](../ai-instructions/information/spec-driven-dev/simplified-workflow.md)
 
 ## Contribution
 
 - Update `information/index.md` when adding new documentation or research files
-- Update `specs/` when adding new specifications or checklists
+- Update `information/specs/` when adding new specifications or checklists
 - Follow best practices for code and documentation
 
 ## Project Structure

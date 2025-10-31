@@ -14,15 +14,14 @@ Brainy is a knowledge assistant that enables hybrid (vector + keyword) search ov
 - **VS Code Extension**: TypeScript, communicates with the server, provides UI/commands
 - **Knowledge Base**: Markdown files, indexed and queried by the server
 
-## Key Specs & Documents
-- [001-brainy-knowledge-assistant/spec.md](specs/001-brainy-knowledge-assistant/spec.md): Core requirements, user stories, and checklists
-- [002-brainy-project-scaffold](specs/002-brainy-project-scaffold/): Monorepo structure, build/test setup, and implementation plan
-
 ## Project Structure
-- `packages/server/`: Server code and database logic
-- `packages/vscode-extension/`: VS Code extension
-- `specs/`: Feature specifications and checklists
+- `packages/server/`: Node.js/TypeScript server, SQLite DB, REST API, vector search logic
+- `packages/vscode-extension/`: VS Code extension (TypeScript), UI, commands, server communication
+- `information/`: Project documentation, concept ideas, technical notes
+- `specs/`: Feature specifications and design docs
+- `test-results/`: Automated and manual test outputs
 
 ## See Also
 - [README.md](README.md): Quickstart, setup, and development instructions
-- [copilot-instructions.md](.github/copilot-instructions.md): Key links and resources for agents/contributors
+- [information/index.md](information/index.md): Documentation and knowledge base index
+- [specs/index.md](specs/index.md): Feature specs and design docs
