@@ -1,8 +1,6 @@
 # Brainy — Knowledge Assistant
 
-
 [project-overview.md](./project-overview.md) — High-level project summary, architecture, and main features.
-[copilot-instructions.md](.github/copilot-instructions.md) — Quick reference for agents and contributors, with key links and descriptions.
 
 A monorepo project for the Brainy knowledge assistant, including a server with SQLite vector search and a VS Code extension.
 
