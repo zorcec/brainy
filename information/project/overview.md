@@ -19,35 +19,55 @@ date: "2025-10-30"
 - **Flexible Syntax:** Supports custom tags, code blocks, and metadata for advanced workflows.
 
 ### Example Workflow
-1. **Script Step:**
-   ```bash
-   cp template.md newfile.md
-   ```
-   (Copies a template file using Bash.)
-2. **Agent Step:**
-   ```
-   @prompt "LLM, analyze the new file and suggest next steps."
-   ```
-   (LLM figures out what should be done next.)
-3. **RAG Step:**
-   ```bash
-   ./rag-query.sh --topic "relevant data"
-   ```
-   (Retrieves relevant data using a local script.)
-   or
+1. **Set Model and Context:**
    ```markdown
-   @rag-query --topic "relevant data"
+   @model "gpt-4.1"
+   @context "main"
    ```
-   (Retrieves relevant data using built-in RAG capabilities.)
-4. **Agent Step:**
+   (Set the LLM model and start in the main context.)
+
+2. **Research Step with Parameter:**
+   ```markdown
+   @task "Research {{topic}} online and summarize key points, technologies, and best practices."
    ```
-   @prompt "LLM, work with the provided context and update the documentation."
+   (Uses a parameter for topic.)
+
+3. **Switch to Clean Context for Specs:**
+   ```markdown
+   @context "specifications"
    ```
-5. **Test Step:**
+   (Switches to a clean context for specification analysis.)
+
+4. **Execute Bash to Find Specs:**
    ```bash
-   ./run-tests.sh
+   find ./specs -type f -name "*.md"
    ```
-   (Runs tests and reports results.)
+   (Finds all markdown spec files.)
+
+5. **Summarize Relevant Specs:**
+   ```markdown
+   @task --prompt "Check which specifications are relevant to the {{topic}}. And summarize only what is relevant." --variable relevant_specs
+   ```
+   (Stores output in a variable.)
+
+6. **Combine Contexts and Link Reference:**
+   ```markdown
+   @context "research" "another_context"
+   @link "./references/implementation-guidelines.md"
+   ```
+   (Combines contexts and links a reference file.)
+
+7. **Write Technical Specification:**
+   ```markdown
+   @task --prompt "Write a technical specification for an API authentication module based on the research and relevant specifications. Use markdown format. Relevant specifications: {{relevant_specs}}." --variable technical_specification
+   ```
+   (Uses variable substitution.)
+
+8. **Write Output to File:**
+   ```bash
+   echo "{{technical_specification}}" > ./output/api_authentication_spec.md
+   ```
+   (Writes the generated spec to a file.)
 
 ## Motivation & Pain Points
 
@@ -80,7 +100,6 @@ You can control agent context in Brainy playbooks using the following explicit p
 
 **Start a new clean context:**
 ```markdown
-`@context`
 `@prompt "Start fresh and summarize the current directory."`
 ```
 This starts a new, clean context for the agent. No prior history or previous steps are included.
@@ -104,7 +123,6 @@ This prompt and code block are executed in the current context, inheriting any p
 This creates (or reuses, if it already exists) a named context called "research-context". All subsequent steps within this block use the named context, allowing you to isolate workflows or reuse context across steps.
 
 **Summary of context control:**
-- `@context` (no name): Start a fresh, empty context.
 - `@context "name"`: Start or switch to a named context, which can be reused later.
 - Prompts and code blocks after a context tag use that context until another context tag is encountered.
 - Contexts can be used to isolate, reset, or chain agent memory and workflow state.
@@ -116,13 +134,11 @@ This creates (or reuses, if it already exists) a named context called "research-
 - `@link "./deploy.brainy.md"`: Link to another Brainy playbook to include its context and steps. (will be executed as part of the current playbook)
 - `@link "./coding-workflow.md"`: Link to another md file that will be loaded into the context.
 - `@link "./diagram.jpg"`: Link to other files will be loaded into the context.
-- `@context optimize`: Optimizes the current context for easier understanding by the agent and reduces the size.
-- `@context store`: Saves the current context into a file for later reuse.
-- `@context restore`: Restores a previously saved context from a file.
 - `@model "gpt-4.1"`: Switches the LLM model used for subsequent prompts. (default)
 - `{{name}}`: Vriable from previous tasks, or a passed in parameter.
 - `//` : Single line comments.
 - `@execute`: Execute the code block below and return the output to the agent.
+- `@gh-copilot-context "name"` - Prepares and shares and ID for the current Brainy context to be used in GitHub Copilot.
 - Interactive scripts executions for the agent (low priority)
 - All @ features provide flags, so multiple options can be combined.
 - Editor UI
@@ -147,6 +163,21 @@ All annotations (such as `@task`, `@rag-query`, `@context`, etc.) are referred t
 - The extension automatically loads and executes skills from this folder, enabling extensibility and user-defined automation.
 
 This ensures that all agent instructions and workflow annotations are consistently managed as skills, with no contradictions in terminology or implementation. All new or custom automation should be added as a skill script in `./skills`.
+
+## Sharing Brainy Context with GitHub Copilot
+
+You can use the skill `@gh-copilot-context "name"` to share the specified Brainy context with GitHub Copilot:
+
+- When invoked, this skill displays a unique context ID for the current Brainy session.
+- You (or an agent) can then use the tool `/brainy.get-context {id}` to fetch and pass the full Brainy context to GitHub Copilot.
+- This enables seamless handoff: Copilot receives all relevant context and can continue the workflow, reasoning, or automation from where Brainy left off.
+
+**Workflow Example:**
+1. Run `@gh-copilot context-share` in your playbook.
+2. Copy the displayed context ID.
+3. In Copilot, use `/brainy.get-context {id}` to import the context and continue working.
+
+This approach ensures reproducibility and context hygiene when switching between Brainy and Copilot agents.
 
 ## Standard Markdown Editor Capabilities
 
