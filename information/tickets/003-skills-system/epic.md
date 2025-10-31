@@ -17,8 +17,8 @@ Skills API (VS Code extension) — implement only selectChatModel and sendReques
 
 Blogline
 Implement and fully test two minimal runtime APIs exposed by the VS Code extension to tests and future skill code:
-- `api.selectChatModel(modelId: string)` — saves the chosen model id into extension context
-- `api.sendRequest(role: 'user' | 'assistant', content: string) -> Promise<{ reply: string, raw: any }>` — sends a message to the selected model (or default) and returns the model reply and raw response
+- `api.selectChatModel(modelId: string)` — saves the chosen model id into session store (string id)
+- `api.sendRequest(role: 'user' | 'assistant', content: string, opts?: { timeoutMs?: number }) -> Promise<{ reply: string, raw: any }>` — sends a message to the selected model (or uses configured default) and returns the model reply and raw response
 
 All code and module structure must follow the parser module style:
 - Use pure functions and composition, avoid classes.
@@ -40,8 +40,8 @@ Design principles
 - Safe: provider credentials and network calls go through a single audited path with timeouts and explicit error handling.
 
 Contract (source of truth)
-- `api.selectChatModel(modelId: string): void` — store model id in extension context/session; used by subsequent `sendRequest` calls.
-- `api.sendRequest(role: 'user' | 'assistant', content: string): Promise<{ reply: string, raw: any }>` — forwards content to configured/selected model and returns normalized reply + raw provider response. Errors must be surfaced as structured exceptions.
+- `api.selectChatModel(modelId: string): void` — store the chosen model id in the provided session store (factory-based). Throws `ValidationError` for invalid ids.
+- `api.sendRequest(role: 'user' | 'assistant', content: string, opts?: { timeoutMs?: number }): Promise<{ reply: string, raw: any }>` — forwards content to configured/selected model and returns normalized reply + raw provider response. If no model is selected and no default is provided, `sendRequest` throws `ValidationError`. Errors are surfaced as typed exceptions (TimeoutError, ProviderError, NetworkError).
 
 Non-goals / out-of-scope
 - No skill authoring UI, no skill loader, no skill execution runtime.  
@@ -52,12 +52,12 @@ Minimal success (MVS)
 - The two APIs are implemented and have comprehensive tests validating: model selection persistence, successful request/response flow, error handling, and timeout behavior.
 
 Test strategy (required)
-- Unit tests:
+- Unit tests (Vitest):
   - `selectChatModel` stores and retrieves selected model id; subsequent `sendRequest` uses it.
   - `sendRequest` forms requests correctly, handles `role` properly, returns `{ reply, raw }`.
-  - `sendRequest` error mapping: provider error, invalid args.
+  - `sendRequest` error mapping: provider error, invalid args, and timeout.
 
-- Integration tests (mocked provider):
+-- Integration tests (mocked provider):
   - Mock the model client/provider to return canned responses; verify end-to-end `sendRequest` behavior.
   - Simulate model switch and validate subsequent calls target the new model id.
 
@@ -86,9 +86,9 @@ Stories (implementation + tests)
 Quality gates
 - All unit and integration tests must pass in CI before merge. Aim for high coverage on the two APIs.
 
-Open decisions
-- Default model id: use `brainy.defaultModel` extension setting or error when no model selected? Recommend `brainy.defaultModel` with sensible default.
-- Provider call timeout default (recommend 8s).
+Open decisions (resolved in stories)
+- Default model id: Implementation should accept an optional `defaultModelId` when creating the API factory. If no selection and no default are provided, `sendRequest` throws `ValidationError`.
+- Provider call timeout default: 8000 ms (8s). Make configurable per-factory and per-call.
 
 Next step
 - I can (A) turn these stories into tracked tickets, or (B) implement the APIs and tests in `packages/vscode-extension` now. Which do you want me to do next?

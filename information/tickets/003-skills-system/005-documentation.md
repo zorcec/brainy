@@ -4,19 +4,21 @@
 Clear, concise documentation is essential for extension engineers and future skill authors to understand and use the Brainy skills API. Documentation must cover API signatures, usage examples, error contracts, and test harness flows, following the parser module and project guidelines. This ensures maintainability, onboarding, and correct usage as the system evolves.
 
 ## Goal
-Provide a comprehensive README in the skills module folder that:
-- Documents public API signatures and types
-- Includes usage examples from tests and harness
-- Explains error handling and contracts
-- Details test run instructions and project style
+Provide a comprehensive `README.md` in the skills module folder that:
+- Documents public API signatures and types (contract is the source of truth in `002-implement-api.md`)
+- Includes usage examples copied from the test harness to ensure they remain accurate
+- Explains error handling and contracts and links to `errors.ts`
+- Details test run instructions (Vitest) and project style (test-adjacent, factory injection)
 
 ## Implementation Plan
-- Draft README.md in `packages/vscode-extension/src/skills/`
-- Document API signatures for `selectChatModel` and `sendRequest`
-- Add example flows from unit/integration tests and harness
-- Describe error contracts and handling strategies
-- Include instructions for running and extending tests
-- Reference parser module and developing guideline for style
+- Draft `README.md` in `packages/vscode-extension/src/skills/` with the following sections:
+	- Introduction & goals (brief)
+	- Contract & API signatures (copy from `002-implement-api.md`)
+	- Quick start (factory creation + simple example)
+	- Error shapes and how to handle them (reference `errors.ts`)
+	- Tests & harness (how to run Vitest in the package and where harness code lives)
+	- Notes on injection (example IPC snippet, clearly marked as conceptual)
+- Ensure the Quick start example is runnable and matches code from tests/harness
 
 ## Edge Cases & Testing
 - Ensure documentation is up to date with API changes
