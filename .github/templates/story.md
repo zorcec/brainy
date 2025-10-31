@@ -22,6 +22,7 @@
 
 ## Acceptance Criteria
 <List what must be true for the story to be considered “done.” How will success be measured?>
+- All tests are passing.
 > Example:
 > - Output matches the required JSON structure
 > - Invalid rows are excluded
@@ -53,10 +54,16 @@
 > - Testability: unit tests with sample data
 
 ## References
-<List all sources, links, and supporting materials used for fact-checking and research.>
-> Example:
-> - RFC 5322 for email validation
-> - Original spec in story.md
+
+## Key Project References
+
+- [Project Overview](../../information/project/overview.md)
+- [Developing Guideline](../../developing-guideline.md)
+- [Brainy Project Overview & Architecture](../../project-overview.md)
+- [README](../../README.md)
+
+**Agent Instruction:**
+Before starting any implementation, the agent must always parse and review the above files to ensure alignment with project principles, architecture, and development guidelines.
 
 ### Example
 Input:

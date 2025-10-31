@@ -20,8 +20,8 @@ You must apply expertise in product ownership, business analysis, and technical 
 
 1. **Where to Save & Naming**
    - Save new tickets under:
-     `information/tickets/{epic-name}/epic.md` for epics
-     `information/tickets/{epic-name}/story1.md`, `story2.md`, etc. for stories
+     `information/tickets/001-{epic-name}/epic.md` for epics
+     `information/tickets/001-{epic-name}/001-story1.md`, `002-story2.md`, etc. for stories
    - Use `kebab-case` for all folder and file names.
 
 2. **Template Copy & Start**

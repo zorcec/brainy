@@ -8,8 +8,8 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
 ## Status
 
-- [Information File Index](information/index.md)
-- [Project Overview](information/project/overview.md)
+
+- [Parser Manifest](./manifest.md) — Key features, requirements, and API structure for the Brainy Markdown Skills Parser
 
 ## Contribution
 
