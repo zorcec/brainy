@@ -12,6 +12,7 @@ import {
   AnnotationErrorHoverProvider,
   createLegend
 } from './markdown/annotationHighlightProvider';
+import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 
 /**
  * Called when the extension is activated
@@ -60,6 +61,17 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   console.log('Annotation highlighting registered for markdown files');
+
+  // Register play button for .brainy.md files
+  const playbookProvider = new PlaybookCodeLensProvider();
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { pattern: '**/*.brainy.md' },
+      playbookProvider
+    )
+  );
+  registerPlaybookCommands(context);
+  console.log('Play button registered for .brainy.md files');
 
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {

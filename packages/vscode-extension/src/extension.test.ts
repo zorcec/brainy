@@ -59,6 +59,21 @@ vi.mock('vscode', () => {
     }
   }
 
+  class MockEventEmitter {
+    private listeners: Set<Function> = new Set();
+    
+    fire(data?: any) {
+      this.listeners.forEach(listener => listener(data));
+    }
+    
+    get event() {
+      return (listener: Function) => {
+        this.listeners.add(listener);
+        return { dispose: () => this.listeners.delete(listener) };
+      };
+    }
+  }
+
   return {
     window: { 
       showInformationMessage: vi.fn(),
@@ -76,7 +91,8 @@ vi.mock('vscode', () => {
     },
     languages: {
       registerDocumentSemanticTokensProvider: vi.fn(() => ({ dispose: vi.fn() })),
-      registerHoverProvider: vi.fn(() => ({ dispose: vi.fn() }))
+      registerHoverProvider: vi.fn(() => ({ dispose: vi.fn() })),
+      registerCodeLensProvider: vi.fn(() => ({ dispose: vi.fn() }))
     },
     workspace: mockWorkspace,
     SemanticTokensLegend: MockSemanticTokensLegend,
@@ -85,6 +101,7 @@ vi.mock('vscode', () => {
     Range: MockRange,
     Position: MockPosition,
     Uri: MockUri,
+    EventEmitter: MockEventEmitter,
     EndOfLine: { LF: 1, CRLF: 2 },
     _mockWorkspace: mockWorkspace  // Expose for testing
   };

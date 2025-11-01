@@ -101,14 +101,106 @@ Comprehensive unit tests cover:
 
 See `annotationHighlightProvider.test.ts` for test coverage details.
 
+## Play Button for Playbook Execution
+
+This module also provides a play button for `.brainy.md` files that allows users to parse and preview playbook content directly in the editor.
+
+### Features
+
+- **CodeLens Play Button**: Appears on the first line of all `.brainy.md` files
+- **Parse and Log**: Clicking the button parses the playbook and displays the result in the output channel
+- **Error Highlighting**: Parser errors are highlighted inline with red decorations and hover tooltips
+- **Console Logging**: Parsed output is logged to the console as pretty-printed JSON for debugging
+
+### Architecture
+
+The play button feature consists of three main components:
+
+1. **PlaybookCodeLensProvider** (`playButton.ts`): Provides the clickable play button using VS Code's CodeLens API
+2. **parsePlaybook** (`playbookParser.ts`): Pure function wrapper around the core parser for playbook execution
+3. **Error Decorator**: Highlights parser errors with inline decorations and hover tooltips
+
+### Usage
+
+The play button is automatically registered for all `.brainy.md` files when the extension activates. No user configuration is required.
+
+#### For Users
+
+1. Open any file with the `.brainy.md` extension
+2. Look for the "$(play) Parse Playbook" button on the first line
+3. Click the button to parse the playbook
+4. View the parsed output in the "Brainy Playbook" output channel
+5. Hover over any highlighted errors to see error messages
+
+#### For Developers
+
+```typescript
+import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
+import { parsePlaybook } from './markdown/playbookParser';
+
+// Register the CodeLens provider
+const provider = new PlaybookCodeLensProvider();
+context.subscriptions.push(
+  vscode.languages.registerCodeLensProvider(
+    { pattern: '**/*.brainy.md' },
+    provider
+  )
+);
+
+// Register the parse command
+registerPlaybookCommands(context);
+
+// Use the parser directly
+const result = parsePlaybook(markdownContent);
+console.log('Parsed playbook:', JSON.stringify(result, null, 2));
+```
+
+### Error Handling
+
+When parser errors are encountered:
+
+1. **Inline Decorations**: Affected lines are highlighted with a subtle red background and border
+2. **Hover Tooltips**: Error messages are displayed when hovering over highlighted lines
+3. **Output Channel**: Full error details are shown in the "Brainy Playbook" output channel
+4. **Status Messages**: A warning notification shows the number of errors encountered
+
+### Testing
+
+Comprehensive unit tests cover:
+
+- **PlayButton Tests** (`playButton.test.ts`):
+  - CodeLens rendering for `.brainy.md` files
+  - No CodeLens for non-`.brainy.md` files
+  - Play button placement on first line
+  - Command registration and arguments
+  - Edge cases (empty files, large files)
+
+- **Parser Tests** (`playbookParser.test.ts`):
+  - Valid playbook parsing with annotations, code blocks, and comments
+  - Error handling for malformed syntax
+  - Multi-line annotation support
+  - JSON serialization
+  - Performance with large files
+
+### Module Files
+
+- `playButton.ts`: CodeLens provider and command handlers
+- `playButton.test.ts`: Unit tests for play button functionality (8+ tests)
+- `playbookParser.ts`: Pure parser wrapper function
+- `playbookParser.test.ts`: Unit tests for parser wrapper (10+ tests)
+
 ## Future Enhancements
 
 - Add E2E tests for UI-level validation (tracked in epic)
 - Support for custom annotation types via skill configuration
 - Additional token modifiers for more granular highlighting
+- Playbook execution (currently only parsing and logging)
+- Advanced error reporting with suggested fixes
 
 ## References
 
 - [VS Code Semantic Highlight Guide](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
 - [DocumentSemanticTokensProvider API](https://code.visualstudio.com/api/references/vscode-api#DocumentSemanticTokensProvider)
+- [CodeLens Provider API](https://code.visualstudio.com/api/references/vscode-api#CodeLensProvider)
 - [Parser Module](../parser/README.md)
+

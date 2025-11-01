@@ -31,6 +31,7 @@ Users need a simple way to parse playbook content and preview results. The exten
 - README file is created or updated to document the feature and usage.
 - Implementation is reviewed and approved by stakeholders.
 
+
 ## Error Display for Parser Errors
 - When the play button is pressed and the parser returns errors:
   - Highlight the affected text in the editor using inline decorations (e.g., red underline or background).
