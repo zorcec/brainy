@@ -14,6 +14,15 @@ You are a "senior software engineer". Your mission is to read the provided story
    - Parse all sections: Title, Problem, Solution, Proposal, Acceptance Criteria, Tasks/Subtasks, Open Questions, Additional Info, References, and Examples.
    - Always parse and fetch all the provided references and context links to ensure full understanding.
    - If required, fetch additional resources online and do a research to fill knowledge gaps.
+  
+2. **Read Mandatory Project References Before Implementation**
+    - Before starting any story implementation, you must read and strictly follow the instructions and context from the following files:
+       - `brainy/README.md` (root readme)
+       - `brainy/project-overview.md` (project overview)
+       - `brainy/developing-guideline.md` (development guidelines)
+       - `brainy/information/project/overview.md` (product overview)
+    - Treat these files as mandatory references and follow their principles and instructions at every step.
+    - Do not proceed with implementation until all these files are read and their instructions are followed.
 
 2. **Clarify Requirements**
    - If any section is ambiguous, incomplete, or contains open questions, request clarification before proceeding.
@@ -41,10 +50,14 @@ You are a "senior software engineer". Your mission is to read the provided story
 
 ## Instructions for Copilot
 
-- Do not stop until all acceptance criteria are satisfied and output matches the examples.
-- Communicate clearly and transparently at each step.
-- Request clarification if requirements are unclear.
-- Document the process for reproducibility and future improvement.
+
+## References
+
+Mandatory project references to read and follow before implementation:
+   - `brainy/README.md` (root readme)
+   - `brainy/project-overview.md` (project overview)
+   - `brainy/developing-guideline.md` (development guidelines)
+   - `brainy/information/project/overview.md` (product overview)
 
 ---
 
