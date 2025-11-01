@@ -2,45 +2,58 @@
 Add skill "execute" to playbook skills
 
 ## Problem
-Playbooks reference an `@execute` skill but the repository lacks a canonical skill implementation and example for the e2e test-project. Without it, integration and e2e tests cannot validate execution behavior.
+Playbooks reference an `@execute` skill but the repository lacks a canonical skill implementation and example for the e2e test-project. Without it, integration and e2e tests cannot validate skill invocation or runner behavior.
 
 ## Solution
-Add a minimal `execute` skill that accepts a JS code block string, runs it in a spawned process, and returns stdout/stderr and an exit code.
+Add a minimal `execute` skill that always returns `stdout: 'hello world'`, `exitCode: 0`, and empty `stderr`, regardless of input. This allows the playbook runner and e2e tests to validate skill invocation and result handling deterministically.
 
 ## Proposal
 - Place a simple skill script at `packages/vscode-extension/e2e/test-project/skills/execute.js` (the repo's e2e test-project is under `packages/vscode-extension/e2e/test-project`).
-- Important: do NOT change the skills system internals. The skill must follow the existing runtime contract: skills run in a spawned process and receive the extension-provided API via injection or IPC. The skill should not import extension internals.
-- Skill invocation contract (recommended, matches existing injection pattern):
-	- The extension/playbook runner spawns the skill process (Node) and sends a message via IPC: `process.send({ type: 'run', code, opts })`.
-	- The skill listens for the `run` message, executes the provided JS code in a child Node process (or a temporary file + node), and replies via `process.send({ type: 'result', success, exitCode, stdout, stderr })` when finished.
-- Execution details:
-	- Use `child_process.spawn('node', ['-e', code])` or create a temporary `.js` file and run `node <tmpfile>` to avoid shell-quoting pitfalls.
-	- Do not enforce a per-execution timeout
-	- Capture stdout and stderr streams and do not truncate (make it in a way it supports large reponses)
-	- Return a structured result via IPC: `{ success: boolean, exitCode: number, stdout: string, stderr: string, truncated?: boolean }`.
-	- The skill itself should not call the extension `sendRequest`/`selectChatModel` APIs — the execute skill is purely local execution and must remain isolated from LLM calls.
+- The skill must export an object with a single async `run(api, params)` function. The extension/playbook runner will inject the API and call `run`.
+- The skill always returns `{ exitCode: 0, stdout: 'hello world', stderr: '' }` regardless of input. No code execution, error handling, or language validation is performed.
+- This deterministic output allows the runner and e2e tests to validate skill invocation and result handling without side effects.
 
 
 ## Acceptance Criteria
-- [ ] `execute` skill script exists at `packages/vscode-extension/e2e/test-project/skills/execute.js` and follows the injected-API / IPC contract (skill listens for `run` and replies with `result`).
-- [ ] The playbook runner can spawn the skill process, send a `run` message with a JS code string, and receive the structured result.
-- [ ] Successful code (e.g., `console.log('hello')`) returns `stdout` containing `hello` and `success: true`.
-- [ ] Syntax/runtime errors return `success: false`, a non-zero `exitCode`, and include `stderr` with the error text.
-- [ ] Non-JS code blocks are rejected by the playbook runner before sending them to the execute skill.
+- [ ] `execute` skill script exists at `packages/vscode-extension/e2e/test-project/skills/execute.js` and exports `{ run(api, params) }`.
+- [ ] The playbook runner can spawn the skill process, call `run`, and receive `{ exitCode: 0, stdout: 'hello world', stderr: '' }`.
+- [ ] The skill always returns the same output, regardless of input.
 
 ## Tasks/Subtasks
-- [ ] Add `execute` skill script to `packages/vscode-extension/e2e/test-project/skills/execute.js` implementing the IPC contract described above.
-- [ ] Ensure the playbook runner used by e2e tests spawns the skill process and sends the `run` message
-- [ ] Add unit tests for success, syntax/runtime error, timeout, and large-output truncation cases.
-- [ ] Add an example playbook in `packages/vscode-extension/e2e/test-project/` that uses the `@execute` annotation and is referenced by e2e tests.
-- [ ] Add e2e test that confirms skill highlighting works
+- [ ] Add `execute` skill script to `packages/vscode-extension/e2e/test-project/skills/execute.js` implementing the exported-run contract (exports `{ run(api, params) }`) and always returning `{ exitCode: 0, stdout: 'hello world', stderr: '' }`.
+- [ ] Ensure the playbook runner used by e2e tests spawns the skill process and calls `run`.
+- [ ] Add a minimal example playbook in `packages/vscode-extension/e2e/test-project/` that uses the `@execute` annotation and is referenced by e2e tests.
+- [ ] Add e2e test that confirms skill highlighting works and the output is always 'hello world'.
+
+## Implementation example
+
+Below is a minimal example `execute` skill that matches the injected-API / exported-run contract. Place this file at `packages/vscode-extension/e2e/test-project/skills/execute.js`.
+
+```javascript
+// Minimal hello world execute skill for e2e tests
+module.exports = {
+	/**
+	 * Always returns hello world in stdout, exitCode: 0, empty stderr.
+	 */
+	async run(api, params) {
+		return {
+			exitCode: 0, // if not 0 it failed
+			stdout: 'hello world',
+			stderr: ''
+		};
+	}
+};
+```
+
+### Bootstrap note
+
+The runner may use a generic bootstrap to load the skill module and forward IPC messages (`inject-api`, `run`) to the exported function, or the skill file itself may wire process messages to its exported `run`. For this minimal skill, only the exported function is required.
 
 ## Open Questions
-- Confirm output truncation size for UI hover tooltips (suggested: 4096 bytes).
 - Confirm preferred invocation mechanism for the playbook runner in tests: IPC messages (recommended) vs. CLI args or HTTP. I recommend IPC to match the existing injected-API model.
 
 ## Additional Info
-- Keep the skill intentionally simple to match the epic's scope.
+- Keep the skill intentionally simple and deterministic to match the epic's scope.
 
 ## References
 - Epic: Playbook Execution Engine (../epic.md)
