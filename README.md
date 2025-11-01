@@ -91,8 +91,10 @@ npm run e2e
 **E2E Tests:** Real browser automation with Playwright, launching VS Code Web and interacting with the UI
 - Tests launch VS Code Web with the extension loaded
 - Playwright clicks buttons, inspects decorations, and verifies output
+- Uses modular fixtures for maintainable test setup and teardown
 - Screenshots captured on failure in `test-results/`
 - Run with `npm run e2e:headed` to see the browser in action
+- See [E2E Fixtures Documentation](./packages/vscode-extension/e2e/FIXTURES.md) for details on the fixture architecture
 
 ## Development
 

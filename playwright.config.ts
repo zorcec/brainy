@@ -9,14 +9,29 @@ export default defineConfig({
   reporter: 'html',
   use: {
     headless: true,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',  // Only capture trace on failure, not on first retry
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // Optimized navigation settings
+    navigationTimeout: 60000,
+    actionTimeout: 10000,
   },
   projects: [
     {
       name: 'vscode-extension',
       testMatch: /.*\.e2e\.test\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        // Optimized browser launch options
+        launchOptions: {
+          args: [
+            '--disable-gpu',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-setuid-sandbox',
+          ],
+        },
+      },
     },
   ],
 });
