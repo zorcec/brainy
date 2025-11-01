@@ -54,6 +54,15 @@ export function activate(context: vscode.ExtensionContext) {
   // Commented out for web compatibility - server not needed for basic extension features
   // console.log('Starting Brainy server...');
   // startBrainyServer();
+  // Start the Brainy server in tests / Node environment when available
+  try {
+    startBrainyServer();
+    console.log('Brainy server start requested');
+  } catch (err) {
+    // If startBrainyServer is not available in this environment, ignore
+    const e: any = err;
+    console.log('startBrainyServer not started:', e?.message || e);
+  }
 
   // Register annotation highlighting for markdown files
   console.log('Registering annotation highlighting...');
@@ -103,14 +112,18 @@ export function activate(context: vscode.ExtensionContext) {
   console.log('✓ CodeLens provider registered for .brainy.md files');
   
   // Force CodeLens refresh when files are opened
-  context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument((document) => {
-      if (document.fileName.endsWith('.brainy.md')) {
-        console.log('Opened .brainy.md file:', document.fileName);
-        playbookProvider.refresh();
-      }
-    })
-  );
+  // workspace.onDidOpenTextDocument may not be implemented in some test mocks
+  const onDidOpen = (vscode.workspace as any).onDidOpenTextDocument;
+  if (typeof onDidOpen === 'function') {
+    context.subscriptions.push(
+      onDidOpen((document: any) => {
+        if (document?.fileName && document.fileName.endsWith('.brainy.md')) {
+          console.log('Opened .brainy.md file:', document.fileName);
+          playbookProvider.refresh();
+        }
+      })
+    );
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {
@@ -139,6 +152,11 @@ export function activate(context: vscode.ExtensionContext) {
  */
 export function deactivate() {
   console.log('Deactivating Brainy extension...');
-  // Commented out for web compatibility
-  // stopBrainyServer();
+  try {
+    stopBrainyServer();
+    console.log('Brainy server stop requested');
+  } catch (err) {
+    const e: any = err;
+    console.log('stopBrainyServer not called:', e?.message || e);
+  }
 }

@@ -8,26 +8,26 @@ Playbooks reference an `@execute` skill but the repository lacks a canonical ski
 Add a minimal `execute` skill that always returns `stdout: 'hello world'`, `exitCode: 0`, and empty `stderr`, regardless of input. This allows the playbook runner and e2e tests to validate skill invocation and result handling deterministically.
 
 ## Proposal
-- Place a simple skill script at `packages/vscode-extension/e2e/test-project/skills/execute.js` (the repo's e2e test-project is under `packages/vscode-extension/e2e/test-project`).
+- Place a simple skill script at `packages/vscode-extension/e2e/test-project/skills/basic.js` (the repo's e2e test-project is under `packages/vscode-extension/e2e/test-project`).
 - The skill must export an object with a single async `run(api, params)` function. The extension/playbook runner will inject the API and call `run`.
 - The skill always returns `{ exitCode: 0, stdout: 'hello world', stderr: '' }` regardless of input. No code execution, error handling, or language validation is performed.
 - This deterministic output allows the runner and e2e tests to validate skill invocation and result handling without side effects.
 
 
 ## Acceptance Criteria
-- [ ] `execute` skill script exists at `packages/vscode-extension/e2e/test-project/skills/execute.js` and exports `{ run(api, params) }`.
+- [ ] `basic` skill script exists at `packages/vscode-extension/e2e/test-project/skills/basic.js` and exports `{ run(api, params) }`.
 - [ ] The playbook runner can spawn the skill process, call `run`, and receive `{ exitCode: 0, stdout: 'hello world', stderr: '' }`.
 - [ ] The skill always returns the same output, regardless of input.
 
 ## Tasks/Subtasks
-- [ ] Add `execute` skill script to `packages/vscode-extension/e2e/test-project/skills/execute.js` implementing the exported-run contract (exports `{ run(api, params) }`) and always returning `{ exitCode: 0, stdout: 'hello world', stderr: '' }`.
+- [ ] Add `basic` skill script to `packages/vscode-extension/e2e/test-project/skills/basic.js` implementing the exported-run contract (exports `{ run(api, params) }`) and always returning `{ exitCode: 0, stdout: 'hello world', stderr: '' }`.
 - [ ] Ensure the playbook runner used by e2e tests spawns the skill process and calls `run`.
 - [ ] Add a minimal example playbook in `packages/vscode-extension/e2e/test-project/` that uses the `@execute` annotation and is referenced by e2e tests.
 - [ ] Add e2e test that confirms skill highlighting works and the output is always 'hello world'.
 
 ## Implementation example
 
-Below is a minimal example `execute` skill that matches the injected-API / exported-run contract. Place this file at `packages/vscode-extension/e2e/test-project/skills/execute.js`.
+Below is a minimal example `basic` skill that matches the injected-API / exported-run contract. Place this file at `packages/vscode-extension/e2e/test-project/skills/basic.js`.
 
 ```javascript
 // Minimal hello world execute skill for e2e tests

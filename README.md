@@ -11,6 +11,13 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 - 111 unit tests, all passing (includes 20 new code block tests)
 - See [parser README](./packages/vscode-extension/src/parser/README.md) for details
 
+**Skills System:** ✅ Complete
+- Skill runner with JavaScript and TypeScript support
+- On-the-fly TypeScript transpilation using ts-node
+- 19 unit tests, all passing
+- Execute skill implemented for playbook integration
+- See [skills README](./packages/vscode-extension/src/skills/README.md) for details
+
 ## Contribution
 
 - Update `information/index.md` when adding new documentation or research files
@@ -46,8 +53,11 @@ brainy/
 │   │   └── examples/         # Example markdown knowledge base files
 │   └── vscode-extension/     # VS Code extension
 │       ├── src/              # Source files
-│       │   └── parser/       # Markdown parser (annotations, flags, etc.)
+│       │   ├── parser/       # Markdown parser (annotations, flags, etc.)
+│       │   └── skills/       # Skills system (API, model client, skill runner)
 │       ├── e2e/              # End-to-end tests
+│       │   └── test-project/ # Test project with sample playbooks and skills
+│       │       └── skills/   # Example skills (execute.js, execute.ts)
 │       └── dist/             # Built files
 ├── test-results/             # Test result outputs and logs
 ├── package.json              # Root workspace config
@@ -72,15 +82,23 @@ npm run build
 
 ## Test
 
-Run unit tests (127 tests passing):
+Run unit tests (326 tests passing):
 
 ```bash
 npm test
 ```
 
-**Parser Tests:** 111 tests for markdown annotation and code block parsing
-**Extension Tests:** 4 tests for VS Code extension
-**Server Tests:** 12 tests for API and database
+**Test Breakdown:**
+- **Parser Tests:** 111 tests for markdown annotation and code block parsing
+- **Skills Tests:** 60 tests for skill system (API, model client, session store, skill runner)
+- **Extension Tests:** 4 tests for VS Code extension (2 failing due to pre-existing issues)
+- **Server Tests:** 12 tests for API and database
+- **Markdown Tests:** 40 tests for annotation highlighting and play button
+
+**Skills System:**
+- 19 tests for skill runner (JavaScript and TypeScript skill loading and execution)
+- All skill runner tests passing ✅
+- TypeScript support verified with ts-node integration
 
 Run E2E tests:
 

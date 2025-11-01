@@ -18,6 +18,8 @@ skills/
 ├── modelClient.test.ts         # Model client tests
 ├── sessionStore.ts             # In-memory model selection persistence
 ├── sessionStore.test.ts        # Session store tests
+├── skillRunner.ts              # Skill module loader and executor
+├── skillRunner.test.ts         # Skill runner tests
 └── README.md                   # This file
 ```
 
@@ -318,14 +320,98 @@ npm test -- skills/index.test.ts
 - [index.ts](./index.ts) - Public API and singleton exports
 - [modelClient.ts](./modelClient.ts) - Model client implementation with timeout and error handling
 - [sessionStore.ts](./sessionStore.ts) - Session persistence for selected model
+- [skillRunner.ts](./skillRunner.ts) - Skill module loader and executor (supports .js and .ts files)
 
 ## Test Files
 
 - [index.test.ts](./index.test.ts) - API integration tests (20 tests)
 - [modelClient.test.ts](./modelClient.test.ts) - Model client tests (15 tests)
 - [sessionStore.test.ts](./sessionStore.test.ts) - Session store tests (6 tests)
+- [skillRunner.test.ts](./skillRunner.test.ts) - Skill runner tests (19 tests)
 
-**Total: 41 tests, all passing**
+**Total: 60 tests, all passing**
+
+---
+
+## Skill Runner
+
+The skill runner module provides functionality for loading and executing skill files (both JavaScript and TypeScript). Skills are modular functions that can be invoked from playbooks or other parts of the extension.
+
+### Skill Structure
+
+Skills must export an object with a `run(api, params)` async function:
+
+**JavaScript Skill:**
+```javascript
+// skills/basic.js
+module.exports = {
+  async run(api, params) {
+    return {
+      exitCode: 0,      // 0 = success, non-zero = failure
+      stdout: 'hello world',
+      stderr: ''
+    };
+  }
+};
+```
+
+**TypeScript Skill:**
+```typescript
+// skills/execute.ts
+export async function run(api: any, params: any): Promise<SkillResult> {
+  return {
+    exitCode: 0,
+    stdout: 'hello world',
+    stderr: ''
+  };
+}
+```
+
+### Skill Runner API
+
+```typescript
+// Load a skill module (supports .js and .ts)
+const skill = await loadSkill('/path/to/skill.js');
+
+// Execute a loaded skill
+const result = await executeSkill(skill, api, params);
+
+// Load and execute in one call
+const result = await runSkill('/path/to/skill.js', api, params);
+```
+
+### TypeScript Support
+
+The skill runner automatically detects `.ts` files and uses `ts-node` for on-the-fly transpilation. No manual compilation required.
+
+### Result Structure
+
+All skills must return a `SkillResult` object:
+
+```typescript
+interface SkillResult {
+  exitCode: number;   // 0 for success, non-zero for failure
+  stdout: string;     // Standard output
+  stderr: string;     // Standard error
+}
+```
+
+### Example Skills
+
+- JavaScript: `packages/vscode-extension/e2e/test-project/skills/basic.js`
+- TypeScript: `packages/vscode-extension/e2e/test-project/skills/execute.ts`
+
+### Error Handling
+
+The skill runner validates:
+- Skill path is non-empty string
+- Skill file exists
+- Skill exports a `run` function
+- Result has correct structure (exitCode, stdout, stderr)
+
+All errors are caught and wrapped with descriptive messages.
+
+---
 
 ## Future Extensions
 
@@ -334,11 +420,14 @@ This minimal API is designed for extension. Future versions may include:
 - Additional model selection options
 - Streaming responses
 - Multi-turn conversation support
-- Skill execution runtime
+- Process isolation for skills
+- Timeout configuration for skills
+- Resource limits (memory, CPU)
 
 ## References
 
 - [Project Overview](../../../information/project/overview.md)
 - [Skills System Epic](../../../information/tickets/003-skills-system/epic.md)
 - [Parser Module](../parser/README.md) - Similar module structure and style
+- [Playbook Execution Engine Epic](../../../information/tickets/006-playbook-execution-engine/epic.md)
 - [Developing Guideline](../../../../developing-guideline.md)
