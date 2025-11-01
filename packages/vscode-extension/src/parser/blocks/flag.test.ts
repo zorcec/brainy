@@ -43,14 +43,14 @@ describe('parseValues', () => {
 describe('parseFlags', () => {
 	test('parses single flag with quoted value', () => {
 		const result = parseFlags('--prompt "test"');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'prompt', value: ['test'] }
 		]);
 	});
 
 	test('parses multiple flags', () => {
 		const result = parseFlags('--prompt "test" --variable "var"');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'prompt', value: ['test'] },
 			{ name: 'variable', value: ['var'] }
 		]);
@@ -58,21 +58,21 @@ describe('parseFlags', () => {
 
 	test('parses flag with no value', () => {
 		const result = parseFlags('--flag1');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'flag1', value: [] }
 		]);
 	});
 
 	test('parses flag with multiple values', () => {
 		const result = parseFlags('--values "a" "b" "c"');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'values', value: ['a', 'b', 'c'] }
 		]);
 	});
 
 	test('parses flag with unquoted value', () => {
 		const result = parseFlags('--count 42');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'count', value: ['42'] }
 		]);
 	});
@@ -84,7 +84,7 @@ describe('parseFlags', () => {
 
 	test('handles empty quoted value', () => {
 		const result = parseFlags('--prompt ""');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'prompt', value: [''] }
 		]);
 	});
@@ -93,21 +93,21 @@ describe('parseFlags', () => {
 describe('parseFlagsOrValues', () => {
 	test('parses flags when content starts with --', () => {
 		const result = parseFlagsOrValues('--prompt "test"');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: 'prompt', value: ['test'] }
 		]);
 	});
 
 	test('parses direct quoted values', () => {
 		const result = parseFlagsOrValues('"main" "research"');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: '', value: ['main', 'research'] }
 		]);
 	});
 
 	test('parses direct unquoted value', () => {
 		const result = parseFlagsOrValues('gpt-4.1');
-		expect(result).toEqual([
+		expect(result).toMatchObject([
 			{ name: '', value: ['gpt-4.1'] }
 		]);
 	});

@@ -11,6 +11,7 @@
  */
 
 import { PATTERNS } from '../regex';
+import type { TokenPosition } from './plainText';
 
 /**
  * Represents a single flag with name and value(s).
@@ -21,6 +22,10 @@ export type Flag = {
 	name: string;
 	/** Flag value(s), always as an array */
 	value: string[];
+	/** Optional position of the flag name token in the document */
+	position?: TokenPosition;
+	/** Optional positions of quoted value tokens */
+	valuePositions?: TokenPosition[];
 };
 
 /**
@@ -28,28 +33,30 @@ export type Flag = {
  * Handles both --flag "value" format and direct values like "value1" "value2".
  *
  * @param content - String containing flags or values
+ * @param lineNumber - Optional line number for position tracking (1-indexed)
+ * @param lineOffset - Optional character offset within the line (0-indexed)
  * @returns Array of parsed flags
  */
-export function parseFlagsOrValues(content: string): Flag[] {
+export function parseFlagsOrValues(content: string, lineNumber?: number, lineOffset: number = 0): Flag[] {
 	// Check if content starts with --
 	if (content.startsWith('--')) {
-		return parseFlags(content);
+		return parseFlags(content, lineNumber, lineOffset);
 	}
 
 	// Check if content starts with a quote (direct values)
 	if (content.startsWith('"')) {
-		const values = parseValues(content);
-		if (values.length > 0) {
-			return [{ name: '', value: values }];
+		const result = parseValuesWithPositions(content, lineNumber, lineOffset);
+		if (result.values.length > 0) {
+			return [{ name: '', value: result.values, valuePositions: result.positions }];
 		}
 	}
 
 	// Otherwise, parse unquoted word as direct value only if it doesn't start with -
 	// This prevents treating things like "-invalid" as values
 	if (!content.startsWith('-')) {
-		const values = parseValues(content);
-		if (values.length > 0) {
-			return [{ name: '', value: values }];
+		const result = parseValuesWithPositions(content, lineNumber, lineOffset);
+		if (result.values.length > 0) {
+			return [{ name: '', value: result.values, valuePositions: result.positions }];
 		}
 	}
 
@@ -62,9 +69,11 @@ export function parseFlagsOrValues(content: string): Flag[] {
  * Supports multiple values in quotes separated by spaces.
  *
  * @param flagString - String containing flags
+ * @param lineNumber - Optional line number for position tracking (1-indexed)
+ * @param lineOffset - Optional character offset within the line (0-indexed)
  * @returns Array of parsed flags
  */
-export function parseFlags(flagString: string): Flag[] {
+export function parseFlags(flagString: string, lineNumber?: number, lineOffset: number = 0): Flag[] {
 	const flags: Flag[] = [];
 
 	// Regex to match --flagName optionally followed by space
@@ -92,11 +101,20 @@ export function parseFlags(flagString: string): Flag[] {
 		const valueString = flagString.substring(valueStart, nextFlagStart).trim();
 
 		// Parse values (handle quoted strings)
-		const values = parseValues(valueString);
+		const result = parseValuesWithPositions(valueString, lineNumber, lineOffset + valueStart);
+
+		// Create position for flag name
+		const position: TokenPosition | undefined = lineNumber !== undefined ? {
+			line: lineNumber,
+			start: lineOffset + flagMatch.startIndex,
+			length: flagMatch.endIndex - flagMatch.startIndex
+		} : undefined;
 
 		flags.push({
 			name: flagMatch.name,
-			value: values
+			value: result.values,
+			position,
+			valuePositions: result.positions
 		});
 	}
 
@@ -131,4 +149,54 @@ export function parseValues(valueString: string): string[] {
 	}
 
 	return values;
+}
+
+/**
+ * Parses values from a string and returns both values and their positions.
+ *
+ * @param valueString - String containing values
+ * @param lineNumber - Optional line number for position tracking (1-indexed)
+ * @param lineOffset - Optional character offset within the line (0-indexed)
+ * @returns Object with values array and positions array
+ */
+function parseValuesWithPositions(
+	valueString: string,
+	lineNumber?: number,
+	lineOffset: number = 0
+): { values: string[]; positions: TokenPosition[] } {
+	const values: string[] = [];
+	const positions: TokenPosition[] = [];
+
+	if (!valueString || valueString.trim().length === 0) {
+		return { values, positions };
+	}
+
+	// Regex to match quoted strings (including empty) or unquoted words
+	const valuePattern = PATTERNS.VALUE;
+	let match: RegExpExecArray | null;
+
+	while ((match = valuePattern.exec(valueString)) !== null) {
+		// match[1] is quoted content (can be empty string), match[2] is unquoted word
+		if (match[1] !== undefined) {
+			values.push(match[1]);
+			if (lineNumber !== undefined) {
+				positions.push({
+					line: lineNumber,
+					start: lineOffset + match.index,
+					length: match[0].length
+				});
+			}
+		} else if (match[2] !== undefined) {
+			values.push(match[2]);
+			if (lineNumber !== undefined) {
+				positions.push({
+					line: lineNumber,
+					start: lineOffset + match.index,
+					length: match[0].length
+				});
+			}
+		}
+	}
+
+	return { values, positions };
 }

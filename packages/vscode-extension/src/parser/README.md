@@ -8,6 +8,16 @@ A modular, function-based, regex-powered parser for extracting annotations, flag
 
 The Brainy parser extracts structured data from markdown files containing agent workflow instructions. It follows a clean, modular architecture with separate modules for different concerns.
 
+The parser is used both for **playbook execution** (to extract annotation blocks for the agent) and for **editor highlighting** (to provide syntax highlighting in VS Code).
+
+## Integration Points
+
+### Playbook Execution
+The parser is the core component for extracting structured workflow instructions from markdown files. The main entry point `parseAnnotations()` returns blocks and errors that are used by the playbook executor.
+
+### Editor Highlighting
+The parser is integrated with the VS Code extension to provide real-time syntax highlighting for annotations, flags, and errors in markdown files. See [Markdown Annotation Highlighting](../markdown/README.md) for details on the highlighting implementation.
+
 ## API Contract
 
 The parser exposes a single primary function `parseAnnotations()` that returns a `ParseResult`:

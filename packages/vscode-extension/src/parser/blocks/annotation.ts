@@ -60,6 +60,14 @@ export function parseAnnotationBlock(
 	const annotationName = annotationMatch[1];
 	const remainingContent = annotationMatch[2].trim();
 
+	// Calculate annotation position
+	const atIndex = line.indexOf('@');
+	const annotationPosition = atIndex >= 0 ? {
+		line: startLine + 1,
+		start: atIndex,
+		length: annotationName.length + 1 // +1 for the @ symbol
+	} : undefined;
+
 	// Start building the block
 	const flags: Flag[] = [];
 	let contentLines = [trimmedLine];
@@ -68,8 +76,9 @@ export function parseAnnotationBlock(
 	// Check if there are flags on the same line
 	if (remainingContent.length > 0) {
 		// Parse flags from the remaining content on the same line
-		// Handle both --flag format and direct values
-		const inlineFlags = parseFlagsOrValues(remainingContent);
+		// Calculate offset for inline flags (after annotation name and space)
+		const flagOffset = line.indexOf(remainingContent);
+		const inlineFlags = parseFlagsOrValues(remainingContent, startLine + 1, flagOffset);
 		flags.push(...inlineFlags);
 		currentLine++;
 	} else {
@@ -91,7 +100,9 @@ export function parseAnnotationBlock(
 			// Check if this line starts with --
 			if (startsWith(trimmedNext, '--')) {
 				contentLines.push(trimmedNext);
-				const lineFlags = parseFlags(trimmedNext);
+				// Calculate offset for flag start in original line
+				const flagOffset = nextLine.indexOf('--');
+				const lineFlags = parseFlags(trimmedNext, currentLine + 1, flagOffset);
 				flags.push(...lineFlags);
 				currentLine++;
 			} else {
@@ -106,7 +117,8 @@ export function parseAnnotationBlock(
 			name: annotationName,
 			flags,
 			content: contentLines.join('\n'),
-			line: startLine + 1
+			line: startLine + 1,
+			annotationPosition
 		},
 		nextLine: currentLine
 	};

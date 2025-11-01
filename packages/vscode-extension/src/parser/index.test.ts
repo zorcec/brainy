@@ -37,7 +37,7 @@ Some introductory text here.
 		
 		// First annotation
 		expect(result.blocks[0].name).toBe('task');
-		expect(result.blocks[0].flags).toEqual([
+		expect(result.blocks[0].flags).toMatchObject([
 			{ name: 'prompt', value: ['Summarize the topic'] },
 			{ name: 'variable', value: ['topic'] }
 		]);
@@ -48,7 +48,7 @@ Some introductory text here.
 		
 		// Context annotation
 		expect(result.blocks[2].name).toBe('context');
-		expect(result.blocks[2].flags).toEqual([
+		expect(result.blocks[2].flags).toMatchObject([
 			{ name: '', value: ['main', 'research'] }
 		]);
 		
@@ -58,7 +58,7 @@ Some introductory text here.
 		
 		// Model annotation
 		expect(result.blocks[4].name).toBe('model');
-		expect(result.blocks[4].flags).toEqual([
+		expect(result.blocks[4].flags).toMatchObject([
 			{ name: '', value: ['gpt-4.1'] }
 		]);
 	});
@@ -232,7 +232,7 @@ echo "Hello World"
 		
 		// Context annotation
 		expect(result.blocks[2].name).toBe('context');
-		expect(result.blocks[2].flags).toEqual([
+		expect(result.blocks[2].flags).toMatchObject([
 			{ name: '', value: ['main', 'research'] }
 		]);
 	});
@@ -259,7 +259,7 @@ echo "No language"
 		expect(result.errors).toEqual([]);
 		expect(result.blocks.length).toBe(1);
 		expect(result.blocks[0].name).toBe('context');
-		expect(result.blocks[0].flags).toEqual([
+		expect(result.blocks[0].flags).toMatchObject([
 			{ name: '', value: ['main'] }
 		]);
 	});
@@ -413,7 +413,7 @@ echo "Hello $VAR" && echo 'test'
 		const result = parseAnnotations(md);
 		
 		expect(result.errors).toEqual([]);
-		expect(result.blocks[0].flags).toEqual([
+		expect(result.blocks[0].flags).toMatchObject([
 			{ name: '', value: ['main', 'research', 'development'] }
 		]);
 	});

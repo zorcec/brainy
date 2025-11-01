@@ -7,6 +7,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { startBrainyServer, stopBrainyServer } from './brainyServerManager';
+import {
+  AnnotationHighlightProvider,
+  AnnotationErrorHoverProvider,
+  createLegend
+} from './markdown/annotationHighlightProvider';
 
 /**
  * Called when the extension is activated
@@ -33,6 +38,28 @@ export function activate(context: vscode.ExtensionContext) {
   console.log('Starting Brainy server...');
   startBrainyServer();
   vscode.window.showInformationMessage('Brainy Extension Activated!');
+
+  // Register annotation highlighting for markdown files
+  const legend = createLegend();
+  const highlightProvider = new AnnotationHighlightProvider();
+  const hoverProvider = new AnnotationErrorHoverProvider();
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: 'markdown' },
+      highlightProvider,
+      legend
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      { language: 'markdown' },
+      hoverProvider
+    )
+  );
+
+  console.log('Annotation highlighting registered for markdown files');
 
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {

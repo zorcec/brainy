@@ -9,6 +9,20 @@
  *   import { createPlainTextBlock } from './blocks/plainText';
  */
 
+import type { Flag } from './flag';
+
+/**
+ * Position information for a token in the document.
+ */
+export type TokenPosition = {
+	/** Line number (1-indexed) */
+	line: number;
+	/** Start character position in the line (0-indexed) */
+	start: number;
+	/** Length of the token */
+	length: number;
+};
+
 /**
  * Represents a parsed block from markdown (annotation, text, comment, or code block).
  */
@@ -16,11 +30,13 @@ export type AnnotationBlock = {
 	/** Block type or annotation name (e.g., 'task', 'context', 'plainText', 'plainComment', 'plainCodeBlock') */
 	name: string;
 	/** Array of flags associated with this block */
-	flags: Array<{ name: string; value: string[] }>;
+	flags: Flag[];
 	/** Original content from the markdown */
 	content: string;
 	/** Optional line number where the block starts */
 	line?: number;
+	/** Optional position of the annotation name token (e.g., @task) */
+	annotationPosition?: TokenPosition;
 	/** Optional metadata (e.g., language for code blocks) */
 	metadata?: {
 		/** Programming language for code blocks (e.g., 'bash', 'python', 'typescript') */

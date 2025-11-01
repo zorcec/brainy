@@ -274,7 +274,7 @@ describe('Edge Cases - Flag Combinations', () => {
 
 		const result = parseAnnotations(md);
 		
-		expect(result.blocks[0].flags).toEqual([
+		expect(result.blocks[0].flags).toMatchObject([
 			{ name: 'prompt', value: [''] }
 		]);
 	});
@@ -286,8 +286,8 @@ describe('Edge Cases - Flag Combinations', () => {
 		
 		// Both flags should be captured
 		expect(result.blocks[0].flags.length).toBe(2);
-		expect(result.blocks[0].flags[0]).toEqual({ name: 'flag', value: ['a'] });
-		expect(result.blocks[0].flags[1]).toEqual({ name: 'flag', value: ['b'] });
+		expect(result.blocks[0].flags[0]).toMatchObject({ name: 'flag', value: ['a'] });
+		expect(result.blocks[0].flags[1]).toMatchObject({ name: 'flag', value: ['b'] });
 	});
 
 	test('Flag with special characters in name', () => {
@@ -312,7 +312,7 @@ describe('Edge Cases - Flag Combinations', () => {
 
 		const result = parseAnnotations(md);
 		
-		expect(result.blocks[0].flags).toEqual([
+		expect(result.blocks[0].flags).toMatchObject([
 			{ name: 'flag1', value: ['quoted'] },
 			{ name: 'flag2', value: ['unquoted'] }
 		]);

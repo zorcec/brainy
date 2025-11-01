@@ -15,6 +15,50 @@ vi.mock('vscode', () => {
     workspaceFolders: undefined as any
   };
   
+  class MockSemanticTokensLegend {
+    tokenTypes: string[];
+    tokenModifiers: string[];
+    constructor(tokenTypes: string[], tokenModifiers: string[]) {
+      this.tokenTypes = tokenTypes;
+      this.tokenModifiers = tokenModifiers;
+    }
+  }
+
+  class MockSemanticTokensBuilder {
+    private legend: MockSemanticTokensLegend;
+    constructor(legend: MockSemanticTokensLegend) {
+      this.legend = legend;
+    }
+    push() {}
+    build() {
+      return { data: new Uint32Array([]) };
+    }
+  }
+
+  class MockRange {
+    start: any;
+    end: any;
+    constructor(startLine: number, startChar: number, endLine: number, endChar: number) {
+      this.start = { line: startLine, character: startChar };
+      this.end = { line: endLine, character: endChar };
+    }
+  }
+
+  class MockPosition {
+    line: number;
+    character: number;
+    constructor(line: number, character: number) {
+      this.line = line;
+      this.character = character;
+    }
+  }
+
+  class MockUri {
+    static parse(value: string) {
+      return { fsPath: value };
+    }
+  }
+
   return {
     window: { 
       showInformationMessage: vi.fn(),
@@ -30,7 +74,18 @@ vi.mock('vscode', () => {
         return { dispose: vi.fn() };
       })
     },
+    languages: {
+      registerDocumentSemanticTokensProvider: vi.fn(() => ({ dispose: vi.fn() })),
+      registerHoverProvider: vi.fn(() => ({ dispose: vi.fn() }))
+    },
     workspace: mockWorkspace,
+    SemanticTokensLegend: MockSemanticTokensLegend,
+    SemanticTokensBuilder: MockSemanticTokensBuilder,
+    SemanticTokens: class { data: Uint32Array = new Uint32Array([]) },
+    Range: MockRange,
+    Position: MockPosition,
+    Uri: MockUri,
+    EndOfLine: { LF: 1, CRLF: 2 },
     _mockWorkspace: mockWorkspace  // Expose for testing
   };
 });

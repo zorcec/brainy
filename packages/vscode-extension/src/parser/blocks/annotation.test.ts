@@ -21,7 +21,7 @@ describe('parseAnnotationBlock', () => {
 		const result = parseAnnotationBlock(lines, 0);
 
 		expect(result.block?.name).toBe('task');
-		expect(result.block?.flags).toEqual([
+		expect(result.block?.flags).toMatchObject([
 			{ name: 'prompt', value: ['Test'] },
 			{ name: 'variable', value: ['var'] }
 		]);
@@ -32,7 +32,7 @@ describe('parseAnnotationBlock', () => {
 		const result = parseAnnotationBlock(lines, 0);
 
 		expect(result.block?.name).toBe('context');
-		expect(result.block?.flags).toEqual([
+		expect(result.block?.flags).toMatchObject([
 			{ name: '', value: ['main', 'research'] }
 		]);
 	});
