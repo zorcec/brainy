@@ -51,7 +51,18 @@ Test suite execution is slow due to isolated server/browser per test and redunda
 - Add VS Code server pooling
 - Refactor test grouping and fixtures
 - Optimize headless mode and startup flags
-- Add timing metrics and performance tracking
+
+## Clarifications & Decisions
+- No specific test scenarios or edge cases prioritized; overall test speed is the main concern.
+- If pooling or shared contexts introduce issues, tests will be fixed rather than rolled back.
+- No new tooling required for debugging or visualization.
+- No known external dependencies (VS Code or Playwright updates) impacting the plan.
+
+## References
+- [TEST-OPTIMIZATION.md](../../../packages/vscode-extension/TEST-OPTIMIZATION.md)
+- [developing-guideline.md](../../../developing-guideline.md)
+- [README.md](../../../README.md)
+- [project-overview.md](../../../project-overview.md)
 
 ## Notes
 See TEST-OPTIMIZATION.md for detailed recommendations, priorities, and debugging tips. Review and iterate sections as needed before finalizing.
