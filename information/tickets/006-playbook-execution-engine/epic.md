@@ -1,7 +1,5 @@
 # Epic: Playbook Execution Engine
 
-**Status:** Draft
-
 ## Context
 Move Brainy from parsing and logging to actual execution of playbook steps. Enable code block execution and agent prompt handling.
 
@@ -43,24 +41,6 @@ Enable users to use the @execute skill inside .md files. When a JS code block is
 ### Integration Points
 - Skills are executed via Brainy, with API injected.
 - Refer to the existing code in the `skill` folder for integration details.
-## Scope
-Parse playbook steps and code blocks
-Execute each code block in its own process
-Support only JS code blocks; other languages result in an error
-Capture and display output
-Parse playbook steps and code blocks
-Execute each code block in its own process
-Support only JS code blocks; other languages result in an error
-Capture and display output in the UI (panel, inline, or hover tooltip)
-- Playbook steps execute with output shown
-- Agent prompt handling integrated
-Each JS code block executes in a separate process with output shown
-Non-JS code blocks result in a clear error message
-Agent prompt handling integrated
-Unit and E2E tests for execution, including error cases
-Output is visible in the UI, including as a hover tooltip on playbook steps
-- What error handling is needed for failed executions?
-- How will agent prompt/LLM responses be injected into playbooks?
 
 ## Stories proposal
 - Add skill "execute" (./001-add-skill-execute.md)
