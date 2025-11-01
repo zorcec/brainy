@@ -93,10 +93,15 @@ export class PlaybookCodeLensProvider implements vscode.CodeLensProvider {
 		document: vscode.TextDocument,
 		_token: vscode.CancellationToken
 	): vscode.ProviderResult<vscode.CodeLens[]> {
+		console.log('provideCodeLenses called for:', document.fileName);
+		
 		// Only show play button for .brainy.md files
 		if (!document.fileName.endsWith('.brainy.md')) {
+			console.log('Skipping - not a .brainy.md file');
 			return [];
 		}
+
+		console.log('Creating CodeLens for .brainy.md file');
 
 		// Add play button on the first line
 		const firstLine = new vscode.Range(0, 0, 0, 0);
@@ -106,6 +111,7 @@ export class PlaybookCodeLensProvider implements vscode.CodeLensProvider {
 			arguments: [document.uri],
 		});
 
+		console.log('CodeLens created:', codeLens);
 		return [codeLens];
 	}
 
@@ -121,10 +127,14 @@ export class PlaybookCodeLensProvider implements vscode.CodeLensProvider {
  * Registers the playbook parse command and related commands
  */
 export function registerPlaybookCommands(context: vscode.ExtensionContext): void {
+	console.log('Registering playbook commands...');
+	
 	// Register the parse command triggered by the play button
 	const parseCommand = vscode.commands.registerCommand(
 		'brainy.playbook.parse',
 		async (uri: vscode.Uri) => {
+			console.log('Parse command triggered for:', uri.toString());
+			
 			const document = await vscode.workspace.openTextDocument(uri);
 			const editor = vscode.window.activeTextEditor;
 
@@ -138,7 +148,9 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext): void
 
 			// Parse the playbook
 			const content = document.getText();
+			console.log('Parsing playbook content, length:', content.length);
 			const result = parsePlaybook(content);
+			console.log('Parse result:', { blockCount: result.blocks.length, errorCount: result.errors.length });
 
 			// Log the result to the console
 			console.log('Parsed playbook:', JSON.stringify(result, null, 2));
@@ -165,6 +177,7 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext): void
 	);
 
 	context.subscriptions.push(parseCommand);
+	console.log('✓ Playbook commands registered');
 }
 
 /**

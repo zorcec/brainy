@@ -8,7 +8,8 @@
     "build": "npm run build --workspaces",
     "test": "vitest run --exclude '**/e2e/**'",
     "test:watch": "vitest --exclude '**/e2e/**'",
-    "e2e": "npx playwright test"
+    "e2e": "npm run build && npx playwright test",
+    "e2e:headed": "npm run build && npx playwright test --headed"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
@@ -17,6 +18,9 @@
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/better-sqlite3": "^7.6.13",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-web": "^0.0.74",
     "electron": "^38.0.0"
   }
 }

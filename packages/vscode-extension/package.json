@@ -5,9 +5,10 @@
   "version": "0.0.1",
   "publisher": "brainy",
   "main": "dist/extension.js",
+  "browser": "dist/extension.js",
   "types": "dist/extension.d.ts",
   "scripts": {
-    "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=node --external:vscode --outfile=dist/extension.js --sourcemap",
+    "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=browser --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
     "check-types": "tsc --noEmit",
     "test": "vitest"
   },
@@ -25,13 +26,17 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "*"
   ],
   "contributes": {
     "commands": [
       {
         "command": "brainy.configure",
         "title": "Brainy: Configure Workspace"
+      },
+      {
+        "command": "brainy.playbook.parse",
+        "title": "Brainy: Parse Playbook"
       }
     ]
   }

@@ -88,15 +88,53 @@ test('annotation highlighting works across themes', async ({ vscode }) => {
 Notes about the helpers: Implementations depend on the Playwright VS Code test harness API used in existing `example-ui.e2e.test.js`. Prefer small, robust DOM selectors (gutter/CodeLens text) and explicit waits.
 
 ## Implementation Tasks (actionable checklist)
-- [ ] Create test file `packages/vscode-extension/e2e/playbook.e2e.test.ts` (scenarios above)
-- [ ] Add optional helper module `packages/vscode-extension/e2e/helpers/playbookHelpers.ts` for the utility functions
-- [ ] Ensure `packages/vscode-extension/e2e/test-project/` contains the test fixtures (already done)
-- [ ] Run `npm run build` and `npm run e2e` locally and fix any flakiness
+- [x] Create VS Code Web server launcher (`vscode-web-server.ts`)
+- [x] Create UI interaction helper module (`helpers/vscode-page-helpers.ts`)
+- [x] Create E2E test file (`playbook.e2e.test.ts`) with real Playwright clickpaths
+- [x] Install required dependencies (`@vscode/test-web`, `@vscode/test-electron`, `@vscode/test-cli`)
+- [x] Update Playwright config for proper test execution
+- [x] Add build step to E2E npm script
+- [ ] Run `npm run build` and `npm run e2e` to validate tests
 - [ ] Capture screenshots/traces for failures and add them to test output
-- [ ] Update this ticket with test results and any follow-ups
+- [ ] Update README with E2E test run instructions
 
 ## How to Run (commands)
 Run these from the repository root:
+```bash
+# Build all packages (required before running E2E tests)
+npm run build
+
+# Run E2E tests with Playwright (headless mode)
+npm run e2e
+
+# Run E2E tests in headed mode (see browser)
+npm run e2e:headed
+```
+
+## Implementation Details
+
+### Architecture
+The E2E tests use Playwright to control VS Code Web:
+1. **VS Code Web Server** (`vscode-web-server.ts`): Spawns `@vscode/test-web` server with the extension loaded
+2. **UI Helpers** (`helpers/vscode-page-helpers.ts`): Playwright utilities for interacting with VS Code UI
+3. **Test Suite** (`playbook.e2e.test.ts`): Real UI clickpath tests
+
+### Test Flow
+1. `beforeAll`: Launch VS Code Web server, open browser, navigate to VS Code Web
+2. Tests: Open files, click play button, inspect output, check decorations
+3. `afterAll`: Close browser, stop VS Code Web server
+
+### Files Created
+- `packages/vscode-extension/e2e/vscode-web-server.ts` - VS Code Web server launcher
+- `packages/vscode-extension/e2e/helpers/vscode-page-helpers.ts` - UI interaction helpers
+- `packages/vscode-extension/e2e/playbook.e2e.test.ts` - E2E test suite with real UI interactions
+
+### Dependencies Added
+- `@vscode/test-web` - VS Code Web test infrastructure
+- `@vscode/test-electron` - VS Code test utilities
+- `@vscode/test-cli` - VS Code test CLI
+
+## How to Run (commands)
 ```bash
 # Build all packages
 npm run build

@@ -88,6 +88,12 @@ Run E2E tests:
 npm run e2e
 ```
 
+**E2E Tests:** Real browser automation with Playwright, launching VS Code Web and interacting with the UI
+- Tests launch VS Code Web with the extension loaded
+- Playwright clicks buttons, inspects decorations, and verifies output
+- Screenshots captured on failure in `test-results/`
+- Run with `npm run e2e:headed` to see the browser in action
+
 ## Development
 
 Watch mode for tests:

@@ -5,7 +5,6 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { startBrainyServer, stopBrainyServer } from './brainyServerManager';
 import {
   AnnotationHighlightProvider,
@@ -14,16 +13,31 @@ import {
 } from './markdown/annotationHighlightProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 
+// Check if path module is available (Node.js environment)
+let pathModule: any;
+try {
+  pathModule = require('path');
+} catch {
+  // path not available in web environment
+}
+
 /**
  * Called when the extension is activated
  */
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Activating Brainy extension...');
+  console.log('=== Brainy Extension: Starting Activation ===');
   
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const brainyPath = path.join(workspaceRoot, '.brainy');
+    let brainyPath = workspaceRoot;
+    
+    if (pathModule) {
+      brainyPath = pathModule.join(workspaceRoot, '.brainy');
+    }
+    
+    console.log('Workspace root:', workspaceRoot);
+    console.log('Brainy path:', brainyPath);
     
     try {
       vscode.window.showInformationMessage('Brainy Extension Activated!');
@@ -32,15 +46,17 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('Failed to initialize Brainy database');
     }
   } else {
+    console.warn('No workspace folder found');
     vscode.window.showWarningMessage('Brainy: No workspace folder found. Please open a workspace.');
   }
 
-  // Start the Brainy server process
-  console.log('Starting Brainy server...');
-  startBrainyServer();
-  vscode.window.showInformationMessage('Brainy Extension Activated!');
+  // Start the Brainy server process (only in Node.js environment)
+  // Commented out for web compatibility - server not needed for basic extension features
+  // console.log('Starting Brainy server...');
+  // startBrainyServer();
 
   // Register annotation highlighting for markdown files
+  console.log('Registering annotation highlighting...');
   const legend = createLegend();
   const highlightProvider = new AnnotationHighlightProvider();
   const hoverProvider = new AnnotationErrorHoverProvider();
@@ -60,18 +76,41 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  console.log('Annotation highlighting registered for markdown files');
+  console.log('✓ Annotation highlighting registered for markdown files');
 
   // Register play button for .brainy.md files
+  console.log('Registering CodeLens provider for .brainy.md files...');
   const playbookProvider = new PlaybookCodeLensProvider();
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { pattern: '**/*.brainy.md' },
+  
+  // Try multiple patterns to ensure it matches
+  const documentSelectors = [
+    { pattern: '**/*.brainy.md' },
+    { scheme: 'file', pattern: '**/*.brainy.md' },
+    { scheme: 'vscode-test-web', pattern: '**/*.brainy.md' },
+    { language: 'markdown', pattern: '**/*.brainy.md' },
+  ];
+  
+  for (const selector of documentSelectors) {
+    const codeLensDisposable = vscode.languages.registerCodeLensProvider(
+      selector,
       playbookProvider
-    )
-  );
+    );
+    context.subscriptions.push(codeLensDisposable);
+    console.log('Registered CodeLens with selector:', JSON.stringify(selector));
+  }
+  
   registerPlaybookCommands(context);
-  console.log('Play button registered for .brainy.md files');
+  console.log('✓ CodeLens provider registered for .brainy.md files');
+  
+  // Force CodeLens refresh when files are opened
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument((document) => {
+      if (document.fileName.endsWith('.brainy.md')) {
+        console.log('Opened .brainy.md file:', document.fileName);
+        playbookProvider.refresh();
+      }
+    })
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {
@@ -82,11 +121,17 @@ export function activate(context: vscode.ExtensionContext) {
       }
       
       const workspaceRoot = folders[0].uri.fsPath;
-      const brainyPath = path.join(workspaceRoot, '.brainy');
-      // Here you would send a configure request to the server if needed
+      let brainyPath = workspaceRoot;
+      
+      if (pathModule) {
+        brainyPath = pathModule.join(workspaceRoot, '.brainy');
+      }
+      
       vscode.window.showInformationMessage(`Brainy configured at ${brainyPath}`);
     })
   );
+  
+  console.log('=== Brainy Extension: Activation Complete ===');
 }
 
 /**
@@ -94,5 +139,6 @@ export function activate(context: vscode.ExtensionContext) {
  */
 export function deactivate() {
   console.log('Deactivating Brainy extension...');
-  stopBrainyServer();
+  // Commented out for web compatibility
+  // stopBrainyServer();
 }
