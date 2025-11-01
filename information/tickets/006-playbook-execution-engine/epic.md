@@ -63,9 +63,9 @@ Output is visible in the UI, including as a hover tooltip on playbook steps
 - How will agent prompt/LLM responses be injected into playbooks?
 
 ## Stories proposal
-- Add skill "execute"
-- Execute JS Code Blocks in Isolated Processes
-- Detailed Unit and E2E Tests
+- Add skill "execute" (./001-add-skill-execute.md)
+- Execute JS Code Blocks in Isolated Processes (./002-execute-js-code-blocks.md)
+- Unit and E2E tests for execution (./003-tests-for-execution.md)
 
 ## References
 - [plan.md](../../plan.md)
