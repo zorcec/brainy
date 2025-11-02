@@ -3,6 +3,10 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+
+// Mock vscode before imports
+vi.mock('vscode', () => ({}));
+
 import {
 	selectChatModel,
 	sendRequest,

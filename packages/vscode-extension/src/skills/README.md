@@ -1,12 +1,16 @@
 # Skills System API
 
-A minimal, testable skills API for VS Code extension authors. This module provides singleton functions for model selection and LLM request handling.
+A minimal, testable skills API for Brainy extension. This module provides:
+- Skill definition API (Skill interface with name, description, execute)
+- Built-in skills (shipped with extension) and project skills (.brainy/skills)
+- Skill loading and execution
+- Model selection and LLM request handling
 
 > **⚠️ Maintainer Note**: This module follows the parser's function-based, test-adjacent style. Use pure functions, avoid classes, and keep implementations modular and focused.
 
 ## Overview
 
-The skills system provides a simple API for interacting with language models in the Brainy VS Code extension. It follows a singleton pattern with configuration-based dependency injection for testing, with explicit error handling and timeout support.
+The skills system provides a modular API for defining and executing skills in Brainy playbooks. Skills are async functions that can be invoked from markdown annotations and return string results.
 
 ## Module Structure
 
@@ -14,20 +18,125 @@ The skills system provides a simple API for interacting with language models in 
 skills/
 ├── index.ts                    # Public API singleton exports
 ├── index.test.ts               # API integration tests
+├── types.ts                    # Core types (Skill, SkillParams)
+├── skillLoader.ts              # Skill loading and execution
+├── skillLoader.test.ts         # Skill loader tests
+├── skillScanner.ts             # Skill scanning and registry
+├── skillScanner.test.ts        # Skill scanner tests (if exists)
+├── built-in/                   # Built-in skills directory
+│   ├── index.ts                # Built-in skills registry
+│   ├── file.ts                 # File manipulation skill
+│   └── file.test.ts            # File skill tests
 ├── modelClient.ts              # Provider calls, timeout & error handling
 ├── modelClient.test.ts         # Model client tests
 ├── sessionStore.ts             # In-memory model selection persistence
 ├── sessionStore.test.ts        # Session store tests
-├── skillRunner.ts              # Skill module loader and executor
-├── skillRunner.test.ts         # Skill runner tests
+├── skillRunner.ts              # Legacy skill runner (to be deprecated)
+├── skillRunner.test.ts         # Legacy skill runner tests
 └── README.md                   # This file
 ```
 
-## API Contract
+## Skill API
 
-The skills system provides a singleton API with direct function exports. All functions operate on module-level state and use dependency injection through configuration functions for testing.
+### Skill Interface
 
-### Public API
+All skills must implement the `Skill` interface:
+
+```typescript
+export interface Skill {
+  name: string;           // Unique skill identifier
+  description: string;    // Brief description for tooltips/docs
+  execute(params: SkillParams): Promise<string>;  // Async execution function
+}
+
+export type SkillParams = Record<string, string | undefined>;
+```
+
+### Example: File Skill
+
+```typescript
+// skills/built-in/file.ts
+import { Skill, SkillParams } from '../types';
+
+export const fileSkill: Skill = {
+  name: 'file',
+  description: 'Read, write and delete files.',
+  
+  async execute(params: SkillParams): Promise<string> {
+    const { action, path, content } = params;
+    
+    // Validate parameters
+    if (!action) throw new Error('Missing required parameter: action');
+    if (!path) throw new Error('Missing required parameter: path');
+    
+    // Execute action
+    switch (action) {
+      case 'read':
+        return await readFile(path);
+      case 'write':
+        if (!content) throw new Error('Missing content for write');
+        return await writeFile(path, content);
+      case 'delete':
+        return await deleteFile(path);
+      default:
+        throw new Error(`Invalid action: ${action}`);
+    }
+  }
+};
+```
+
+### Usage in Playbooks
+
+Skills are invoked using annotations with flags:
+
+```markdown
+@file --action "read" --path "./notes.md"
+@file --action "write" --path "./output.txt" --content "hello world"
+@file --action "delete" --path "./temp.txt"
+```
+
+Flags are translated into `SkillParams`:
+- `@file --action "read" --path "./notes.md"` → `{ action: "read", path: "./notes.md" }`
+
+## Built-in Skills
+
+Built-in skills are shipped with the extension and always available:
+
+### File Skill
+
+**Name:** `file`
+
+**Description:** Read, write and delete files.
+
+**Parameters:**
+- `action`: "read" | "write" | "delete" (required)
+- `path`: File path, relative to workspace or absolute (required)
+- `content`: File content (required for write action)
+
+**Examples:**
+```markdown
+@file --action "read" --path "./config.json"
+@file --action "write" --path "./output.txt" --content "Hello, World!"
+@file --action "delete" --path "./temp.log"
+```
+
+## Project Skills
+
+Project skills are loaded from `.brainy/skills/` directory in the workspace. They can be `.js` or `.ts` files.
+
+**Convention:**
+```
+your-workspace/
+└── .brainy/
+    └── skills/
+        ├── custom.ts      # Custom TypeScript skill
+        ├── task.js        # Custom JavaScript skill
+        └── context.js     # Another custom skill
+```
+
+**Priority:** Built-in skills always take priority. If a project skill has the same name as a built-in skill, the built-in skill will be used and a warning will be logged.
+
+## API Functions
 
 ```typescript
 // Main API functions
@@ -43,11 +152,179 @@ export async function sendRequest(
 export function resetSkills(): void;
 ```
 
+## API Functions
+
+### Skill Loading and Execution
+
+```typescript
+// Load a skill by name (checks built-in first, then project skills)
+export async function loadSkill(
+  skillName: string,
+  workspaceUri?: vscode.Uri
+): Promise<Skill>;
+
+// Execute a loaded skill
+export async function executeSkill(
+  skill: Skill,
+  params: SkillParams
+): Promise<string>;
+
+// Load and execute in one call (convenience function)
+export async function runSkill(
+  skillName: string,
+  params: SkillParams,
+  workspaceUri?: vscode.Uri
+): Promise<string>;
+```
+
+### Skill Scanning
+
+```typescript
+// Get all available skill names (built-in + project)
+export function getAvailableSkills(): string[];
+
+// Refresh skills list from workspace
+export async function refreshSkills(workspaceUri: vscode.Uri): Promise<string[]>;
+
+// Check if a skill is available
+export function isSkillAvailable(skillName: string): boolean;
+
+// Get project-specific skills only
+export function getProjectSkills(): string[];
+```
+
+### Built-in Skills Registry
+
+```typescript
+// Get all built-in skills
+export function getBuiltInSkills(): Map<string, Skill>;
+
+// Get a specific built-in skill
+export function getBuiltInSkill(name: string): Skill | undefined;
+
+// Check if a skill name is built-in
+export function isBuiltInSkill(name: string): boolean;
+
+// Get all built-in skill names
+export function getBuiltInSkillNames(): string[];
+```
+
+### Model Selection and LLM Requests
+
+```typescript
+// Select the chat model to use
+export function selectChatModel(modelId: string): void;
+
+// Send a request to the selected model
+export async function sendRequest(
+  role: 'user' | 'assistant',
+  content: string,
+  opts?: { timeoutMs?: number }
+): Promise<ModelResponse>;
+```
+
 ### Types
 
 ```typescript
+// Skill types
+export interface Skill {
+  name: string;
+  description: string;
+  execute(params: SkillParams): Promise<string>;
+}
+
+export type SkillParams = Record<string, string | undefined>;
+
+// Model types
 type ModelResponse = {
   reply: string;      // Normalized response text
+  raw: unknown;       // Raw provider response
+};
+```
+
+## Creating Custom Skills
+
+Custom skills can be created in your project's `.brainy/skills` directory. Both JavaScript and TypeScript files are supported.
+
+### Step-by-Step Guide
+
+1. **Create the `.brainy/skills` directory** in your workspace root if it doesn't exist.
+
+2. **Create a skill file** (e.g., `custom.ts` or `custom.js`).
+
+3. **Export a Skill object** with name, description, and execute function:
+
+```typescript
+// .brainy/skills/custom.ts
+import { Skill, SkillParams } from '@brainy/skills/types';
+
+export const customSkill: Skill = {
+  name: 'custom',
+  description: 'My custom skill that does something useful',
+  
+  async execute(params: SkillParams): Promise<string> {
+    const { param1, param2 } = params;
+    
+    // Your implementation logic here
+    // Validate parameters
+    if (!param1) throw new Error('Missing required parameter: param1');
+    
+    // Do something useful
+    const result = `Processed: ${param1} and ${param2}`;
+    
+    // Return string result
+    return result;
+  }
+};
+```
+
+4. **Use the skill in your playbook:**
+
+```markdown
+@custom --param1 "value1" --param2 "value2"
+```
+
+### Best Practices
+
+- **Name:** Use lowercase, hyphen-separated names (e.g., `my-skill`). The name should match the filename.
+- **Description:** Keep it concise (one line). Used for tooltips and documentation.
+- **Parameters:** Validate all required parameters at the start of execute().
+- **Errors:** Throw descriptive errors. They will be shown in the UI tooltip.
+- **Return value:** Always return a string. Use JSON.stringify() for complex data.
+- **Async:** All skills are async. Use await for async operations.
+- **Side effects:** Skills can have side effects (file I/O, network calls, etc.).
+
+### Example: HTTP Request Skill
+
+```typescript
+// .brainy/skills/http.ts
+import { Skill, SkillParams } from '@brainy/skills/types';
+
+export const httpSkill: Skill = {
+  name: 'http',
+  description: 'Make HTTP requests',
+  
+  async execute(params: SkillParams): Promise<string> {
+    const { method = 'GET', url, body } = params;
+    
+    if (!url) throw new Error('Missing required parameter: url');
+    
+    const response = await fetch(url, {
+      method,
+      body: body ? JSON.stringify(body) : undefined,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.text();
+  }
+};
+```
+
+### Types (Expanded)
   raw: unknown;       // Raw provider response
 };
 ```

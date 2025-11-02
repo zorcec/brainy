@@ -2,13 +2,23 @@
  * Module: skills/index.ts
  *
  * Description:
- *   Main entry point for the skills system. Provides singleton API for model selection
- *   and LLM request handling. Exports selectChatModel and sendRequest functions directly.
+ *   Main entry point for the skills system.
+ *   - Exports model selection and LLM request handling (selectChatModel, sendRequest)
+ *   - Exports skill loading and execution (loadSkill, executeSkill, runSkill)
+ *   - Exports skill scanning (getAvailableSkills, refreshSkills, isSkillAvailable)
+ *   - Exports built-in skills registry
+ *   - Exports core types (Skill, SkillParams)
  *
  * Usage:
+ *   // Model selection and LLM requests
  *   import { selectChatModel, sendRequest } from './skills';
  *   selectChatModel('gpt-4o');
  *   const response = await sendRequest('user', 'Hello!');
+ *   
+ *   // Skill loading and execution
+ *   import { loadSkill, executeSkill } from './skills';
+ *   const skill = await loadSkill('file', workspaceUri);
+ *   const result = await executeSkill(skill, { action: 'read', path: './test.txt' });
  */
 
 import {
@@ -88,3 +98,24 @@ export function resetSkills(): void {
 
 // Re-export types for convenience
 export type { ModelResponse, SendRequestParams } from './modelClient';
+export type { Skill, SkillParams } from './types';
+
+// Re-export skill loading and execution
+export { loadSkill, executeSkill, runSkill, resetSkillLoader } from './skillLoader';
+
+// Re-export skill scanning
+export {
+	getAvailableSkills,
+	refreshSkills,
+	isSkillAvailable,
+	getProjectSkills,
+	resetState as resetSkillScanner
+} from './skillScanner';
+
+// Re-export built-in skills registry
+export {
+	getBuiltInSkills,
+	getBuiltInSkill,
+	isBuiltInSkill,
+	getBuiltInSkillNames
+} from './built-in';
