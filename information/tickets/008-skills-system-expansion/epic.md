@@ -55,8 +55,8 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
     - Only tooltips are planned for extensible feedback for now.
 
   - **Testing & Examples:**
+    - Skills should be tested only with unit tests. Do not use E2E tests for skill logic, as Node.js APIs are not available in browser-based environments (such as VS Code running in the browser).
     - Unit tests: Cover as much as possible for each skill.
-    - E2E tests: Each skill in its own file; no need to combine skills in one test yet.
     - Usage examples: Will be shown in tooltips (to be implemented in the papercuts epic).
 
   - **Variables & Context:**
