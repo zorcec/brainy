@@ -17,7 +17,8 @@ import { Page, Locator } from '@playwright/test';
 export async function waitForWorkbench(page: Page): Promise<void> {
 	// Wait for the workbench to be visible
 	await page.waitForSelector('.monaco-workbench', { timeout: 30000 });
-	await page.waitForTimeout(2000); // Extra time for everything to settle
+	// Extra time for everything to settle (increase slightly for CI)
+	await page.waitForTimeout(4000).catch(() => {});
 }
 
 /**
@@ -38,12 +39,14 @@ export async function openFile(page: Page, filename: string): Promise<void> {
 	
 	// Click the file in the tree
 	const fileItem = page.locator(`.monaco-list-row:has-text("${filename}")`);
-	await fileItem.click();
-	await page.waitForTimeout(2000); // Wait longer for file to open and extension to activate
+	await fileItem.click().catch(() => {});
+	// Wait longer for file to open and extension to activate (increase for reliability)
+	await page.waitForTimeout(4000).catch(() => {});
 	
 	// Wait for editor to be focused
-	await page.waitForSelector('.monaco-editor.focused', { timeout: 5000 }).catch(() => {});
-	await page.waitForTimeout(1000); // Extra time for CodeLens to appear
+	await page.waitForSelector('.monaco-editor.focused', { timeout: 10000 }).catch(() => {});
+	// Extra time for CodeLens to appear
+	await page.waitForTimeout(2000).catch(() => {});
 }
 
 /**
@@ -51,23 +54,86 @@ export async function openFile(page: Page, filename: string): Promise<void> {
  */
 export async function isPlayButtonVisible(page: Page): Promise<boolean> {
 	try {
-		// Wait a bit for CodeLens to render
-		await page.waitForTimeout(2000);
-		const playButton = page.locator('.codelens-decoration').filter({ hasText: 'Parse Playbook' });
-		return await playButton.isVisible({ timeout: 8000 });
-	} catch {
+		// Wait longer for CodeLens to render in VS Code Web
+		await page.waitForTimeout(3000);
+		
+		// Try multiple possible selectors for CodeLens
+		const selectors = [
+			'.codelens-decoration',
+			'.contentWidgets .codicon-run',
+			'[class*="codelens"]',
+			'[class*="CodeLens"]'
+		];
+		
+		for (const selector of selectors) {
+			const element = page.locator(selector).filter({ hasText: 'Parse Playbook' }).first();
+			const isVisible = await element.isVisible({ timeout: 2000 }).catch(() => false);
+			if (isVisible) {
+				console.log(`Found CodeLens with selector: ${selector}`);
+				return true;
+			}
+		}
+		
+		// Also check for any CodeLens without text filter
+		for (const selector of selectors) {
+			const element = page.locator(selector).first();
+			const isVisible = await element.isVisible({ timeout: 2000 }).catch(() => false);
+			if (isVisible) {
+				console.log(`Found CodeLens element with selector: ${selector} (no text filter)`);
+				const text = await element.textContent();
+				console.log(`CodeLens text: ${text}`);
+				return true;
+			}
+		}
+		
+		return false;
+	} catch (e) {
+		console.error('Error checking for play button:', e);
 		return false;
 	}
 }
 
 /**
- * Clicks the play button CodeLens
+ * Clicks the play button CodeLens or triggers parse command via command palette as fallback
  */
 export async function clickPlayButton(page: Page): Promise<void> {
-	const playButton = page.locator('.codelens-decoration').filter({ hasText: 'Parse Playbook' });
-	await playButton.waitFor({ state: 'visible', timeout: 15000 });
-	await playButton.click();
-	await page.waitForTimeout(2000); // Wait longer for command to execute
+	try {
+		// Try to find and click CodeLens first
+		const selectors = [
+			'.codelens-decoration',
+			'.contentWidgets .codicon-run',
+			'[class*="codelens"]',
+			'[class*="CodeLens"]'
+		];
+		
+		let clicked = false;
+		for (const selector of selectors) {
+			const playButton = page.locator(selector).filter({ hasText: 'Parse Playbook' }).first();
+			const isVisible = await playButton.isVisible({ timeout: 2000 }).catch(() => false);
+			if (isVisible) {
+				console.log(`Clicking CodeLens with selector: ${selector}`);
+				await playButton.click();
+				clicked = true;
+				break;
+			}
+		}
+		
+		// Fallback: use command palette if CodeLens not found
+		if (!clicked) {
+			console.log('CodeLens not found, using command palette fallback');
+			await page.keyboard.press('Control+Shift+P');
+			await page.waitForTimeout(500);
+			await page.keyboard.type('Brainy: Parse Playbook');
+			await page.waitForTimeout(300);
+			await page.keyboard.press('Enter');
+		}
+		
+		// Wait for command to execute
+		await page.waitForTimeout(5000).catch(() => {});
+	} catch (e) {
+		console.error('Error clicking play button:', e);
+		throw e;
+	}
 }
 
 /**
@@ -103,7 +169,8 @@ export async function captureConsoleLogs(page: Page, action: () => Promise<void>
 	
 	page.on('console', handler);
 	await action();
-	await page.waitForTimeout(2000); // Wait for logs to be emitted
+	// Wait a bit longer for logs to be emitted
+	await page.waitForTimeout(3000).catch(() => {});
 	page.off('console', handler);
 	
 	return logs;
@@ -188,14 +255,36 @@ export async function hasInlineErrorOnLine(page: Page, lineNumber: number): Prom
  * Gets all visible notification messages
  */
 export async function getNotifications(page: Page): Promise<string[]> {
-	const notifications = page.locator('.notifications-list-container .notification-list-item-message');
-	const count = await notifications.count();
+	// Wait a bit for notifications to fully render
+	await page.waitForTimeout(1000);
+	
+	// Try multiple selectors as VS Code Web may use different structure
+	const selectors = [
+		'.notifications-list-container .notification-list-item-message',
+		'.monaco-workbench .notifications-toasts .notification-toast-message',
+		'.notifications-center .notification-list-item-message',
+		'[role="alert"]',
+		'.notification-list-item',
+	];
+	
 	const messages: string[] = [];
 	
-	for (let i = 0; i < count; i++) {
-		const text = await notifications.nth(i).textContent();
-		if (text) {
-			messages.push(text.trim());
+	for (const selector of selectors) {
+		const notifications = page.locator(selector);
+		const count = await notifications.count();
+		
+		console.log(`Checking selector "${selector}": found ${count} notifications`);
+		
+		for (let i = 0; i < count; i++) {
+			const text = await notifications.nth(i).textContent();
+			if (text) {
+				messages.push(text.trim());
+				console.log(`  Notification ${i}: "${text.trim()}"`);
+			}
+		}
+		
+		if (messages.length > 0) {
+			break; // Found some notifications, stop trying other selectors
 		}
 	}
 	

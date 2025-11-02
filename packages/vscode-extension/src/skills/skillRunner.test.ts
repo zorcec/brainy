@@ -21,7 +21,7 @@ describe('skillRunner', () => {
 
 	describe('loadSkill', () => {
 		it('loads a JavaScript skill successfully', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/basic.js');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/basic.js');
 			const skill = await loadSkill(skillPath);
 
 			expect(skill).toBeDefined();
@@ -29,7 +29,7 @@ describe('skillRunner', () => {
 		});
 
 		it('loads a TypeScript skill successfully', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/execute.ts');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/execute.ts');
 			const skill = await loadSkill(skillPath);
 
 			expect(skill).toBeDefined();
@@ -60,7 +60,7 @@ describe('skillRunner', () => {
 
 	describe('executeSkill', () => {
 		it('executes a JavaScript skill and returns result', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/basic.js');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/basic.js');
 			const skill = await loadSkill(skillPath);
 			const api = {};
 			const params = {};
@@ -74,7 +74,7 @@ describe('skillRunner', () => {
 		});
 
 		it('executes a TypeScript skill and returns result', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/execute.ts');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/execute.ts');
 			const skill = await loadSkill(skillPath);
 			const api = {};
 			const params = {};
@@ -88,7 +88,7 @@ describe('skillRunner', () => {
 		});
 
 		it('injects API object to skill', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/basic.js');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/basic.js');
 			const skill = await loadSkill(skillPath);
 			const api = { testMethod: () => 'test' };
 			const params = { testParam: 'value' };
@@ -134,7 +134,7 @@ describe('skillRunner', () => {
 
 	describe('runSkill', () => {
 		it('loads and executes a JavaScript skill in one call', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/basic.js');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/basic.js');
 			const api = {};
 			const params = {};
 
@@ -147,7 +147,7 @@ describe('skillRunner', () => {
 		});
 
 		it('loads and executes a TypeScript skill in one call', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/execute.ts');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/execute.ts');
 			const api = {};
 			const params = {};
 
@@ -162,7 +162,7 @@ describe('skillRunner', () => {
 
 	describe('TypeScript support', () => {
 		it('registers ts-node only once for multiple TypeScript skills', async () => {
-			const skillPath = join(__dirname, '../../e2e/test-project/skills/execute.ts');
+			const skillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/execute.ts');
 
 			// Load the TypeScript skill multiple times
 			const skill1 = await loadSkill(skillPath);
@@ -185,8 +185,8 @@ describe('skillRunner', () => {
 		});
 
 		it('can load both JS and TS skills in the same test run', async () => {
-			const jsSkillPath = join(__dirname, '../../e2e/test-project/skills/basic.js');
-			const tsSkillPath = join(__dirname, '../../e2e/test-project/skills/execute.ts');
+			const jsSkillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/basic.js');
+			const tsSkillPath = join(__dirname, '../../e2e/test-project/.brainy/skills/execute.ts');
 
 			const jsSkill = await loadSkill(jsSkillPath);
 			const tsSkill = await loadSkill(tsSkillPath);

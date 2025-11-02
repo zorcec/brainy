@@ -117,6 +117,13 @@ vi.mock('vscode', () => {
   };
 });
 
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../skills/skillScanner', () => ({
+	getAvailableSkills: () => ['execute', 'context', 'task', 'model', 'custom'],
+	isSkillAvailable: () => true,
+	refreshSkills: vi.fn()
+}));
+
 import * as vscode from 'vscode';
 import {
 	AnnotationHighlightProvider,

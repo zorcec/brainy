@@ -21,6 +21,7 @@
 
 import * as vscode from 'vscode';
 import { parseAnnotations, type AnnotationBlock, type ParserError, type Flag } from '../parser';
+import { isSkillAvailable } from '../skills/skillScanner';
 
 /**
  * Token types used for highlighting.
@@ -87,13 +88,17 @@ export class AnnotationHighlightProvider implements vscode.DocumentSemanticToken
 	 * @returns SemanticTokens or undefined if document is empty
 	 */
 	provideDocumentSemanticTokens(document: vscode.TextDocument): vscode.SemanticTokens | undefined {
+		console.log('[AnnotationHighlightProvider] provideDocumentSemanticTokens called for:', document.fileName);
 		const content = document.getText();
 		if (!content?.trim()) {
+			console.log('[AnnotationHighlightProvider] Document empty, returning undefined');
 			return undefined;
 		}
 
 		const parseResult = parseAnnotations(content);
 		const tokensBuilder = new vscode.SemanticTokensBuilder(createLegend());
+		
+		console.log(`[AnnotationHighlightProvider] Found ${parseResult.blocks.length} blocks, ${parseResult.errors.length} errors`);
 
 		// Add block tokens (annotations and flags)
 		for (const block of parseResult.blocks) {
@@ -105,12 +110,15 @@ export class AnnotationHighlightProvider implements vscode.DocumentSemanticToken
 			addErrorToken(tokensBuilder, document, error);
 		}
 
-		return tokensBuilder.build();
+		const tokens = tokensBuilder.build();
+		console.log(`[AnnotationHighlightProvider] Built ${tokens.data.length} semantic tokens`);
+		return tokens;
 	}
 }
 
 /**
  * Adds semantic tokens for an annotation block.
+ * Only highlights annotations for available skills (case-sensitive).
  *
  * @param builder - The semantic tokens builder
  * @param document - The document being processed
@@ -124,6 +132,11 @@ function addBlockTokens(
 	// Skip blocks that shouldn't be highlighted
 	const skipTypes = ['plainText', 'plainComment', 'plainCodeBlock'];
 	if (skipTypes.includes(block.name)) {
+		return;
+	}
+
+	// Only highlight if the skill is available (case-sensitive)
+	if (!isSkillAvailable(block.name)) {
 		return;
 	}
 

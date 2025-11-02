@@ -3,8 +3,15 @@
  * Tests the complete parsing workflow with real-world examples.
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, it, test, expect, beforeEach, vi } from 'vitest';
 import { parseAnnotations } from './index';
+
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../skills/skillScanner', () => ({
+	getAvailableSkills: () => ['execute', 'context', 'task', 'model', 'annotation', 'another_annotation'],
+	isSkillAvailable: () => true,  // Allow all skills in tests
+	refreshSkills: vi.fn()
+}));
 
 describe('parseAnnotations - Integration Tests', () => {
 	test('parses empty markdown', () => {

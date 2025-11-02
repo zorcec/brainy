@@ -9,8 +9,13 @@
  * Run with: npm test -- performance.test.ts
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { parseAnnotations } from './index';
+
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../skills/skillScanner', () => ({
+	isSkillAvailable: () => true
+}));
 
 /**
  * Generates a large markdown file with the specified number of lines.

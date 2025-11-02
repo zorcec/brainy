@@ -3,8 +3,13 @@
  * Tests all edge cases and error scenarios defined in story 004.
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { parseAnnotations } from './index';
+
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../skills/skillScanner', () => ({
+	isSkillAvailable: () => true
+}));
 
 describe('Edge Cases - Error Handling (Story 004)', () => {
 	test('Example 1: Unclosed code block (critical error)', () => {

@@ -16,7 +16,15 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 - On-the-fly TypeScript transpilation using ts-node
 - 19 unit tests, all passing
 - Execute skill implemented for playbook integration
+- Dynamic skill highlighting based on available skills in `.brainy/skills` directory
 - See [skills README](./packages/vscode-extension/src/skills/README.md) for details
+
+**Annotation Highlighting:** ✅ Complete
+- Generic annotation highlighting for markdown playbooks
+- Only highlights skills available in `.brainy/skills` directory (case-sensitive)
+- Live updates when skills are added or removed
+- Editor errors shown for missing skill references
+- 40 unit tests for annotation highlighting and play button
 
 ## Contribution
 
@@ -57,12 +65,31 @@ brainy/
 │       │   └── skills/       # Skills system (API, model client, skill runner)
 │       ├── e2e/              # End-to-end tests
 │       │   └── test-project/ # Test project with sample playbooks and skills
-│       │       └── skills/   # Example skills (execute.js, execute.ts)
+│       │       └── .brainy/  # Test workspace configuration
+│       │           └── skills/ # Example skills (execute.js, execute.ts)
 │       └── dist/             # Built files
 ├── test-results/             # Test result outputs and logs
 ├── package.json              # Root workspace config
 └── playwright.config.ts      # E2E test config
 ```
+
+## Skills Directory Convention
+
+Custom skills should be placed in the `.brainy/skills` directory in your workspace:
+
+```
+your-workspace/
+└── .brainy/
+    └── skills/
+        ├── execute.ts       # Custom TypeScript skill
+        ├── task.js          # Custom JavaScript skill
+        └── context.js       # Another custom skill
+```
+
+- **Skill Discovery**: The extension automatically scans `.brainy/skills` for `.js` and `.ts` files
+- **Dynamic Highlighting**: Only annotations matching available skills are highlighted (case-sensitive)
+- **Live Updates**: Adding or removing skills triggers automatic re-highlighting
+- **Error Detection**: Missing skill references show editor errors with hover information
 
 ## Setup
 

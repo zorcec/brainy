@@ -398,8 +398,8 @@ interface SkillResult {
 
 ### Example Skills
 
-- JavaScript: `packages/vscode-extension/e2e/test-project/skills/basic.js`
-- TypeScript: `packages/vscode-extension/e2e/test-project/skills/execute.ts`
+- JavaScript: `packages/vscode-extension/e2e/test-project/.brainy/skills/basic.js`
+- TypeScript: `packages/vscode-extension/e2e/test-project/.brainy/skills/execute.ts`
 
 ### Error Handling
 

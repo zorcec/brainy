@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 120000,
   retries: 1,
   fullyParallel: true,
-  workers: 4,
+  workers: 8,
   reporter: 'html',
   use: {
     headless: true,
@@ -13,8 +13,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     // Optimized navigation settings
-    navigationTimeout: 60000,
-    actionTimeout: 10000,
+    navigationTimeout: 30000,
+    actionTimeout: 5000,
   },
   projects: [
     {

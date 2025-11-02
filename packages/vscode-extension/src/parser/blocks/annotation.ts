@@ -4,6 +4,7 @@
  * Description:
  *   Annotation block extraction logic.
  *   Parses annotation lines and associated flags (single-line and multi-line).
+ *   Validates that annotations reference available skills.
  *
  * Usage:
  *   import { parseAnnotationBlock } from './blocks/annotation';
@@ -14,6 +15,7 @@ import { parseFlagsOrValues, parseFlags, type Flag } from './flag';
 import { type AnnotationBlock } from './plainText';
 import { createError, type ParserError } from '../errors';
 import { isEmptyLine, trimLine, startsWith } from '../utils';
+import { isSkillAvailable } from '../../skills/skillScanner';
 
 /**
  * Result of parsing an annotation block.
@@ -59,6 +61,20 @@ export function parseAnnotationBlock(
 
 	const annotationName = annotationMatch[1];
 	const remainingContent = annotationMatch[2].trim();
+
+	// Validate that the skill is available (case-sensitive)
+	if (!isSkillAvailable(annotationName)) {
+		return {
+			error: createError(
+				'MissingSkill',
+				`Skill "@${annotationName}" not found in .brainy/skills directory`,
+				startLine + 1,
+				'critical',
+				annotationName
+			),
+			nextLine: startLine + 1
+		};
+	}
 
 	// Calculate annotation position
 	const atIndex = line.indexOf('@');

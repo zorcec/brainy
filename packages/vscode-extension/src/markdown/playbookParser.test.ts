@@ -2,8 +2,15 @@
  * Unit tests for playbookParser module
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { parsePlaybook } from './playbookParser';
+
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../skills/skillScanner', () => ({
+	getAvailableSkills: () => ['model', 'task', 'context', 'execute'],
+	isSkillAvailable: () => true,
+	refreshSkills: vi.fn()
+}));
 
 describe('parsePlaybook', () => {
 	test('should parse valid playbook with annotations', () => {

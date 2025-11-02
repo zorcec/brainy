@@ -2,8 +2,13 @@
  * Unit tests for annotation block extraction logic.
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { parseAnnotationBlock } from './annotation';
+
+// Mock the skill scanner to allow all skills in tests
+vi.mock('../../skills/skillScanner', () => ({
+	isSkillAvailable: () => true
+}));
 
 describe('parseAnnotationBlock', () => {
 	test('parses simple annotation with no flags', () => {

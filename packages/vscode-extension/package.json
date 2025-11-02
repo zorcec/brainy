@@ -8,7 +8,7 @@
   "browser": "dist/extension.js",
   "types": "dist/extension.d.ts",
   "scripts": {
-    "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=browser --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
+  "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
     "check-types": "tsc --noEmit",
     "test": "vitest"
   },
@@ -39,7 +39,62 @@
         "command": "brainy.playbook.parse",
         "title": "Brainy: Parse Playbook"
       }
-    ]
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "annotation",
+        "superType": "keyword",
+        "description": "Brainy playbook annotation"
+      },
+      {
+        "id": "flag",
+        "superType": "parameter",
+        "description": "Annotation flag"
+      },
+      {
+        "id": "error",
+        "superType": "regexp",
+        "description": "Parser error"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "scopes": {
+          "annotation": [
+            "keyword.control.brainy",
+            "entity.name.tag.brainy"
+          ],
+          "flag": [
+            "variable.parameter.brainy",
+            "entity.other.attribute-name.brainy"
+          ],
+          "error": [
+            "invalid.illegal.brainy",
+            "markup.error.brainy"
+          ]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "editor.semanticTokenColorCustomizations": {
+        "[*]": {
+          "enabled": true,
+          "rules": {
+            "annotation": {
+              "foreground": "#569CD6",
+              "fontStyle": "bold"
+            },
+            "flag": {
+              "foreground": "#9CDCFE"
+            },
+            "error": {
+              "foreground": "#F48771",
+              "fontStyle": "underline"
+            }
+          }
+        }
+      }
+    }
   }
 }
 

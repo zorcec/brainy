@@ -12,6 +12,7 @@ import {
   createLegend
 } from './markdown/annotationHighlightProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
+import { refreshSkills } from './skills/skillScanner';
 
 // Check if path module is available (Node.js environment)
 let pathModule: any;
@@ -24,7 +25,7 @@ try {
 /**
  * Called when the extension is activated
  */
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   console.log('=== Brainy Extension: Starting Activation ===');
   
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -86,6 +87,40 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   console.log('✓ Annotation highlighting registered for markdown files');
+
+  // Initialize and watch skills directory
+  console.log('Setting up skills scanner...');
+  if (workspaceFolders && workspaceFolders.length > 0) {
+    const workspaceUri = workspaceFolders[0].uri;
+    const workspaceRoot = workspaceUri.fsPath;
+    console.log('Workspace root for skills:', workspaceRoot);
+    console.log('Workspace URI:', workspaceUri.toString());
+    
+    // Initial scan of skills directory
+    await refreshSkills(workspaceUri);
+    console.log('✓ Skills directory scanned');
+    
+    // Watch for changes in .brainy/skills directory
+    const skillsWatcher = vscode.workspace.createFileSystemWatcher('**/.brainy/skills/**/*.{js,ts}');
+    
+    const onSkillsChange = async () => {
+      console.log('Skills directory changed, refreshing...');
+      await refreshSkills(workspaceUri);
+      // Trigger semantic tokens refresh for all open markdown files
+      vscode.window.visibleTextEditors.forEach(editor => {
+        if (editor.document.languageId === 'markdown') {
+          vscode.commands.executeCommand('vscode.executeDocumentSemanticTokens', editor.document.uri);
+        }
+      });
+    };
+    
+    skillsWatcher.onDidCreate(onSkillsChange);
+    skillsWatcher.onDidDelete(onSkillsChange);
+    skillsWatcher.onDidChange(onSkillsChange);
+    
+    context.subscriptions.push(skillsWatcher);
+    console.log('✓ Skills directory watcher registered');
+  }
 
   // Register play button for .brainy.md files
   console.log('Registering CodeLens provider for .brainy.md files...');

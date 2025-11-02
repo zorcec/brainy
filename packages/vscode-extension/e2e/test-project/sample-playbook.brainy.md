@@ -2,10 +2,7 @@
 
 This is a sample playbook file to test the play button feature. Click the play button on line 1 to parse this playbook.
 
-@model "gpt-4.1"
-@context "main" "research"
-
-@task --prompt "Research the topic and summarize key points" --variable "research_result"
+@execute
 
 ```bash
 echo "Executing script..."
@@ -14,15 +11,11 @@ find . -name "*.md"
 
 <!-- This is a comment -->
 
-@task "Analyze the research findings"
+@execute
 
 Some plain text describing the next steps.
 
-@context "specifications"
-
-@task
-  --prompt "Write a technical specification based on the research"
-  --variable "technical_spec"
+@execute
 
 ```python
 # Sample Python code
@@ -32,4 +25,4 @@ result = sum(data)
 print(f"Result: {result}")
 ```
 
-@task "Review and validate the specification"
+@execute "Review and validate the specification"

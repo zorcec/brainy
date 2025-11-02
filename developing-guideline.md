@@ -14,6 +14,7 @@
 - After every story all tests have to pass.
 - Before implementation read the existing code and structure and reflect the same patterns.
 - Consistency is key.
+- e2e tests take time, run only those you need. Use playwright MCP server tools.
 
 ## Module Patterns
 

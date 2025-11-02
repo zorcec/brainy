@@ -12,7 +12,13 @@ import os from 'os';
 // Mock vscode module - must be self-contained
 vi.mock('vscode', () => {
   const mockWorkspace = {
-    workspaceFolders: undefined as any
+    workspaceFolders: undefined as any,
+    createFileSystemWatcher: vi.fn(() => ({
+      onDidCreate: vi.fn(() => ({ dispose: vi.fn() })),
+      onDidDelete: vi.fn(() => ({ dispose: vi.fn() })),
+      onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+      dispose: vi.fn()
+    }))
   };
   
   class MockSemanticTokensLegend {
