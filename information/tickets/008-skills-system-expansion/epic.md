@@ -27,7 +27,7 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
 
   - **Skill Object Requirements:**
     - Each skill must export an object with:
-      - `name`: Unique skill identifier
+      - `name`: Unique skill identifier (derived from the file name)
       - `description`: Brief summary
       - `async function`: Main execution logic
     - API and params can be extended in future stories; API should return getters (details to be clarified in the story).
