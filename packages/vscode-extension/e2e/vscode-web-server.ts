@@ -93,8 +93,8 @@ export class VSCodeWebServer {
 		
 		this.metrics.serverReadyTime = Date.now();
 		
-		// Extra time for VS Code to fully initialize
-		await new Promise(resolve => setTimeout(resolve, 3000));
+		// Reduced initialization time for faster test execution
+		await new Promise(resolve => setTimeout(resolve, 2000));
 
 		this.metrics.totalStartupTime = Date.now() - startTime;
 

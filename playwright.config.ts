@@ -2,10 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'packages/vscode-extension/e2e',
-  timeout: 120000,
+  timeout: 60000,
   retries: 1,
   fullyParallel: true,
-  workers: 8,
+  workers: 6,
   reporter: 'html',
   use: {
     headless: true,
@@ -19,7 +19,7 @@ export default defineConfig({
   projects: [
     {
       name: 'vscode-extension',
-      testMatch: /.*\.e2e\.test\.ts/,
+      testMatch: /.*\.(e2e\.)?test\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         // Optimized browser launch options

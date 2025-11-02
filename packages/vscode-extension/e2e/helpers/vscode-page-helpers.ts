@@ -17,8 +17,8 @@ import { Page, Locator } from '@playwright/test';
 export async function waitForWorkbench(page: Page): Promise<void> {
 	// Wait for the workbench to be visible
 	await page.waitForSelector('.monaco-workbench', { timeout: 30000 });
-	// Extra time for everything to settle (increase slightly for CI)
-	await page.waitForTimeout(4000).catch(() => {});
+	// Reduced wait time for faster test execution
+	await page.waitForTimeout(2000).catch(() => {});
 }
 
 /**
@@ -40,13 +40,11 @@ export async function openFile(page: Page, filename: string): Promise<void> {
 	// Click the file in the tree
 	const fileItem = page.locator(`.monaco-list-row:has-text("${filename}")`);
 	await fileItem.click().catch(() => {});
-	// Wait longer for file to open and extension to activate (increase for reliability)
-	await page.waitForTimeout(4000).catch(() => {});
-	
-	// Wait for editor to be focused
-	await page.waitForSelector('.monaco-editor.focused', { timeout: 10000 }).catch(() => {});
-	// Extra time for CodeLens to appear
+	// Reduced wait time for faster test execution
 	await page.waitForTimeout(2000).catch(() => {});
+	
+	// Reduced wait time for CodeLens to appear
+	await page.waitForTimeout(1000).catch(() => {});
 }
 
 /**
@@ -54,8 +52,8 @@ export async function openFile(page: Page, filename: string): Promise<void> {
  */
 export async function isPlayButtonVisible(page: Page): Promise<boolean> {
 	try {
-		// Wait longer for CodeLens to render in VS Code Web
-		await page.waitForTimeout(3000);
+		// Reduced wait time for faster test execution
+		await page.waitForTimeout(1500);
 		
 		// Try multiple possible selectors for CodeLens
 		const selectors = [
@@ -128,8 +126,8 @@ export async function clickPlayButton(page: Page): Promise<void> {
 			await page.keyboard.press('Enter');
 		}
 		
-		// Wait for command to execute
-		await page.waitForTimeout(5000).catch(() => {});
+		// Reduced wait time for command to execute
+		await page.waitForTimeout(2000).catch(() => {});
 	} catch (e) {
 		console.error('Error clicking play button:', e);
 		throw e;
@@ -169,8 +167,8 @@ export async function captureConsoleLogs(page: Page, action: () => Promise<void>
 	
 	page.on('console', handler);
 	await action();
-	// Wait a bit longer for logs to be emitted
-	await page.waitForTimeout(3000).catch(() => {});
+	// Reduced wait time for logs to be emitted
+	await page.waitForTimeout(1500).catch(() => {});
 	page.off('console', handler);
 	
 	return logs;

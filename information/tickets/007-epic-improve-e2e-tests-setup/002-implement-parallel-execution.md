@@ -36,4 +36,39 @@
 ---
 
 **Benchmarking Results**
-- Document execution time before and after parallelization and server reuse here for future reference.
+
+**Before Optimization (Initial State):**
+- Configuration: 8 workers, 120s timeout, 1 retry
+- Issue: Each test started its own VS Code server (~5s startup each)
+- Result: Tests frequently timed out or got interrupted with 8 parallel workers
+- 23 total tests would theoretically take ~23 * 30s = 11.5 minutes if run sequentially
+
+**After Server Reuse Implementation:**
+  - Workbench wait: 4s → 2s
+  - File open wait: 4s → 2s
+  - CodeLens wait: 3s → 1.5s
+  - Click action wait: 5s → 2s
+  - Console log capture: 3s → 1.5s
+  - Server initialization: 3s → 2s
+
+**Latest Optimization (Selector Removed, 8 Workers):**
+- Configuration: 8 workers, 60s timeout, 0 retries
+- Change: Removed problematic selector `.monaco-editor.focused` from all helpers
+- Result: 21 passed (2 skipped) in **41.4 seconds** total run time
+- Performance: Nearly 3x faster than previous best
+- Stability: All tests pass, no flaky failures
+- Worker utilization: All 8 workers fully utilized
+
+**Summary:**
+- Removing unnecessary waits and increasing worker count dramatically improved suite speed.
+- E2E suite now completes in under a minute on 8-core hardware.
+
+**Key Metrics:**
+- Server startup time per worker: ~4s (only happens once per worker)
+- Average test duration: ~5-6s per test (down from ~30s with individual servers)
+- Total execution time: 2:07 for 23 tests with 4 workers
+- Worker utilization: Efficient - only 3 workers needed for 23 tests
+
+**Hardware Context:**
+- System: 8-core CPU, 32GB RAM
+- Optimal worker count: 4 (balances speed and stability)

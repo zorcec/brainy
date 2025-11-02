@@ -47,13 +47,17 @@ export interface VSCodePage {
 }
 
 /**
- * Fixtures for VS Code Web E2E testing
+ * Worker-scoped fixtures (shared across tests in same worker)
  */
-type VSCodeFixtures = {
-	/** VS Code Web server instance (auto-started and stopped) */
+type VSCodeWorkerFixtures = {
+	/** VS Code Web server instance (one per worker) */
 	vscodeServer: VSCodeWebServer;
-	/** Browser context for this test */
-	vscodeContext: BrowserContext;
+};
+
+/**
+ * Test-scoped fixtures (unique per test)
+ */
+type VSCodeTestFixtures = {
 	/** VS Code page with helper methods */
 	vscPage: VSCodePage;
 	/** Test start time for metrics */
@@ -63,7 +67,7 @@ type VSCodeFixtures = {
 /**
  * Extended test with VS Code fixtures
  */
-export const test = base.extend<VSCodeFixtures>({
+export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 	/**
 	 * Test start time fixture (auto-used by other fixtures)
 	 */
@@ -73,63 +77,52 @@ export const test = base.extend<VSCodeFixtures>({
 	},
 
 	/**
-	 * VS Code server fixture
-	 * Automatically starts a new VS Code server for each test
-	 * and stops it after the test completes
+	 * VS Code server fixture (worker-scoped)
+	 * Starts one VS Code server per worker and reuses it across all tests
+	 * This dramatically improves performance by avoiding redundant server startups
 	 */
-	vscodeServer: async ({ testStartTime }, use) => {
+	vscodeServer: [async ({}, use, workerInfo) => {
+		const startTime = Date.now();
 		const server = new VSCodeWebServer();
 		await server.start();
 		
-		const setupTime = Date.now() - testStartTime;
-		console.log(`VS Code server setup completed in ${setupTime}ms`);
+		const setupTime = Date.now() - startTime;
+		console.log(`[Worker ${workerInfo.workerIndex}] VS Code server setup completed in ${setupTime}ms`);
 		
 		await use(server);
 		
-		// Cleanup: stop server
+		// Cleanup: stop server after all tests in this worker complete
 		const metrics = server.getMetrics();
 		if (metrics) {
-			console.log(`Server metrics: ${JSON.stringify(metrics)}`);
+			console.log(`[Worker ${workerInfo.workerIndex}] Server metrics: ${JSON.stringify(metrics)}`);
 		}
 		await server.stop();
-	},
+	}, { scope: 'worker' }],
 
 	/**
-	 * Browser context fixture
-	 * Creates a new browser context for each test
-	 * using the shared browser from the worker
+	 * VS Code page fixture with helper methods (test-scoped)
+	 * Reuses the shared VS Code server from the worker
+	 * Navigates to a clean starting page before each test
 	 */
-	vscodeContext: async ({ browser, vscodeServer }, use) => {
-		// Create a new browser context (lightweight) for this test
-		const browserContext = await browser.newContext();
-		
-		await use(browserContext);
-		
-		// Cleanup: close context
-		await browserContext.close();
-	},
-
-	/**
-	 * VS Code page fixture with helper methods
-	 * Creates a new page and navigates to VS Code Web
-	 * Wraps the page with convenient helper methods
-	 */
-	vscPage: async ({ vscodeContext, vscodeServer, testStartTime }, use, testInfo) => {
+	vscPage: async ({ browser, vscodeServer, testStartTime }, use, testInfo) => {
 		// Get VS Code URL from server
 		const vscodeUrl = vscodeServer.getUrl();
 		if (!vscodeUrl) {
 			throw new Error('VS Code server URL not available');
 		}
 
-		// Create a new page within the context
-		const page = await vscodeContext.newPage();
+		// Create a new page within the browser context
+		// Using browser.newPage() creates an isolated context automatically
+		const page = await browser.newPage();
+		
+		// Navigate to VS Code Web starting page
 		await page.goto(vscodeUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 		
 		// Wait for workbench to load
 		await helpers.waitForWorkbench(page);
 		
 		const setupTime = Date.now() - testStartTime;
-		console.log(`Test setup completed in ${setupTime}ms`);
+		console.log(`[${testInfo.title}] Test setup completed in ${setupTime}ms`);
 
 		// Create extended page with helper methods
 		const vscPage: VSCodePage = {
@@ -150,7 +143,7 @@ export const test = base.extend<VSCodeFixtures>({
 		
 		// Cleanup: close page and log test duration
 		const testDuration = Date.now() - testStartTime;
-		console.log(`Test "${testInfo.title}" total duration: ${testDuration}ms`);
+		console.log(`[${testInfo.title}] Test total duration: ${testDuration}ms`);
 		await page.close();
 	},
 });
