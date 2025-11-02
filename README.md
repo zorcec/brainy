@@ -7,30 +7,15 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 ## Status
 
 **Parser Implementation:** ✅ Complete
-- Generic markdown annotation parser implemented with code block support
-- 111 unit tests, all passing (includes 20 new code block tests)
-- See [parser README](./packages/vscode-extension/src/parser/README.md) for details
 
 **Skills System:** ✅ Complete
-- Skill runner with JavaScript and TypeScript support
-- On-the-fly TypeScript transpilation using ts-node
-- 19 unit tests, all passing
-- Execute skill implemented for playbook integration
-- Dynamic skill highlighting based on available skills in `.brainy/skills` directory
-- See [skills README](./packages/vscode-extension/src/skills/README.md) for details
 
 **Annotation Highlighting:** ✅ Complete
-- Generic annotation highlighting for markdown playbooks
-- Only highlights skills available in `.brainy/skills` directory (case-sensitive)
-- Live updates when skills are added or removed
-- Editor errors shown for missing skill references
-- 40 unit tests for annotation highlighting and play button
 
 ## Contribution
 
-- Update `information/index.md` when adding new documentation or research files
-- Update `information/tickets/` when adding new epics or user stories
-- Follow best practices for code and documentation
+ See [Information Directory README](./information/README.md) for documentation structure
+ See [Server README](./packages/server/README.md) and [VS Code Extension README](./packages/vscode-extension/README.md) for implementation details
 
 ## Project Structure
 
@@ -52,6 +37,9 @@ brainy/
 │       ├── 002-markdown-parser/
 │       ├── 003-skills-system/
 │       └── 004-context-manager/
+├── packages/
+│   ├── server/              # Backend server (README: ./packages/server/README.md)
+│   └── vscode-extension/    # VS Code extension (README: ./packages/vscode-extension/README.md)
 ├── packages/
 │   ├── server/               # Brainy server (API, SQLite vector search)
 │   │   ├── src/              # Source files

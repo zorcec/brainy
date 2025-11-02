@@ -21,6 +21,7 @@ This file indexes all information and instruction files in the `brainy/informati
 | project/preparation/personalized_knowledge_agent.md | Personalized topic-specific knowledge agent concept. |
 | project/preparation/rag_ideas.md | RAG (Retrieval-Augmented Generation) ideas and concepts. |
 | project/preparation/sqlite_vector_hybrid_search.md | Storing/searching embeddings in SQLite for hybrid search. |
+| README.md | Directory overview and usage instructions. |
 
 ## Tickets
 
@@ -43,6 +44,5 @@ This file indexes all information and instruction files in the `brainy/informati
 | tickets/003-skills-system/epic.md | Epic: Skills system architecture and implementation. |
 | tickets/004-context-manager/epic.md | Epic: Context manager for agent workflows. |
 
----
 
-> Update this index whenever new information or instruction files are added, removed, or modified.
+-> Follow formatting and clarity guidelines from instructions-writting.instructions.md for consistency.
