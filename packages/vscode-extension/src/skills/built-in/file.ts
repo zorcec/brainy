@@ -18,8 +18,19 @@
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { Skill, SkillParams } from '../types';
+
+// Helper function to resolve file paths (web-compatible)
+function resolveFilePath(workspace: vscode.Uri, filePath: string): vscode.Uri {
+	// If absolute path (starts with /), use it directly
+	if (filePath.startsWith('/')) {
+		return vscode.Uri.file(filePath);
+	}
+	
+	// Otherwise, resolve relative to workspace
+	// Use VS Code's URI.joinPath which works in both Node and Web
+	return vscode.Uri.joinPath(workspace, filePath);
+}
 
 /**
  * File skill implementation.
@@ -84,13 +95,7 @@ export const fileSkill: Skill = {
  * @returns Resolved file URI
  */
 function resolveFileUri(filePath: string, workspaceUri: vscode.Uri): vscode.Uri {
-	// If the path is absolute, use it directly
-	if (path.isAbsolute(filePath)) {
-		return vscode.Uri.file(filePath);
-	}
-	
-	// Otherwise, resolve relative to workspace
-	return vscode.Uri.joinPath(workspaceUri, filePath);
+	return resolveFilePath(workspaceUri, filePath);
 }
 
 /**

@@ -159,13 +159,13 @@ describe('Extension', () => {
       subscriptions: [],
     } as any;
     
-    extension.activate(context);
-    
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-      'brainy.configure',
-      expect.any(Function)
-    );
-    expect(startSpy).toHaveBeenCalled();
+    return extension.activate(context).then(() => {
+      expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
+        'brainy.configure',
+        expect.any(Function)
+      );
+      expect(startSpy).toHaveBeenCalled();
+    });
   });
 
   it('deactivate should not throw when called', () => {

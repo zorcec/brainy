@@ -14,12 +14,22 @@ import {
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 import { refreshSkills } from './skills/skillScanner';
 
-// Check if path module is available (Node.js environment)
-let pathModule: any;
-try {
-  pathModule = require('path');
-} catch {
-  // path not available in web environment
+// Helper function to safely join paths
+function joinPath(base: string, ...parts: string[]): string {
+  // In web environment, use simple string concatenation with forward slashes
+  // In Node.js environment, use path module if available
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const path = require('path');
+      return path.join(base, ...parts);
+    } catch {
+      // Fallback to manual join
+    }
+  }
+  
+  // Manual path joining for web environment
+  const normalizedParts = [base, ...parts].filter(Boolean);
+  return normalizedParts.join('/').replace(/\/+/g, '/');
 }
 
 /**
@@ -31,11 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    let brainyPath = workspaceRoot;
-    
-    if (pathModule) {
-      brainyPath = pathModule.join(workspaceRoot, '.brainy');
-    }
+    const brainyPath = joinPath(workspaceRoot, '.brainy');
     
     console.log('Workspace root:', workspaceRoot);
     console.log('Brainy path:', brainyPath);
@@ -169,11 +175,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
       
       const workspaceRoot = folders[0].uri.fsPath;
-      let brainyPath = workspaceRoot;
-      
-      if (pathModule) {
-        brainyPath = pathModule.join(workspaceRoot, '.brainy');
-      }
+      const brainyPath = joinPath(workspaceRoot, '.brainy');
       
       vscode.window.showInformationMessage(`Brainy configured at ${brainyPath}`);
     })
