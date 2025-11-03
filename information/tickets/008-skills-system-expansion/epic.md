@@ -25,53 +25,54 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
 
 ## Skill API Specification & Implementation Details
 
-  - **Skill Object Requirements:**
     - Each skill must export an object with:
       - `name`: Unique skill identifier (derived from the file name)
       - `description`: Brief summary
       - `async function`: Main execution logic
     - API and params can be extended in future stories; API should return getters (details to be clarified in the story).
 
-  - **Input/Output Types:**
     - No strict types; input is defined by the system API.
     - Output is always a string.
 
-  - **Async & Error Handling:**
     - Skills support async operations.
     - Errors/exceptions must be surfaced to the UI.
+    - Errors from `sendRequest()` are surfaced by throwing exceptions (no structured error objects).
 
-  - **Built-in vs. Project Skills:**
     - Built-in skills (shipped with the extension) always take priority over project-specific skills.
     - Skill name conflicts result in a UI error.
 
-  - **Modularity & Loader:**
     - Skills are dynamically loaded: once a skill file is created, it is automatically picked up.
     - Hot-reloading and dynamic registration are supported.
+    - The messaging helper/wrapper is injected at the beginning and is always available; the API uses it transparently for skills.
 
-  - **UI Feedback:**
     - Skill execution highlights the line yellow.
     - On failure, the line turns red; tooltip on hover shows the exception message.
     - On success, the line turns green.
     - Only tooltips are planned for extensible feedback for now.
 
-  - **Testing & Examples:**
     - Skills should be tested only with unit tests. Do not use E2E tests for skill logic, as Node.js APIs are not available in browser-based environments (such as VS Code running in the browser).
     - Unit tests: Cover as much as possible for each skill.
     - Usage examples: Will be shown in tooltips (to be implemented in the papercuts epic).
+    - Add a story to create a testing environment for built-in skills and cover it with tests.
 
-  - **Variables & Context:**
     - Each skill runs in an isolated Node.js process.
     - The playbook has a global scope, but skills cannot interact with it directly.
     - Skills can only return a string, which the playbook may set as a variable.
 
-  - **Documentation:**
     - No migration guides; documentation should focus on immediate usage.
     - Target audience: agents (who will likely create skills).
     - No template or standard for documenting new skills at this stage.
+    - Only provide documentation and code samples needed for agents to write skills—no full API reference.
 
-  - **Risks & Compatibility:**
     - No current security considerations for skill execution.
     - Backward compatibility is not maintained; if the API changes, affected skills must be updated (focus is on built-in skills for now).
+    - No security measures, allowlist, or permission model for exposed functions.
+    - Future API changes may be breaking; old built-in skills must be updated. No versioning or feature flags.
+
+## API Surface, IPC, and Lifecycle Decisions
+
+- The global `VscodeApi` type will only expose `sendRequest` and `selectModel`. No other VSCode extension APIs (notifications, file system, etc.) are included. No versioning or compatibility guarantees.
+- IPC (JSON-over-IPC) is the chosen messaging method for communication between skill processes and the main extension process.
 
 - Implementation of basic skills listed above
 - Refactoring skills loader for modularity
@@ -100,6 +101,7 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
 7. Implement Variables Support
 8. Implement Link Skill
 9. Refactor loader and add tests/examples
+ 10. Create a testing environment for built-in skills and cover it with tests
 
 ## Risks & Mitigations
 - Ambiguity in API: Mitigate by thorough documentation and examples

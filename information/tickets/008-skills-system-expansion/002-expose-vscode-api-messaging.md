@@ -23,6 +23,17 @@ To enable advanced automation and integration, Brainy skills need access to inte
 - Provide code samples for skill authors.
 - Reference related stories and epic.
 
+## Design Decisions & Clarifications
+
+- **API Surface**: The global `VscodeApi` type will only expose `sendRequest` and `selectModel`. No other VSCode extension APIs (notifications, file system, etc.) are included. No versioning or compatibility guarantees.
+- **Security**: No security measures, allowlist, or permission model for exposed functions.
+- **Error Handling**: Errors from `sendRequest()` will be surfaced by throwing exceptions—no structured error objects.
+- **Extensibility**: Future API changes may be breaking; old built-in skills must be updated. No versioning or feature flags.
+- **Testing/Mocking**: Only unit tests for now. Add a story to create a testing environment for built-in skills and cover it with tests.
+- **Documentation**: Only provide documentation and code samples needed for agents to write skills—no full API reference.
+- **IPC Transport**: JSON-over-IPC is the chosen messaging method.
+- **Skill Lifecycle**: The messaging helper/wrapper is injected at the beginning and is always available; the API uses it transparently for skills.
+
 ## API & Messaging Specification
 - Skills receive an injected `vscode` API object of type `VscodeApi`.
 - `VscodeApi` includes all existing methods plus the new `sendRequest()` function.
