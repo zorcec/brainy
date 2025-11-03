@@ -4,14 +4,6 @@
 
 A monorepo project for the Brainy knowledge assistant, including a server with SQLite vector search and a VS Code extension.
 
-## Status
-
-**Parser Implementation:** ✅ Complete
-
-**Skills System:** ✅ Complete
-
-**Annotation Highlighting:** ✅ Complete
-
 ## Contribution
 
  See [Information Directory README](./information/README.md) for documentation structure
