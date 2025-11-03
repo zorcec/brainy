@@ -4,7 +4,8 @@
  * Description:
  *   Built-in file manipulation skill for Brainy.
  *   Supports read, write, and delete operations on files.
- *   Uses VS Code API for file system access (compatible with both Node.js and Web).
+ *   Uses Node.js fs.promises API for file system access (no VS Code APIs).
+ *   Runs in an isolated Node.js process.
  *
  * Usage in playbooks:
  *   @file --action "read" --path "./notes.md"
@@ -13,23 +14,33 @@
  *
  * Parameters:
  *   - action: "read" | "write" | "delete"
- *   - path: File path (relative to workspace or absolute)
+ *   - path: File path (relative to project root or absolute)
  *   - content: File content (required for write action)
  */
 
-import * as vscode from 'vscode';
-import { Skill, SkillParams, SkillApi } from '../types';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 
-// Helper function to resolve file paths (web-compatible)
-function resolveFilePath(workspace: vscode.Uri, filePath: string): vscode.Uri {
-	// If absolute path (starts with /), use it directly
-	if (filePath.startsWith('/')) {
-		return vscode.Uri.file(filePath);
-	}
-	
-	// Otherwise, resolve relative to workspace
-	// Use VS Code's URI.joinPath which works in both Node and Web
-	return vscode.Uri.joinPath(workspace, filePath);
+/**
+ * Parameters passed to skill execution.
+ */
+type SkillParams = Record<string, string | undefined>;
+
+/**
+ * API provided to skills (not used by this skill).
+ */
+interface SkillApi {
+	sendRequest(role: 'user' | 'assistant', content: string, modelId?: string): Promise<{ response: string }>;
+	selectChatModel(modelId: string): Promise<void>;
+}
+
+/**
+ * Skill interface.
+ */
+interface Skill {
+	name: string;
+	description: string;
+	execute(api: SkillApi, params: SkillParams): Promise<string>;
 }
 
 /**
@@ -39,78 +50,60 @@ export const fileSkill: Skill = {
 	name: 'file',
 	description: 'Read, write and delete files.',
 	
-       async execute(api: SkillApi, params: SkillParams): Promise<string> {
-	       // Defensive: params must be an object
-	       if (!params || typeof params !== 'object') {
-		       throw new Error('Invalid params: must be an object');
-	       }
-	       const { action, path: filePath, content } = params;
+	async execute(api: SkillApi, params: SkillParams): Promise<string> {
+		// Defensive: params must be an object
+		if (!params || typeof params !== 'object') {
+			throw new Error('Invalid params: must be an object');
+		}
+		const { action, path: filePath, content } = params;
 
-	       // Validate action parameter
-	       if (!action) {
-		       throw new Error('Missing required parameter: action');
-	       }
-	       if (action !== 'read' && action !== 'write' && action !== 'delete') {
-		       throw new Error(`Invalid action: ${action}. Must be one of: read, write, delete`);
-	       }
-	       // Validate path parameter
-	       if (!filePath) {
-		       throw new Error('Missing required parameter: path');
-	       }
-	       // Validate content for write action
-	       if (action === 'write' && content === undefined) {
-		       throw new Error('Missing required parameter for write action: content');
-	       }
+		// Validate action parameter
+		if (!action) {
+			throw new Error('Missing required parameter: action');
+		}
+		if (action !== 'read' && action !== 'write' && action !== 'delete') {
+			throw new Error(`Invalid action: ${action}. Must be one of: read, write, delete`);
+		}
+		// Validate path parameter
+		if (!filePath) {
+			throw new Error('Missing required parameter: path');
+		}
+		// Validate content for write action
+		if (action === 'write' && content === undefined) {
+			throw new Error('Missing required parameter for write action: content');
+		}
 
-	       // Get workspace folder
-	       const workspaceFolders = vscode.workspace.workspaceFolders;
-	       if (!workspaceFolders || workspaceFolders.length === 0) {
-		       throw new Error('No workspace folder open');
-	       }
+		// Resolve file path (relative paths are resolved from process.cwd(), which is set to project root)
+		const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
-	       // Resolve file URI (support both relative and absolute paths)
-	       const fileUri = resolveFileUri(filePath, workspaceFolders[0].uri);
-
-	       // Execute action
-	       switch (action) {
-		       case 'read':
-			       return await readFile(fileUri);
-		       case 'write':
-			       return await writeFile(fileUri, content!);
-		       case 'delete':
-			       return await deleteFile(fileUri);
-		       default:
-			       // TypeScript should prevent this, but just in case
-			       throw new Error(`Unsupported action: ${action}`);
-	       }
-       }
+		// Execute action
+		switch (action) {
+			case 'read':
+				return await readFile(resolvedPath);
+			case 'write':
+				return await writeFile(resolvedPath, content!);
+			case 'delete':
+				return await deleteFile(resolvedPath);
+			default:
+				// TypeScript should prevent this, but just in case
+				throw new Error(`Unsupported action: ${action}`);
+		}
+	}
 };
-
-/**
- * Resolves a file path to a VS Code URI.
- * Handles both relative and absolute paths.
- *
- * @param filePath - File path (relative or absolute)
- * @param workspaceUri - Workspace root URI
- * @returns Resolved file URI
- */
-function resolveFileUri(filePath: string, workspaceUri: vscode.Uri): vscode.Uri {
-	return resolveFilePath(workspaceUri, filePath);
-}
 
 /**
  * Reads a file and returns its contents as a string.
  *
- * @param fileUri - File URI to read
+ * @param filePath - Absolute file path to read
  * @returns File contents as string
  */
-async function readFile(fileUri: vscode.Uri): Promise<string> {
+async function readFile(filePath: string): Promise<string> {
 	try {
-		const content = await vscode.workspace.fs.readFile(fileUri);
-		return new TextDecoder().decode(content);
+		const content = await fs.readFile(filePath, 'utf8');
+		return content;
 	} catch (error) {
 		throw new Error(
-			`Failed to read file ${fileUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`
+			`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
 		);
 	}
 }
@@ -119,18 +112,22 @@ async function readFile(fileUri: vscode.Uri): Promise<string> {
  * Writes content to a file.
  * Creates parent directories if they don't exist.
  *
- * @param fileUri - File URI to write
+ * @param filePath - Absolute file path to write
  * @param content - Content to write
  * @returns Success message
  */
-async function writeFile(fileUri: vscode.Uri, content: string): Promise<string> {
+async function writeFile(filePath: string, content: string): Promise<string> {
 	try {
-		const contentBytes = new TextEncoder().encode(content);
-		await vscode.workspace.fs.writeFile(fileUri, contentBytes);
-		return `File written successfully: ${fileUri.fsPath}`;
+		// Create parent directories if they don't exist
+		const dir = path.dirname(filePath);
+		await fs.mkdir(dir, { recursive: true });
+		
+		// Write the file
+		await fs.writeFile(filePath, content, 'utf8');
+		return `File written successfully: ${filePath}`;
 	} catch (error) {
 		throw new Error(
-			`Failed to write file ${fileUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`
+			`Failed to write file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
 		);
 	}
 }
@@ -138,16 +135,16 @@ async function writeFile(fileUri: vscode.Uri, content: string): Promise<string> 
 /**
  * Deletes a file.
  *
- * @param fileUri - File URI to delete
+ * @param filePath - Absolute file path to delete
  * @returns Success message
  */
-async function deleteFile(fileUri: vscode.Uri): Promise<string> {
+async function deleteFile(filePath: string): Promise<string> {
 	try {
-		await vscode.workspace.fs.delete(fileUri);
-		return `File deleted successfully: ${fileUri.fsPath}`;
+		await fs.unlink(filePath);
+		return `File deleted successfully: ${filePath}`;
 	} catch (error) {
 		throw new Error(
-			`Failed to delete file ${fileUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`
+			`Failed to delete file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
 		);
 	}
 }

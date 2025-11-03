@@ -2,67 +2,59 @@
  * Module: skills/skillLoader.ts
  *
  * Description:
- *   Skill loader for loading and executing skills using the new Skill API.
+ *   Skill loader for loading and executing skills in isolated Node.js processes.
  *   Supports both built-in skills (shipped with extension) and project skills (.brainy/skills).
  *   Built-in skills always take priority over project skills.
- *   Project skills are dynamically loaded from .js and .ts files.
+ *   Each skill runs in an isolated process with only Node.js APIs available.
+ *   The working directory is set to the project root for each skill process.
  *
  * Usage:
  *   import { loadSkill, executeSkill } from './skills/skillLoader';
  *   
- *   const skill = await loadSkill('file', workspaceUri);
- *   const result = await executeSkill(skill, { action: 'read', path: './test.txt' });
+ *   const skillMeta = await loadSkill('file', workspaceUri);
+ *   const result = await executeSkill(skillMeta, { action: 'read', path: './test.txt' }, workspaceUri);
  */
 
 import * as vscode from 'vscode';
-import { Skill, SkillParams } from './types';
-import { getBuiltInSkill, isBuiltInSkill } from './built-in';
-import { createSkillApi } from './skillApi';
+import { fork, ChildProcess } from 'child_process';
+import * as path from 'path';
+import { SkillParams } from './types';
+import { isBuiltInSkill } from './built-in';
+import { sendRequest as modelSendRequest } from './modelClient';
+import { setSelectedModel } from './sessionStore';
 
 /**
- * Tracks whether ts-node has been registered for TypeScript support.
+ * Skill metadata (returned by loadSkill).
+ * Contains the path to the skill file and basic metadata.
  */
-let tsNodeRegistered = false;
-
-/**
- * Registers ts-node for TypeScript support if not already registered.
- * This allows Node.js to require .ts files directly.
- */
-function registerTsNode(): void {
-	if (tsNodeRegistered) {
-		return;
-	}
-
-	try {
-		// Register ts-node to enable TypeScript file execution
-		require('ts-node/register');
-		tsNodeRegistered = true;
-		console.log('[SkillLoader] ts-node registered for TypeScript skill support');
-	} catch (error) {
-		throw new Error(
-			`Failed to register ts-node: ${error instanceof Error ? error.message : String(error)}`
-		);
-	}
+export interface SkillMetadata {
+	name: string;
+	skillPath: string;
+	isBuiltIn: boolean;
 }
 
 /**
- * Loads a skill by name.
+ * Loads a skill by name and returns metadata.
  * First checks built-in skills, then attempts to load from project's .brainy/skills directory.
  *
  * @param skillName - Name of the skill to load
- * @param workspaceUri - Workspace root URI (required for project skills)
- * @returns Promise resolving to the skill object
+ * @param workspaceUri - Workspace root URI (required for project skills and determining project root)
+ * @returns Promise resolving to the skill metadata
  * @throws Error if the skill cannot be found or loaded
  */
-export async function loadSkill(skillName: string, workspaceUri?: vscode.Uri): Promise<Skill> {
+export async function loadSkill(skillName: string, workspaceUri?: vscode.Uri): Promise<SkillMetadata> {
 	if (!skillName || typeof skillName !== 'string') {
 		throw new Error('Skill name must be a non-empty string');
 	}
 
 	// Check built-in skills first
-	const builtInSkill = getBuiltInSkill(skillName);
-	if (builtInSkill) {
-		return builtInSkill;
+	if (isBuiltInSkill(skillName)) {
+		const builtInPath = path.join(__dirname, 'built-in', `${skillName}.ts`);
+		return {
+			name: skillName,
+			skillPath: builtInPath,
+			isBuiltIn: true
+		};
 	}
 
 	// Attempt to load from project skills
@@ -79,10 +71,10 @@ export async function loadSkill(skillName: string, workspaceUri?: vscode.Uri): P
  *
  * @param skillName - Name of the skill to load
  * @param workspaceUri - Workspace root URI
- * @returns Promise resolving to the skill object
+ * @returns Promise resolving to the skill metadata
  * @throws Error if the skill cannot be found or loaded
  */
-async function loadProjectSkill(skillName: string, workspaceUri: vscode.Uri): Promise<Skill> {
+async function loadProjectSkill(skillName: string, workspaceUri: vscode.Uri): Promise<SkillMetadata> {
 	// Try .ts first, then .js
 	const extensions = ['.ts', '.js'];
 	
@@ -94,39 +86,11 @@ async function loadProjectSkill(skillName: string, workspaceUri: vscode.Uri): Pr
 			const fileUri = vscode.Uri.file(skillPath);
 			await vscode.workspace.fs.stat(fileUri);
 			
-			// Register ts-node if loading a TypeScript file
-			if (ext === '.ts') {
-				registerTsNode();
-			}
-			
-			// Load the skill module
-			// Note: This won't work in browser/web environments
-			// Clear require cache to support hot-reloading
-			delete require.cache[require.resolve(skillPath)];
-			const module = require(skillPath);
-			
-			// Extract the skill object
-			// Support both default export and named exports
-			const skill = module.default || module[`${skillName}Skill`] || module;
-			
-			// Validate the skill object
-			if (!skill || typeof skill !== 'object') {
-				throw new Error(`Skill module at ${skillPath} must export a Skill object`);
-			}
-			
-			if (!skill.name || typeof skill.name !== 'string') {
-				throw new Error(`Skill at ${skillPath} must have a 'name' property (string)`);
-			}
-			
-			if (!skill.description || typeof skill.description !== 'string') {
-				throw new Error(`Skill at ${skillPath} must have a 'description' property (string)`);
-			}
-			
-			if (!skill.execute || typeof skill.execute !== 'function') {
-				throw new Error(`Skill at ${skillPath} must have an 'execute' property (async function)`);
-			}
-			
-			return skill as Skill;
+			return {
+				name: skillName,
+				skillPath,
+				isBuiltIn: false
+			};
 			
 		} catch (error) {
 			// If file doesn't exist, try next extension
@@ -146,34 +110,133 @@ async function loadProjectSkill(skillName: string, workspaceUri: vscode.Uri): Pr
 }
 
 /**
- * Executes a skill with the provided parameters.
+ * Executes a skill in an isolated Node.js process.
  *
- * @param skill - The skill to execute
+ * @param skillMeta - The skill metadata from loadSkill
  * @param params - Parameters to pass to the skill
+ * @param workspaceUri - Workspace root URI (used to set working directory)
  * @returns Promise resolving to the skill result (string)
  * @throws Error if skill execution fails
  */
-export async function executeSkill(skill: Skill, params: SkillParams): Promise<string> {
-	if (!skill || typeof skill.execute !== 'function') {
-		throw new Error('Invalid skill: must have an execute function');
+export async function executeSkill(
+	skillMeta: SkillMetadata,
+	params: SkillParams,
+	workspaceUri: vscode.Uri
+): Promise<string> {
+	if (!skillMeta || !skillMeta.skillPath) {
+		throw new Error('Invalid skill metadata');
 	}
 
-	try {
-		// Create and inject SkillApi
-		const api = createSkillApi();
-		const result = await skill.execute(api, params);
-		
-		// Validate result
-		if (typeof result !== 'string') {
-			throw new Error('Skill execute function must return a string');
-		}
-		
-		return result;
-	} catch (error) {
-		throw new Error(
-			`Skill '${skill.name}' execution failed: ${error instanceof Error ? error.message : String(error)}`
-		);
+	if (!workspaceUri) {
+		throw new Error('Workspace URI is required for skill execution');
 	}
+
+	const projectRoot = workspaceUri.fsPath;
+	const skillProcessPath = path.join(__dirname, 'skillProcess.js'); // Use .js (compiled output)
+
+	return new Promise((resolve, reject) => {
+		// Fork the skill process with working directory set to project root
+		const child = fork(skillProcessPath, [], {
+			cwd: projectRoot,
+			stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+			env: { ...process.env, NODE_ENV: 'production' }
+		});
+
+		let resolved = false;
+
+		// Handle messages from the child process
+		child.on('message', async (message: any) => {
+			if (!message || typeof message !== 'object') {
+				return;
+			}
+
+			// Handle result
+			if (message.type === 'result') {
+				resolved = true;
+				child.kill();
+				resolve(message.result);
+				return;
+			}
+
+			// Handle error
+			if (message.type === 'error') {
+				resolved = true;
+				child.kill();
+				reject(new Error(message.error));
+				return;
+			}
+
+			// Handle sendRequest from skill
+			if (message.type === 'request') {
+				try {
+					const { requestId, role, content, modelId } = message;
+					const response = await modelSendRequest({ role, content, modelId });
+					child.send({ type: 'response', requestId, response: response.reply });
+				} catch (error) {
+					child.send({
+						type: 'request-error',
+						requestId: message.requestId,
+						error: error instanceof Error ? error.message : String(error)
+					});
+				}
+				return;
+			}
+
+			// Handle selectChatModel from skill
+			if (message.type === 'select-model') {
+				try {
+					const { requestId, modelId } = message;
+					setSelectedModel(modelId);
+					child.send({ type: 'model-selected', requestId });
+				} catch (error) {
+					child.send({
+						type: 'model-error',
+						requestId: message.requestId,
+						error: error instanceof Error ? error.message : String(error)
+					});
+				}
+				return;
+			}
+		});
+
+		// Handle process errors
+		child.on('error', (error) => {
+			if (!resolved) {
+				resolved = true;
+				reject(new Error(`Skill process error: ${error.message}`));
+			}
+		});
+
+		// Handle process exit
+		child.on('exit', (code, signal) => {
+			if (!resolved) {
+				resolved = true;
+				if (code !== 0) {
+					reject(new Error(`Skill process exited with code ${code}`));
+				} else if (signal) {
+					reject(new Error(`Skill process killed with signal ${signal}`));
+				} else {
+					reject(new Error('Skill process exited without result'));
+				}
+			}
+		});
+
+		// Send execute command to child process
+		child.send({
+			type: 'execute',
+			skillPath: skillMeta.skillPath,
+			params
+		});
+
+		// Timeout after 60 seconds
+		setTimeout(() => {
+			if (!resolved) {
+				resolved = true;
+				child.kill();
+				reject(new Error('Skill execution timeout (60s)'));
+			}
+		}, 60000);
+	});
 }
 
 /**
@@ -187,17 +250,16 @@ export async function executeSkill(skill: Skill, params: SkillParams): Promise<s
 export async function runSkill(
 	skillName: string,
 	params: SkillParams,
-	workspaceUri?: vscode.Uri
+	workspaceUri: vscode.Uri
 ): Promise<string> {
-	const skill = await loadSkill(skillName, workspaceUri);
-	return await executeSkill(skill, params);
+	const skillMeta = await loadSkill(skillName, workspaceUri);
+	return await executeSkill(skillMeta, params, workspaceUri);
 }
 
 /**
  * Resets the skill loader state. Used for testing.
  */
 export function resetSkillLoader(): void {
-	tsNodeRegistered = false;
-	// Clear require cache for all project skills
-	// This is a best-effort approach; requires careful testing
+	// No state to reset in the new implementation
+	// Process isolation means no shared state
 }

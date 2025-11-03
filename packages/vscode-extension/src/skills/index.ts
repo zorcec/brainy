@@ -117,8 +117,6 @@ export {
 
 // Re-export built-in skills registry
 export {
-	getBuiltInSkills,
-	getBuiltInSkill,
 	isBuiltInSkill,
 	getBuiltInSkillNames
 } from './built-in';

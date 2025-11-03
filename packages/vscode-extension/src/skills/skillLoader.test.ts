@@ -3,19 +3,32 @@
  *
  * Description:
  *   Unit tests for the skill loader.
- *   Tests loading and execution of both built-in and project skills.
+ *   Tests loading of both built-in and project skills.
+ *   Execution tests are limited due to process isolation - full tests are in e2e.
  *   
- * Note: Some tests are limited because they require actual VS Code API.
- * Full integration tests are in e2e tests.
+ * Note: executeSkill spawns child processes and is tested in e2e tests.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { Uri } from 'vscode';
 
 // Mock vscode before imports
-vi.mock('vscode', () => ({}));
+vi.mock('vscode', () => ({
+	Uri: {
+		file: (path: string) => ({ fsPath: path }),
+		joinPath: (base: any, ...segments: string[]) => ({
+			fsPath: `${base.fsPath}/${segments.join('/')}`
+		})
+	},
+	workspace: {
+		fs: {
+			stat: vi.fn()
+		}
+	}
+}));
 
-import { loadSkill, executeSkill, resetSkillLoader } from './skillLoader';
-import { Skill, SkillParams, SkillApi } from './types';
+import { loadSkill, resetSkillLoader, SkillMetadata } from './skillLoader';
+import { SkillParams } from './types';
 
 beforeEach(() => {
 	resetSkillLoader();
@@ -28,11 +41,11 @@ afterEach(() => {
 describe('skillLoader', () => {
 	describe('loadSkill', () => {
 		it('should load built-in skill by name', async () => {
-			const skill = await loadSkill('file');
-			expect(skill).toBeDefined();
-			expect(skill.name).toBe('file');
-			expect(skill.description).toBeTruthy();
-			expect(typeof skill.execute).toBe('function');
+			const skillMeta = await loadSkill('file');
+			expect(skillMeta).toBeDefined();
+			expect(skillMeta.name).toBe('file');
+			expect(skillMeta.isBuiltIn).toBe(true);
+			expect(skillMeta.skillPath).toContain('file.ts');
 		});
 
 		it('should throw error for invalid skill name', async () => {
@@ -44,42 +57,18 @@ describe('skillLoader', () => {
 		});
 	});
 
-	describe('executeSkill', () => {
-		it('should throw error if skill is invalid', async () => {
-			const invalidSkill = { name: 'invalid', description: 'test' } as Skill;
-			const params: SkillParams = {};
-
-			await expect(executeSkill(invalidSkill, params)).rejects.toThrow('Invalid skill');
-		});
-
-		it('should throw error if skill does not return string', async () => {
-			// Create a mock skill that returns non-string
-			const mockSkill: Skill = {
-				name: 'mock',
-				description: 'Mock skill for testing',
-				async execute(api: SkillApi, params: SkillParams): Promise<any> {
-					return 123; // Invalid: should return string
-				}
-			};
-
-			const params: SkillParams = {};
-			await expect(executeSkill(mockSkill, params)).rejects.toThrow('must return a string');
+	describe('skill metadata', () => {
+		it('should return metadata with correct structure', async () => {
+			const skillMeta = await loadSkill('file');
+			expect(skillMeta).toHaveProperty('name');
+			expect(skillMeta).toHaveProperty('skillPath');
+			expect(skillMeta).toHaveProperty('isBuiltIn');
+			expect(typeof skillMeta.name).toBe('string');
+			expect(typeof skillMeta.skillPath).toBe('string');
+			expect(typeof skillMeta.isBuiltIn).toBe('boolean');
 		});
 	});
 
-	describe('skill validation', () => {
-		it('should validate skill has execute function', async () => {
-			const skill = await loadSkill('file');
-			expect(typeof skill.execute).toBe('function');
-		});
-
-		it('should validate skill returns Promise<string>', async () => {
-			const skill = await loadSkill('file');
-			// Execute with invalid params to test return type validation
-			const params: SkillParams = { action: 'invalid' };
-			
-			// Should throw because of invalid action, but the Promise<string> contract is maintained
-			await expect(executeSkill(skill, params)).rejects.toThrow();
-		});
-	});
+	// Note: executeSkill tests are in e2e tests because they spawn child processes
+	// Unit tests for process isolation would require complex mocking
 });
