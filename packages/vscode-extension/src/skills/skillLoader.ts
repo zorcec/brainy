@@ -17,6 +17,7 @@
 import * as vscode from 'vscode';
 import { Skill, SkillParams } from './types';
 import { getBuiltInSkill, isBuiltInSkill } from './built-in';
+import { createSkillApi } from './skillApi';
 
 /**
  * Tracks whether ts-node has been registered for TypeScript support.
@@ -158,7 +159,9 @@ export async function executeSkill(skill: Skill, params: SkillParams): Promise<s
 	}
 
 	try {
-		const result = await skill.execute(params);
+		// Create and inject SkillApi
+		const api = createSkillApi();
+		const result = await skill.execute(api, params);
 		
 		// Validate result
 		if (typeof result !== 'string') {

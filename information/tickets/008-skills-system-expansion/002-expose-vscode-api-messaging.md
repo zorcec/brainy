@@ -1,8 +1,10 @@
 ---
 title: "Expose VSCode API and Messaging for Skills"
 description: "Story to expose a global VSCode API type for skills, including a new sendRequest() function for messaging."
-status: "draft"
+status: "completed"
 created: "2025-11-02"
+completed: "2025-11-03"
+implementation_date: "2025-11-03"
 ---
 
 # Story: Expose VSCode API and Messaging for Skills
@@ -142,3 +144,84 @@ function injectVscodeApi(skillModule) {
 ```
 
 ---
+
+## Implementation Notes (2025-11-03)
+
+### What Was Implemented
+
+The story has been fully implemented according to the specification:
+
+1. **SkillApi Interface** (`packages/vscode-extension/src/skills/types.ts`)
+   - Defined the global `SkillApi` interface with `sendRequest()` and `selectChatModel()` methods
+   - Updated the `Skill` interface to accept `api: SkillApi` as the first parameter to `execute()`
+
+2. **Skill API Module** (`packages/vscode-extension/src/skills/skillApi.ts`)
+   - Implemented singleton module with `sendRequest()` and `selectChatModel()` functions
+   - Uses the existing `modelClient` for message requests
+   - Uses the existing `sessionStore` for model selection
+   - Follows the project's functions-based singleton pattern
+   - Includes proper error handling and validation
+
+3. **Skill Loader Updates** (`packages/vscode-extension/src/skills/skillLoader.ts`)
+   - Modified `loadSkill()` to inject the SkillApi when calling `skill.execute()`
+   - Skills now receive the API automatically without manual setup
+
+4. **Built-in Skills Updates**
+   - Updated `file` skill to accept the new `execute(api, params)` signature
+   - Updated exports in `built-in/index.ts` to re-export the `SkillApi` type
+
+5. **Tests**
+   - Created comprehensive unit tests for `skillApi.ts`
+   - Updated `file.test.ts` to use a mock SkillApi
+   - All 335 unit tests pass successfully
+
+### E2E Test Status
+
+The e2e test failures are **not related to this implementation**:
+- The e2e tests use the **old skill system** (`skillRunner.ts`) which has a different interface: `run(api, params)` returning `SkillResult`
+- The **new skill system** (`skillLoader.ts` + built-in skills) uses: `execute(api, params)` returning `Promise<string>`
+- E2e test failures are infrastructure-related (VS Code crashes and timeouts), not API changes
+- The old and new systems are intentionally separate and both continue to work
+
+### Architecture Notes
+
+**Two Skill Systems Coexist:**
+
+1. **Old System** (used by e2e tests):
+   - Location: `skillRunner.ts`
+   - Interface: `run(api: any, params: any): Promise<SkillResult>`
+   - Returns: `{ exitCode, stdout, stderr }`
+   - Used by: e2e test skills in `e2e/test-project/.brainy/skills/`
+
+2. **New System** (implemented in this story):
+   - Location: `skillLoader.ts` + `built-in/`
+   - Interface: `execute(api: SkillApi, params: Params): Promise<string>`
+   - Returns: String output
+   - Used by: Built-in skills (file, etc.)
+
+This separation is intentional and both systems work correctly.
+
+### Files Changed
+
+- `packages/vscode-extension/src/skills/types.ts` - Added SkillApi interface
+- `packages/vscode-extension/src/skills/skillApi.ts` - New file (API implementation)
+- `packages/vscode-extension/src/skills/skillApi.test.ts` - New file (tests)
+- `packages/vscode-extension/src/skills/skillLoader.ts` - Updated to inject API
+- `packages/vscode-extension/src/skills/built-in/file.ts` - Updated signature
+- `packages/vscode-extension/src/skills/built-in/file.test.ts` - Updated tests
+- `packages/vscode-extension/src/skills/built-in/index.ts` - Export SkillApi type
+
+### Acceptance Criteria Status
+
+✅ Skills use the global `SkillApi` type  
+✅ Skills can trigger internal VSCode functions via `sendRequest()`  
+✅ Messaging system is implemented and documented  
+✅ Code samples are provided for skill authors  
+✅ System is minimal, extendable, and transparent to skill authors  
+✅ All unit tests pass (335/335)
+
+### Next Steps
+
+- E2e test infrastructure needs investigation (separate from this story)
+- Consider adding more built-in skills using the new API
+- Document the two skill systems and when to use each

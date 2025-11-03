@@ -26,5 +26,39 @@ This extension integrates the Brainy knowledge assistant into Visual Studio Code
 - Unit tests: `src/extension.test.ts`
 - E2E tests: `e2e/`
 
+## Skill Development: Using SkillApi
+
+Brainy skills use the `SkillApi` interface for interacting with LLMs and managing models. Here are basic usage patterns:
+
+### Basic Skill Structure
+
+```typescript
+import { Skill, SkillParams, SkillApi } from '../types';
+
+export const mySkill: Skill = {
+  name: 'my-skill',
+  description: 'Brief description of what the skill does',
+  async execute(api: SkillApi, params: SkillParams): Promise<string> {
+    // Skill implementation
+    return 'result string';
+  }
+};
+```
+
+### Sending Requests to LLMs
+
+```typescript
+const response = await api.sendRequest('user', 'Summarize: ...', 'gpt-4o'); // if model is omited it will use the preselected or default one (that is prefered)
+```
+
+### Selecting a Model
+
+```typescript
+await api.selectChatModel('gpt-4o');
+```
+
+For more advanced examples and testing patterns, see:
+- [`information/tickets/008-skills-system-expansion/skillapi-usage-examples.md`](../../information/tickets/008-skills-system-expansion/skillapi-usage-examples.md)
+
 ## License
 MIT

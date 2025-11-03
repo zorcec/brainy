@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 vi.mock('vscode', () => ({}));
 
 import { loadSkill, executeSkill, resetSkillLoader } from './skillLoader';
-import { Skill, SkillParams } from './types';
+import { Skill, SkillParams, SkillApi } from './types';
 
 beforeEach(() => {
 	resetSkillLoader();
@@ -57,7 +57,7 @@ describe('skillLoader', () => {
 			const mockSkill: Skill = {
 				name: 'mock',
 				description: 'Mock skill for testing',
-				async execute(params: SkillParams): Promise<any> {
+				async execute(api: SkillApi, params: SkillParams): Promise<any> {
 					return 123; // Invalid: should return string
 				}
 			};

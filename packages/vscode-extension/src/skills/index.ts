@@ -98,7 +98,10 @@ export function resetSkills(): void {
 
 // Re-export types for convenience
 export type { ModelResponse, SendRequestParams } from './modelClient';
-export type { Skill, SkillParams } from './types';
+export type { Skill, SkillParams, SkillApi } from './types';
+
+// Re-export skill API creation
+export { createSkillApi } from './skillApi';
 
 // Re-export skill loading and execution
 export { loadSkill, executeSkill, runSkill, resetSkillLoader } from './skillLoader';

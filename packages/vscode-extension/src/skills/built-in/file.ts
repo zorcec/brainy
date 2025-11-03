@@ -18,7 +18,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Skill, SkillParams } from '../types';
+import { Skill, SkillParams, SkillApi } from '../types';
 
 // Helper function to resolve file paths (web-compatible)
 function resolveFilePath(workspace: vscode.Uri, filePath: string): vscode.Uri {
@@ -39,7 +39,7 @@ export const fileSkill: Skill = {
 	name: 'file',
 	description: 'Read, write and delete files.',
 	
-       async execute(params: SkillParams): Promise<string> {
+       async execute(api: SkillApi, params: SkillParams): Promise<string> {
 	       // Defensive: params must be an object
 	       if (!params || typeof params !== 'object') {
 		       throw new Error('Invalid params: must be an object');

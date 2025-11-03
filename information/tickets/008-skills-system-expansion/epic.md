@@ -69,6 +69,15 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
     - No security measures, allowlist, or permission model for exposed functions.
     - Future API changes may be breaking; old built-in skills must be updated. No versioning or feature flags.
 
+## Skills Process Isolation and API Access
+
+- Each skill runs in a fully isolated Node.js process.
+- **Only Node.js APIs** (e.g., fs, path, child_process) are available inside skills.
+- The working directory for each skill process is set to the root of the project.
+- **No VS Code API** or extension context is accessible inside skills.
+- Skills communicate with the main extension process via IPC (JSON-over-IPC), using the minimal SkillApi surface (sendRequest, selectModel).
+- This ensures security, stability, and prevents accidental coupling to VS Code internals.
+
 ## API Surface, IPC, and Lifecycle Decisions
 
 - The global `VscodeApi` type will only expose `sendRequest` and `selectModel`. No other VSCode extension APIs (notifications, file system, etc.) are included. No versioning or compatibility guarantees.
