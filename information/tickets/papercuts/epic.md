@@ -8,6 +8,8 @@ This epic tracks small but impactful improvements and missing safeguards in the 
 - Skills color in the editor should be changed to purple.
 - On hover, show a short description and usage example, plus all possible options.
 - Ensure the VS Code extension cancels ongoing LLM requests if a playbook is stopped (cancellation token support for LLM requests).
+- Brainy md validation improvements: eq. `@model "gpt-4.1" e` should result in a validation error.
+- Autocomplete for available models, available skills, and their options in the VS Code extension.
 
 ## Goals
 - Improve editor usability and clarity for skills.
