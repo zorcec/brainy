@@ -9,25 +9,22 @@
  * The file skill is tested in e2e tests instead.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock vscode before imports
 vi.mock('vscode', () => ({}));
 
 import { fileSkill } from './file';
-import { SkillApi } from '../types';
-
-// Create a mock SkillApi for testing
-const mockApi: SkillApi = {
-	async sendRequest(role, content, modelId) {
-		return { response: `Mock response for: ${content}` };
-	},
-	async selectChatModel(modelId) {
-		// No-op for tests
-	}
-};
+import { createMockSkillApi } from '../testUtils';
 
 describe('fileSkill', () => {
+	let mockApi: ReturnType<typeof createMockSkillApi>;
+
+	beforeEach(() => {
+		// Create a fresh mock API for each test
+		mockApi = createMockSkillApi();
+	});
+
 	describe('metadata', () => {
 		it('should have correct name', () => {
 			expect(fileSkill.name).toBe('file');

@@ -31,6 +31,9 @@ export type SkillParams = Record<string, string | undefined>;
  * API provided to skills for interacting with the VSCode extension.
  * Enables skills to send requests to LLM models and select chat models.
  * 
+ * IMPORTANT: When modifying this interface, update the mock implementation in testUtils.ts
+ * to ensure all built-in skill tests remain in sync. See createMockSkillApi() in testUtils.ts.
+ * 
  * @example
  * ```ts
  * // Select a model globally
