@@ -26,6 +26,21 @@ import * as path from 'path';
 type SkillParams = Record<string, string | undefined>;
 
 /**
+ * Message structure for skill results.
+ */
+interface SkillMessage {
+	role: 'user' | 'assistant';
+	content: string;
+}
+
+/**
+ * Result object returned by skill execution.
+ */
+interface SkillResult {
+	messages: SkillMessage[];
+}
+
+/**
  * API provided to skills for interacting with the parent extension process.
  */
 interface SkillApi {
@@ -39,7 +54,7 @@ interface SkillApi {
 interface Skill {
 	name: string;
 	description: string;
-	execute(api: SkillApi, params: SkillParams): Promise<string>;
+	execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }
 
 /**
@@ -177,14 +192,31 @@ async function loadSkillModule(skillPath: string): Promise<Skill> {
 /**
  * Executes a skill with the provided parameters.
  */
-async function executeSkill(skillPath: string, params: SkillParams): Promise<string> {
+async function executeSkill(skillPath: string, params: SkillParams): Promise<SkillResult> {
 	const skill = await loadSkillModule(skillPath);
 	const api = createSkillApi();
 	const result = await skill.execute(api, params);
 
-	// Validate result
-	if (typeof result !== 'string') {
-		throw new Error('Skill execute function must return a string');
+	// Validate result structure
+	if (typeof result !== 'object' || result === null) {
+		throw new Error('Skill execute function must return an object with messages array');
+	}
+
+	if (!Array.isArray(result.messages)) {
+		throw new Error('Skill result must have a messages array');
+	}
+
+	// Validate each message
+	for (const message of result.messages) {
+		if (typeof message !== 'object' || message === null) {
+			throw new Error('Each message must be an object');
+		}
+		if (message.role !== 'user' && message.role !== 'assistant') {
+			throw new Error('Each message must have role "user" or "assistant"');
+		}
+		if (typeof message.content !== 'string') {
+			throw new Error('Each message must have a string content property');
+		}
 	}
 
 	return result;

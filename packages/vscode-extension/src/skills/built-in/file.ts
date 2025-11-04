@@ -27,6 +27,21 @@ import * as path from 'path';
 type SkillParams = Record<string, string | undefined>;
 
 /**
+ * Message structure for skill results.
+ */
+interface SkillMessage {
+	role: 'user' | 'assistant';
+	content: string;
+}
+
+/**
+ * Result object returned by skill execution.
+ */
+interface SkillResult {
+	messages: SkillMessage[];
+}
+
+/**
  * API provided to skills (not used by this skill).
  */
 interface SkillApi {
@@ -40,7 +55,7 @@ interface SkillApi {
 interface Skill {
 	name: string;
 	description: string;
-	execute(api: SkillApi, params: SkillParams): Promise<string>;
+	execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }
 
 /**
@@ -50,7 +65,7 @@ export const fileSkill: Skill = {
 	name: 'file',
 	description: 'Read, write and delete files.',
 	
-	async execute(api: SkillApi, params: SkillParams): Promise<string> {
+	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		// Defensive: params must be an object
 		if (!params || typeof params !== 'object') {
 			throw new Error('Invalid params: must be an object');
@@ -76,18 +91,30 @@ export const fileSkill: Skill = {
 		// Resolve file path (relative paths are resolved from process.cwd(), which is set to project root)
 		const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
-		// Execute action
+		// Execute action and get result message
+		let resultMessage: string;
 		switch (action) {
 			case 'read':
-				return await readFile(resolvedPath);
+				resultMessage = await readFile(resolvedPath);
+				break;
 			case 'write':
-				return await writeFile(resolvedPath, content!);
+				resultMessage = await writeFile(resolvedPath, content!);
+				break;
 			case 'delete':
-				return await deleteFile(resolvedPath);
+				resultMessage = await deleteFile(resolvedPath);
+				break;
 			default:
 				// TypeScript should prevent this, but just in case
 				throw new Error(`Unsupported action: ${action}`);
 		}
+		
+		// Return result as SkillResult
+		return {
+			messages: [{
+				role: 'assistant',
+				content: resultMessage
+			}]
+		};
 	}
 };
 

@@ -14,7 +14,7 @@
  *   - id: Model ID to select (e.g., 'gpt-4o', 'claude-3')
  */
 
-import type { Skill, SkillApi, SkillParams } from '../types';
+import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 
 /**
  * Model skill implementation.
@@ -24,7 +24,7 @@ export const modelSkill: Skill = {
 	name: 'model',
 	description: 'Set the active LLM model for subsequent requests.',
 	
-	async execute(api: SkillApi, params: SkillParams): Promise<string> {
+	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		const { id } = params;
 		
 		// Validate model ID parameter
@@ -36,6 +36,11 @@ export const modelSkill: Skill = {
 		await api.selectChatModel(id);
 		
 		// Return confirmation message
-		return `Model set to: ${id}`;
+		return {
+			messages: [{
+				role: 'agent',
+				content: `Model set to: ${id}`
+			}]
+		};
 	}
 };

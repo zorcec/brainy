@@ -48,7 +48,9 @@ describe('contextSkill', () => {
 		it('should select a single context by name', async () => {
 			const result = await contextSkill.execute(mockApi, { name: 'research' });
 			
-			expect(result).toBe('Context set to: research');
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0].role).toBe('agent');
+			expect(result.messages[0].content).toBe('Context set to: research');
 			expect(contextNames()).toEqual(['research']);
 		});
 
@@ -84,7 +86,7 @@ describe('contextSkill', () => {
 			const result = await contextSkill.execute(mockApi, { name: '  research  ' });
 			
 			expect(contextNames()).toEqual(['research']);
-			expect(result).toBe('Context set to: research');
+			expect(result.messages[0].content).toBe('Context set to: research');
 		});
 	});
 
@@ -92,7 +94,9 @@ describe('contextSkill', () => {
 		it('should select multiple contexts by names', async () => {
 			const result = await contextSkill.execute(mockApi, { names: 'research,summary,notes' });
 			
-			expect(result).toBe('Contexts selected: research, summary, notes');
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0].role).toBe('agent');
+			expect(result.messages[0].content).toBe('Contexts selected: research, summary, notes');
 			expect(contextNames()).toEqual(['research', 'summary', 'notes']);
 		});
 
@@ -158,7 +162,7 @@ describe('contextSkill', () => {
 			
 			// Empty entries should be filtered out
 			expect(contextNames()).toEqual(['valid', 'another']);
-			expect(result).toBe('Contexts selected: valid, another');
+			expect(result.messages[0].content).toBe('Contexts selected: valid, another');
 		});
 	});
 });

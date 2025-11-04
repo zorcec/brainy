@@ -18,7 +18,7 @@
 import * as vscode from 'vscode';
 import { fork, ChildProcess } from 'child_process';
 import * as path from 'path';
-import { SkillParams } from './types';
+import { SkillParams, SkillResult } from './types';
 import { isBuiltInSkill } from './built-in';
 import { sendRequest as modelSendRequest } from './modelClient';
 import { setSelectedModel } from './sessionStore';
@@ -115,14 +115,14 @@ async function loadProjectSkill(skillName: string, workspaceUri: vscode.Uri): Pr
  * @param skillMeta - The skill metadata from loadSkill
  * @param params - Parameters to pass to the skill
  * @param workspaceUri - Workspace root URI (used to set working directory)
- * @returns Promise resolving to the skill result (string)
+ * @returns Promise resolving to the skill result (SkillResult object)
  * @throws Error if skill execution fails
  */
 export async function executeSkill(
 	skillMeta: SkillMetadata,
 	params: SkillParams,
 	workspaceUri: vscode.Uri
-): Promise<string> {
+): Promise<SkillResult> {
 	if (!skillMeta || !skillMeta.skillPath) {
 		throw new Error('Invalid skill metadata');
 	}
@@ -245,13 +245,13 @@ export async function executeSkill(
  * @param skillName - Name of the skill to execute
  * @param params - Parameters to pass to the skill
  * @param workspaceUri - Workspace root URI (required for project skills)
- * @returns Promise resolving to the skill result (string)
+ * @returns Promise resolving to the skill result (SkillResult object)
  */
 export async function runSkill(
 	skillName: string,
 	params: SkillParams,
 	workspaceUri: vscode.Uri
-): Promise<string> {
+): Promise<SkillResult> {
 	const skillMeta = await loadSkill(skillName, workspaceUri);
 	return await executeSkill(skillMeta, params, workspaceUri);
 }

@@ -20,7 +20,7 @@
  *   [{ role: 'user' | 'assistant', content: string }, ...]
  */
 
-import type { Skill, SkillApi, SkillParams } from '../types';
+import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 
 /**
  * Message structure for context tracking.
@@ -58,7 +58,7 @@ export const contextSkill: Skill = {
 	name: 'context',
 	description: 'Select one or more agent contexts for the session.',
 	
-	async execute(api: SkillApi, params: SkillParams): Promise<string> {
+	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		// Extract context names from params
 		// Support both --name "single" and --names "name1,name2,name3"
 		const { name, names } = params;
@@ -107,11 +107,16 @@ export const contextSkill: Skill = {
 		selectedContextNames = nameList;
 		
 		// Return confirmation message
-		if (nameList.length === 1) {
-			return `Context set to: ${nameList[0]}`;
-		} else {
-			return `Contexts selected: ${nameList.join(', ')}`;
-		}
+		const message = nameList.length === 1
+			? `Context set to: ${nameList[0]}`
+			: `Contexts selected: ${nameList.join(', ')}`;
+		
+		return {
+			messages: [{
+				role: 'agent',
+				content: message
+			}]
+		};
 	}
 };
 

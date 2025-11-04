@@ -28,6 +28,27 @@
 export type SkillParams = Record<string, string | undefined>;
 
 /**
+ * Message structure for skill results.
+ * Matches the context message format for consistency.
+ */
+export interface SkillMessage {
+	role: 'user' | 'assistant' | 'agent';
+	content: string;
+}
+
+/**
+ * Result object returned by skill execution.
+ * Skills must return an object with a messages array.
+ */
+export interface SkillResult {
+	/**
+	 * Array of messages produced by the skill.
+	 * Each message has a role ('user' or 'assistant') and content.
+	 */
+	messages: SkillMessage[];
+}
+
+/**
  * API provided to skills for interacting with the VSCode extension.
  * Enables skills to send requests to LLM models and select chat models.
  * 
@@ -103,8 +124,8 @@ export interface Skill {
 	 * 
 	 * @param api - API object for interacting with VSCode extension and models
 	 * @param params - Parameters from annotation flags (e.g., { action: 'read', path: './file.txt' })
-	 * @returns Promise resolving to a string result
+	 * @returns Promise resolving to a SkillResult object with messages array
 	 * @throws Error on failure (exception message will be shown in UI)
 	 */
-	execute(api: SkillApi, params: SkillParams): Promise<string>;
+	execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }

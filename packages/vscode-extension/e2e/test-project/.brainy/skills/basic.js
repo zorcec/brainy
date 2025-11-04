@@ -3,7 +3,7 @@
  *
  * Description:
  *   Minimal "basic" skill for e2e testing. Always returns a deterministic
- *   "hello world" string, regardless of input.
+ *   "hello world" string in a messages array, regardless of input.
  *   This allows the playbook runner and e2e tests to validate skill invocation
  *   and result handling without side effects.
  *
@@ -16,13 +16,18 @@ module.exports = {
     description: 'Test skill that returns hello world',
     
     /**
-     * Always returns "hello world" string.
+     * Always returns a SkillResult object with "hello world" message.
      *
      * @param {object} api - Injected API object from the skill runner
      * @param {object} params - Parameters passed to the skill
-     * @returns {Promise<string>} Result string
+     * @returns {Promise<object>} Result object with messages array
      */
     async execute(api, params) {
-        return 'hello world';
+        return {
+            messages: [{
+                role: 'assistant',
+                content: 'hello world'
+            }]
+        };
     }
 };

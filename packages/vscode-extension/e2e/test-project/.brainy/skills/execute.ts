@@ -3,7 +3,7 @@
  *
  * Description:
  *   Minimal "execute" skill for e2e testing (TypeScript version).
- *   Always returns a deterministic "hello world" string, regardless of input.
+ *   Always returns a deterministic "hello world" message in SkillResult format.
  *   This allows the playbook runner and e2e tests to validate TypeScript skill
  *   invocation and result handling without side effects.
  *
@@ -15,6 +15,21 @@
  * Parameters passed to skill execution.
  */
 type SkillParams = Record<string, string | undefined>;
+
+/**
+ * Message structure for skill results.
+ */
+interface SkillMessage {
+	role: 'user' | 'assistant' | 'agent';
+	content: string;
+}
+
+/**
+ * Result object returned by skill execution.
+ */
+interface SkillResult {
+	messages: SkillMessage[];
+}
 
 /**
  * API provided to skills.
@@ -30,7 +45,7 @@ interface SkillApi {
 interface Skill {
 	name: string;
 	description: string;
-	execute(api: SkillApi, params: SkillParams): Promise<string>;
+	execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }
 
 /**
@@ -41,14 +56,19 @@ export const executeSkill: Skill = {
 	description: 'Test skill that returns hello world',
 
 	/**
-	 * Always returns "hello world" string.
+	 * Always returns a SkillResult object with "hello world" message.
 	 *
 	 * @param api - Injected API object from the skill runner
 	 * @param params - Parameters passed to the skill
-	 * @returns Result string
+	 * @returns Result object with messages array
 	 */
-	async execute(api: SkillApi, params: SkillParams): Promise<string> {
-		return 'hello world';
+	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
+		return {
+			messages: [{
+				role: 'agetnt',
+				content: 'hello world'
+			}]
+		};
 	}
 };
 

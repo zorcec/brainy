@@ -39,14 +39,16 @@ describe('modelSkill', () => {
 			
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('gpt-4o');
 			expect(mockApi.selectChatModel).toHaveBeenCalledTimes(1);
-			expect(result).toBe('Model set to: gpt-4o');
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0].role).toBe('agent');
+			expect(result.messages[0].content).toBe('Model set to: gpt-4o');
 		});
 
 		it('should handle different model IDs', async () => {
 			const result = await modelSkill.execute(mockApi, { id: 'claude-3' });
 			
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('claude-3');
-			expect(result).toBe('Model set to: claude-3');
+			expect(result.messages[0].content).toBe('Model set to: claude-3');
 		});
 
 		it('should trim whitespace from model ID', async () => {
@@ -55,7 +57,7 @@ describe('modelSkill', () => {
 			// Note: The skill validates that id.trim() !== '', but passes original id to API
 			// This is intentional - API should handle trimming if needed
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('  gpt-4o  ');
-			expect(result).toBe('Model set to:   gpt-4o  ');
+			expect(result.messages[0].content).toBe('Model set to:   gpt-4o  ');
 		});
 	});
 
