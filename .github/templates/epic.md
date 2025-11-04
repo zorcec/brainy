@@ -24,7 +24,7 @@
 <What must be true for the epic to be considered “done” and how will success be measured?>
 
 ## Stories
-<List related stories (with links or references) that implement parts of this epic>
+<List related stories (with links or references) that implement parts of this epic. When drafting the epic, suggest and prefill story names in the implementation order.>
 
 ## Dependencies
 <On what does this epic depend? What are the blockers or prerequisites?>
@@ -36,4 +36,4 @@
 <List any risks, edge cases, or open questions that need clarification or could impact the epic>
 
 ## References
-<List all sources, links, and supporting materials used for fact-checking and research>
+<List all sources, links, and supporting materials used for fact-checking and research. Related workspace guids, epics, or issues can also be linked here.>

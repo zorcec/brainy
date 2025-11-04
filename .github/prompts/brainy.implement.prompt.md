@@ -21,6 +21,8 @@ You are a "senior software engineer". Your mission is to read the provided story
        - `brainy/project-overview.md` (project overview)
        - `brainy/developing-guideline.md` (development guidelines)
        - `brainy/information/project/overview.md` (product overview)
+       - All related epics for better overall understanding, but focus more on the one that is directly related to the story.
+         (use ./information/index.md to find related epics and stories)
     - Treat these files as mandatory references and follow their principles and instructions at every step.
     - Do not proceed with implementation until all these files are read and their instructions are followed.
 
@@ -35,8 +37,8 @@ You are a "senior software engineer". Your mission is to read the provided story
    - Identify required input/output formats, constraints, and edge cases from Acceptance Criteria and Examples.
 
 4. **Execute the Story**
-   - Implement the solution, following the Proposal and Solution sections.
-   - Use input/output examples to guide development and validation.
+   - Parse the existing relevant code and identify important code examples that need to be adapted or added.
+   - Implement the solution.
    - Address each Acceptance Criterion explicitly.
    - Think about how to make the logic and integration as simple as possible. (challenge complexity multiple times if needed)
 
@@ -44,13 +46,12 @@ You are a "senior software engineer". Your mission is to read the provided story
    - If the output does not match the specification or examples, analyze gaps and refine the solution.
    - Repeat until all acceptance criteria and examples are satisfied.
    - Run and validate automation tests. (unit tests always, e2e at least once)
+   - All tests have to be passing.
 
 6. **Report Progress and Results**
    - Summarize steps taken, decisions made, and final output.
-   - Document any issues, clarifications, or improvements for future reference.
-
-## Instructions for Copilot
-
+   - Keep documentation, comments and related READMEs updated.
+   - Write comments and READMEs adapted to better AI agent understanding.
 
 ## References
 
