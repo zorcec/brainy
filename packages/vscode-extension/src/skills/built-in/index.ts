@@ -16,7 +16,9 @@
  * Set of built-in skill names.
  */
 const builtInSkillNames = new Set<string>([
-	'file'
+	'file',
+	'model',
+	'context'
 ]);
 
 /**
