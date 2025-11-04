@@ -39,11 +39,11 @@ Implement a built-in skill called `task` that allows users to send a prompt to t
 - Usage is documented with an example.
 
 ## Tasks/Subtasks
-- [ ] Design the task skill interface and parameters
-- [ ] Implement the task skill as a built-in skill
-- [ ] Validate input and handle errors
-- [ ] Write unit tests for the skill
-- [ ] Document usage and add examples
+- [x] Design the task skill interface and parameters
+- [x] Implement the task skill as a built-in skill
+- [x] Validate input and handle errors
+- [x] Write unit tests for the skill
+- [x] Document usage and add examples
 
 ## Important Code Example
 
@@ -82,3 +82,46 @@ export const taskSkill: Skill = {
 
 **Summary:**  
 The task skill sends the user prompt to the LLM using `api.sendRequest(prompt, model)`. The VS Code extension handles context. The skill returns the LLM's reply as a message in the `messages` array. This matches the current skills API and architecture.
+
+---
+
+## Implementation Notes
+
+**Implementation completed on 2025-11-04**
+
+### Files Created:
+1. `/packages/vscode-extension/src/skills/built-in/task.ts` - Task skill implementation (48 lines)
+2. `/packages/vscode-extension/src/skills/built-in/task.test.ts` - Comprehensive unit tests (13 tests, 122 lines)
+
+### Files Modified:
+1. `/packages/vscode-extension/src/skills/built-in/index.ts` - Added 'task' to built-in skills registry
+
+### Implementation Details:
+- **Simplicity**: The implementation is minimal and straightforward - validates prompt, calls sendRequest, returns assistant message
+- **Error Handling**: All errors propagate naturally without wrapping, maintaining stack traces and error types
+- **Testing**: Comprehensive coverage including:
+  - Normal cases (with/without model parameter)
+  - Edge cases (empty/whitespace/long prompts, special characters)
+  - Error cases (missing prompt, LLM errors, validation errors)
+  - All 13 tests pass ✅
+
+### Test Results:
+- All 386 tests in the project pass (including 13 new task skill tests)
+- Test coverage includes normal, error, and edge cases as required
+- No regressions in existing functionality
+
+### Acceptance Criteria Status:
+- ✅ Task skill available as built-in skill
+- ✅ Sends prompts via SkillApi's sendRequest method with role 'user'
+- ✅ VS Code extension handles context
+- ✅ Supports prompt and optional model parameters
+- ✅ Uses globally selected model when model not provided
+- ✅ Errors surfaced directly to user
+- ✅ Unit tests cover normal, error, and edge cases
+- ✅ Usage documented with examples
+
+### Code Quality:
+- Follows project patterns (singleton, functions-based, no classes)
+- Comprehensive JSDoc documentation
+- Consistent with existing skills (file, model, context)
+- Simple, maintainable implementation

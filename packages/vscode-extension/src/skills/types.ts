@@ -75,7 +75,7 @@ export interface SkillApi {
 	 * @returns Promise resolving to response object with 'response' field
 	 * @throws Error on timeout or provider failures
 	 */
-	sendRequest(role: 'user' | 'assistant', content: string, modelId?: string): Promise<{ response: string }>;
+	sendRequest(role: 'user' | 'assistant' | 'agent', content: string, modelId?: string): Promise<{ response: string }>;
 
 	/**
 	 * Selects a chat model globally for subsequent requests.

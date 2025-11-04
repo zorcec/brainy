@@ -18,7 +18,8 @@
 const builtInSkillNames = new Set<string>([
 	'file',
 	'model',
-	'context'
+	'context',
+	'task'
 ]);
 
 /**
