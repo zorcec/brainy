@@ -75,6 +75,16 @@ export interface SkillApi {
 	 * @returns Promise resolving to response object with 'response' field
 	 * @throws Error on timeout or provider failures
 	 */
+	/**
+	 * Sends a request to the selected or specified model.
+	 *
+	 * @param role - Message role ('user', 'assistant', or 'agent').
+	 *   'agent' is only for system messages and will throw if used for LLM requests.
+	 * @param content - Message content
+	 * @param modelId - Optional model ID override (e.g., 'gpt-4o', 'claude-3')
+	 * @returns Promise resolving to response object with 'response' field
+	 * @throws Error on timeout, provider failures, or if role is 'agent'
+	 */
 	sendRequest(role: 'user' | 'assistant' | 'agent', content: string, modelId?: string): Promise<{ response: string }>;
 
 	/**

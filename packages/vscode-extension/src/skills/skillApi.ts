@@ -33,15 +33,17 @@ export function createSkillApi(): SkillApi {
 		 * @returns Promise with response object containing 'response' field
 		 * @throws Error on validation, timeout, or provider failures
 		 */
-		async sendRequest(role, content, modelId) {
-			const response = await modelSendRequest({
-				role,
-				content,
-				modelId
-			});
-			
-			return { response: response.reply };
-		},
+		   async sendRequest(role, content, modelId) {
+			   if (role === 'agent') {
+				   throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
+			   }
+			   const response = await modelSendRequest({
+				   role,
+				   content,
+				   modelId
+			   });
+			   return { response: response.reply };
+		   },
 
 		/**
 		 * Selects a chat model globally for subsequent requests.
