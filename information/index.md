@@ -24,6 +24,7 @@ This file indexes all information and instruction files in the `brainy/informati
 | project/preparation/rag_ideas.md | RAG (Retrieval-Augmented Generation) ideas and concepts. |
 | project/preparation/sqlite_vector_hybrid_search.md | Storing/searching embeddings in SQLite for hybrid search. |
 | project/preparation/vscode-extension-e2e-testing.md | E2E testing notes for VS Code extension. |
+| project/docs/skillapi-usage-examples.md | SkillApi usage examples for Brainy skills: code samples, API usage, and testing. |
 
 ## Tickets
 

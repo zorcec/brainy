@@ -8,6 +8,7 @@ A monorepo project for the Brainy knowledge assistant, including a server with S
 
  See [Information Directory README](./information/README.md) for documentation structure
  See [Server README](./packages/server/README.md) and [VS Code Extension README](./packages/vscode-extension/README.md) for implementation details
+ See [SkillApi Usage Examples](./information/project/docs/skillapi-usage-examples.md) for skill development and API usage
 
 ## Project Structure
 
