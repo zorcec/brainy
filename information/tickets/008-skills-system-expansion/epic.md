@@ -106,10 +106,10 @@ Brainy’s agent workflows rely on modular skills for automation, context contro
 3. Implement Model Chooser Skill
 4. Implement Context Manipulation Skill
 5. Implement Task Skill
-6. Implement Execute Skill (extend API)
-7. Implement Variables Support
-8. Implement Link Skill
-9. Create a testing environment for built-in skills and cover it with tests
+6. Implement Link Skill
+7. Implement Execute Skill (extend API)
+8. Implement Variables Support
+9. (done) Create a testing environment for built-in skills and cover it with tests
 
 ## Risks & Mitigations
 - Ambiguity in API: Mitigate by thorough documentation and examples
