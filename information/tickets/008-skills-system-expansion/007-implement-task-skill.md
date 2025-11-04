@@ -5,32 +5,62 @@ Implement Task Skill
 Users need to send prompts to the LLM and capture responses as part of automated workflows. Without a task skill, playbooks cannot programmatically interact with the LLM, making agent steps less flexible and less automatable.
 
 ## Solution
-Implement a built-in skill called `task` that allows users to send a prompt to the LLM and receive a response. The skill will use the SkillApi's `sendRequest` method, support specifying the prompt, role, and model, and return the LLM's reply as a string. Usage: `@task --prompt "Summarize this text" --model "gpt-4o"`.
+Implement a built-in skill called `task` that allows users to send a prompt to the LLM and receive a response. The skill will use the SkillApi's `sendRequest` method, which internally uses the VS Code chat participant `agent` to manage context and send messages to the LLM. The skill supports specifying the prompt, model, and returns the LLM's reply as a string. Usage: `@task --prompt "Summarize this text" --model "gpt-4o"`.
+
+## Architecture Overview
+- **VS Code Extension**: Implements a custom chat participant with id `agent` that manages LLM communication.
+- **Task Skill**: Calls `SkillApi.sendRequest()` with a user prompt.
+- **SkillApi**: Bridges the skill to the chat participant, managing context types (agent/assistant/user).
+- **Chat Participant**: Builds the full message array with context and sends to VS Code's LLM API.
+
+## Message Flow
+1. User invokes `@task --prompt "Summarize this"`
+2. Task skill calls `api.sendRequest({ role: 'user', content: 'Summarize this' })`
+3. SkillApi retrieves active context from backend:
+   - Messages with type `agent` → sent as `{ role: 'agent', content: ... }`
+   - Messages with type `assistant` → sent as `{ role: 'assistant', content: ... }`
+   - Messages with type `user` → sent as `{ role: 'user', content: ... }`
+4. SkillApi forwards to chat participant with full message array
+5. Chat participant calls `vscode.lm.sendRequest(model, messages, options, token)`
+6. LLM response is streamed back through the participant to SkillApi
+7. Task skill receives the complete response as a string
 
 ## Acceptance Criteria
 - All tests are passing.
+- The `agent` chat participant is implemented in the VS Code extension.
 - The task skill is available as a built-in skill and can be invoked from playbooks.
-- The skill sends a prompt to the LLM and returns the response.
-- Supports specifying prompt, role, and model.
+- The skill sends a prompt to the LLM via SkillApi's `sendRequest` method.
+- SkillApi correctly maps context message types to LLM roles (agent/assistant/user).
+- The chat participant builds the full message array and sends it to the LLM.
+- Supports specifying prompt and model.
 - Errors are surfaced for missing/invalid parameters.
 - Unit tests cover normal and error cases.
 - Usage is documented with an example.
 
 ## Tasks/Subtasks
+- [ ] Implement the `agent` chat participant in the VS Code extension
 - [ ] Design the task skill interface and parameters
 - [ ] Implement the task skill as a built-in skill
+- [ ] Implement SkillApi's `sendRequest` method to bridge to the chat participant
+- [ ] Implement context retrieval with proper type mapping (agent/assistant/user)
 - [ ] Validate input and handle errors
-- [ ] Integrate with SkillApi's sendRequest
-- [ ] Write unit tests for normal and error cases
-- [ ] Document usage and add an example
+- [ ] Write unit tests for the skill, SkillApi, and chat participant
+- [ ] Document usage and add examples
 
 ## Open Questions
 - Should the skill support additional flags (e.g., temperature, max tokens)?
-- Yes, by exposing the full LanguageModelChatRequestOptions interface. The API should support all options, even if not all are used by the skill yet.
+  - Yes, by exposing the full LanguageModelChatRequestOptions interface. The API should support all options, even if not all are used by the skill yet.
 - Should the response be stored in a variable for later use?
-- Yes, the response should be returned as a string from the skill.
-- What roles should be allowed (user, assistant, system)?
-- For now, the skill always sends as 'user'. There is no option to configure the role at the skill level. Future support for other roles can be added as needed. The API should support multi-turn conversations with user and assistant messages (accepting the array of messages). The skill has to get the active context from the backend and concatenate it with the current prompt.
+  - Yes, the response should be returned as a string from the skill.
+- What roles should be allowed (user, assistant, agent)?
+  - The skill always sends as 'user'. Context messages are automatically mapped by their type:
+    - Backend type `agent` → LLM role `agent`
+    - Backend type `assistant` → LLM role `assistant`
+    - Backend type `user` → LLM role `user`
+  - The API should support multi-turn conversations with all message types.
+- How does the chat participant integrate with the skill?
+  - The SkillApi acts as a bridge: skill → SkillApi → chat participant → LLM API.
+  - The chat participant receives the full message array from SkillApi and forwards it to `vscode.lm.sendRequest()`.
 
 ## Additional Info & References
 - Example usage: `@task --prompt "Summarize this text" --model "gpt-4o"`
@@ -45,22 +75,43 @@ Implement a built-in skill called `task` that allows users to send a prompt to t
 - [README](../../README.md)
 
 ## Proposal
-- Create a new built-in skill in `src/skills/built-in/task.ts`.
-- The skill exports a `Skill` object with `name: 'task'`, a description, and an async `execute` function.
-- The `execute` function receives the SkillApi and params. Params must expose the full `LanguageModelChatRequestOptions` interface (see below), plus required `prompt` and optional `role` and `model`.
-- Validate input; throw errors for missing/invalid params.
-- The SkillApi must support `sendRequest(messages, options)` where `messages` is an array of user and assistant messages, and `options` is the full `LanguageModelChatRequestOptions` object. This enables future multi-turn and advanced LLM features.
-- The skill itself always sends as 'user' (no role configuration at the skill level). The prompt is always sent as a user message.
-- When the skill is executed, it should fetch the active context from the backend (using a new API), concatenate the context with the current prompt, and send the full message array to the LLM.
-- The API should support all fields from LanguageModelChatRequestOptions, even if only a subset is used by the skill at the moment.
-- Error handling should be simple (e.g., missing/invalid prompt). No granular errors for unsupported options at this stage.
-- Unit tests for the API must cover all supported features. Unit tests for the skill should only cover the currently supported behavior (user prompt only).
-- Documentation in the code should clearly state which fields are currently supported and which are ignored. The ticket should focus on requirements and design.
-- Return the response string.
-- Add unit tests using the centralized mock SkillApi.
-- Document usage in the skill and in the testing best practices doc.
-- Tool-calling support will be implemented in a separate story (see below).
-- Cancellation token support is not needed in the skill, but must be handled in the VS Code extension to cancel ongoing LLM requests if a playbook is stopped. This should be tracked in the papercuts epic.
+- **VS Code Extension**: Create a custom chat participant with id `agent` using `vscode.chat.createChatParticipant()`.
+  - The participant handler receives messages from SkillApi (not from chat UI in this case).
+  - It forwards the full message array to `vscode.lm.sendRequest()`.
+  - Streams the response back to SkillApi.
+  
+- **SkillApi**: Implement `sendRequest(message, options)` method.
+  - Retrieves active context from backend via a new API endpoint.
+  - Maps context message types to LLM roles:
+    - `agent` type → `{ role: 'agent', content: ... }`
+    - `assistant` type → `{ role: 'assistant', content: ... }`
+    - `user` type → `{ role: 'user', content: ... }`
+  - Appends the current user message to the array.
+  - Calls the chat participant with the full message array and options.
+  - Returns the LLM response as a string.
+  
+- **Task Skill**: Create a new built-in skill in `src/skills/built-in/task.ts`.
+  - The skill exports a `Skill` object with `name: 'task'`, a description, and an async `execute` function.
+  - The `execute` function receives the SkillApi and params.
+  - Params must expose the full `LanguageModelChatRequestOptions` interface, plus required `prompt` and optional `model`.
+  - Validate input; throw errors for missing/invalid params.
+  - The skill always sends as 'user' (no role configuration at the skill level).
+  - Calls `api.sendRequest({ role: 'user', content: prompt }, { model, ...options })`.
+  - Returns the response string.
+  
+- **Error Handling**: Simple validation (e.g., missing/invalid prompt). No granular errors for unsupported options at this stage.
+
+- **Testing**:
+  - Unit tests for the chat participant (mock VS Code LM API).
+  - Unit tests for SkillApi's `sendRequest` (mock backend and chat participant).
+  - Unit tests for the task skill (mock SkillApi).
+  - Integration tests for the full flow.
+  
+- **Documentation**: Document the architecture, message flow, and usage in code comments and testing best practices doc.
+
+- **Future Work**:
+  - Tool-calling support will be implemented in a separate story.
+  - Cancellation token support is not needed in the skill, but must be handled in the VS Code extension to cancel ongoing LLM requests if a playbook is stopped. This should be tracked in the papercuts epic.
 
 
 ## Important code example
