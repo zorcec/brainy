@@ -48,6 +48,11 @@ function substituteVariables(text: string, api: SkillApi): string {
 export const taskSkill: Skill = {
 	name: 'task',
 	description: 'Send a prompt to the LLM and return the response. Only user prompts are supported. The VS Code extension handles context. Automatically uses all available tools. Supports variable substitution using {{name}} syntax.',
+	params: [
+		{ name: 'prompt', description: 'Prompt text to send to the LLM', required: true },
+		{ name: 'model', description: 'Optional model ID (e.g., gpt-4o, claude-3)', required: false },
+		{ name: 'variable', description: 'Variable name to store the response', required: false }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		const { prompt, model, variable } = params;

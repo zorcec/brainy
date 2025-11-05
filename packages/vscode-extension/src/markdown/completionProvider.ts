@@ -17,6 +17,7 @@
 
 import * as vscode from 'vscode';
 import { getAvailableSkills } from '../skills/skillScanner';
+import { getSkillParams } from '../skills/skillParamsRegistry';
 
 /**
  * Known model IDs for autocomplete.
@@ -44,7 +45,8 @@ const COMMON_PARAMETERS = [
 	{ name: 'names', description: 'Multiple names (comma-separated)' },
 	{ name: 'id', description: 'Identifier or model ID' },
 	{ name: 'action', description: 'Action to perform' },
-	{ name: 'path', description: 'File or directory path' }
+	{ name: 'path', description: 'File or directory path' },
+	{ name: 'content', description: 'Content to write or process' }
 ];
 
 /**
@@ -75,9 +77,10 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 			return this.getModelCompletions();
 		}
 
-		// Suggest parameters after '--'
-		if (/--\w*$/.test(linePrefix)) {
-			return this.getParameterCompletions();
+		// Suggest parameters after '-' or '--'
+		// Match patterns like: "@skill -", "@skill --", "@skill --pro"
+		if (/@\w+\s+--?\w*$/.test(linePrefix)) {
+			return this.getParameterCompletions(linePrefix);
 		}
 
 		return undefined;
@@ -142,10 +145,34 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 
 	/**
 	 * Gets completion items for skill parameters.
+	 * Filters parameters based on the skill in the current line.
 	 *
+	 * @param linePrefix - The line text up to the cursor position
 	 * @returns Array of completion items for parameters
 	 */
-	private getParameterCompletions(): vscode.CompletionItem[] {
+	private getParameterCompletions(linePrefix: string): vscode.CompletionItem[] {
+		// Extract skill name from the line (e.g., "@task --" => "task")
+		const skillMatch = linePrefix.match(/@(\w+)/);
+		const skillName = skillMatch ? skillMatch[1] : null;
+
+		// If we can identify the skill, get its specific parameters
+		if (skillName) {
+			const skillParams = getSkillParams(skillName);
+			
+			// If skill has defined parameters, use them
+			if (skillParams && skillParams.length > 0) {
+				return skillParams.map(param => {
+					const item = new vscode.CompletionItem(param.name, vscode.CompletionItemKind.Field);
+					item.insertText = param.name;
+					item.detail = param.required ? `--${param.name} (required)` : `--${param.name}`;
+					item.documentation = param.description;
+					
+					return item;
+				});
+			}
+		}
+
+		// Fallback to common parameters if skill is unknown or has no defined params
 		return COMMON_PARAMETERS.map(param => {
 			const item = new vscode.CompletionItem(param.name, vscode.CompletionItemKind.Field);
 			item.insertText = param.name;

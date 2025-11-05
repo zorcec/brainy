@@ -16,11 +16,21 @@
  *   echo "Hello, World!"
  *   ```
  *
+ *   @execute --variable "result"
+ *   
+ *   ```bash
+ *   echo "This will be stored in the 'result' variable"
+ *   ```
+ *
+ * Parameters:
+ *   --variable (optional): Name of variable to store the execution output
+ *
  * Behavior:
  *   - Finds the immediate next block after the current skill
  *   - Validates it's a code block with language metadata
  *   - Executes the code and captures stdout/stderr
  *   - Returns output as a string
+ *   - Optionally stores output in a variable for later use
  *   - Throws error if next block is not a code block or execution fails
  */
 
@@ -50,6 +60,9 @@ const LANGUAGE_EXECUTORS: Record<string, { command: string; extension: string }>
 export const executeSkill: Skill = {
 	name: 'execute',
 	description: 'Execute the next code block in the playbook and return its output.',
+	params: [
+		{ name: 'variable', description: 'Variable name to store the execution output', required: false }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams) {
 		// Get current state from API
@@ -90,6 +103,13 @@ export const executeSkill: Skill = {
 		// Execute the code
 		try {
 			const output = executeCode(code, executor.command, executor.extension);
+			
+			// Store output in variable if --variable flag is provided
+			const variableName = params.variable;
+			if (variableName) {
+				api.setVariable(variableName, output);
+			}
+			
 			return {
 				messages: [{
 					role: 'assistant',

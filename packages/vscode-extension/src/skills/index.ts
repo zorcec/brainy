@@ -118,5 +118,15 @@ export {
 // Re-export built-in skills registry
 export {
 	isBuiltInSkill,
-	getBuiltInSkillNames
+	getBuiltInSkillNames,
+	getAllBuiltInSkills
 } from './built-in';
+
+// Re-export skill parameters registry
+export {
+	registerSkill,
+	registerSkills,
+	getSkillParams,
+	getAllSkillNames as getAllRegisteredSkillNames,
+	clearRegistry as clearSkillParamsRegistry
+} from './skillParamsRegistry';

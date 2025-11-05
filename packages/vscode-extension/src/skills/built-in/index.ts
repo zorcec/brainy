@@ -65,3 +65,12 @@ export function getBuiltInSkillNames(): string[] {
 export function getBuiltInSkill(name: string): Skill | undefined {
 	return builtInSkills.get(name);
 }
+
+/**
+ * Gets all built-in skill instances.
+ * 
+ * @returns Array of all built-in skills
+ */
+export function getAllBuiltInSkills(): Skill[] {
+	return Array.from(builtInSkills.values());
+}

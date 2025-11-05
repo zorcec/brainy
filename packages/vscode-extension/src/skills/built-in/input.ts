@@ -32,6 +32,10 @@ import { validateRequiredString } from '../validation';
 export const inputSkill: Skill = {
 	name: 'input',
 	description: 'Prompt the user for input and store it in a variable. Execution pauses until input is provided.',
+	params: [
+		{ name: 'prompt', description: 'Prompt text to display to the user', required: true },
+		{ name: 'variable', description: 'Variable name to store the input value', required: true }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		const { prompt, variable } = params;

@@ -170,6 +170,10 @@ function truncateMessages(messages: ContextMessage[], contextName: string): Cont
 export const contextSkill: Skill = {
 	name: 'context',
 	description: 'Select one or more agent contexts for the session.',
+	params: [
+		{ name: 'name', description: 'Single context name', required: false },
+		{ name: 'names', description: 'Multiple context names (comma-separated)', required: false }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		// Extract context names from params

@@ -24,6 +24,9 @@ import { validateRequiredString } from '../validation';
 export const modelSkill: Skill = {
 	name: 'model',
 	description: 'Set the active LLM model for subsequent requests.',
+	params: [
+		{ name: 'id', description: 'Model ID to select (e.g., gpt-4o, claude-3)', required: true }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		const { id } = params;

@@ -10,7 +10,7 @@ This playbook tests all the papercuts improvements:
 
 @context --name "test1"
 
-@model --id "gpt-4o"
+@model --id "gpt-4"
 
 @task --prompt "Test task"
 

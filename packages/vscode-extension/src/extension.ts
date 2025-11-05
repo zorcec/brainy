@@ -15,6 +15,7 @@ import { SkillHoverProvider } from './markdown/skillHoverProvider';
 import { BrainyCompletionProvider } from './markdown/completionProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 import { refreshSkills } from './skills/skillScanner';
+import { getAllBuiltInSkills, registerSkills } from './skills';
 
 // Helper function to safely join paths
 function joinPath(base: string, ...parts: string[]): string {
@@ -114,6 +115,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   console.log('✓ Annotation highlighting and hover providers registered for markdown files');
 
+  // Initialize skill parameters registry with built-in skills
+  console.log('Initializing skill parameters registry...');
+  const builtInSkills = getAllBuiltInSkills();
+  registerSkills(builtInSkills);
+  console.log(`✓ Registered ${builtInSkills.length} built-in skills in parameters registry`);
+
   // Initialize and watch skills directory
   console.log('Setting up skills scanner...');
   if (workspaceFolders && workspaceFolders.length > 0) {
@@ -152,25 +159,17 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('Registering CodeLens provider for .brainy.md files...');
   const playbookProvider = new PlaybookCodeLensProvider();
   
-  // Try multiple patterns to ensure it matches
-  const documentSelectors = [
-    { pattern: '**/*.brainy.md' },
-    { scheme: 'file', pattern: '**/*.brainy.md' },
-    { scheme: 'vscode-test-web', pattern: '**/*.brainy.md' },
+  // Register with a single pattern that matches .brainy.md files
+  // Using language: 'markdown' with pattern works for both file and test environments
+  const codeLensDisposable = vscode.languages.registerCodeLensProvider(
     { language: 'markdown', pattern: '**/*.brainy.md' },
-  ];
-  
-  for (const selector of documentSelectors) {
-    const codeLensDisposable = vscode.languages.registerCodeLensProvider(
-      selector,
-      playbookProvider
-    );
-    context.subscriptions.push(codeLensDisposable);
-    console.log('Registered CodeLens with selector:', JSON.stringify(selector));
-  }
+    playbookProvider
+  );
+  context.subscriptions.push(codeLensDisposable);
+  console.log('Registered CodeLens provider for .brainy.md files');
   
   registerPlaybookCommands(context, playbookProvider);
-  console.log('✓ CodeLens provider registered for .brainy.md files');
+  console.log('✓ CodeLens provider registered');
   
   // Force CodeLens refresh when files are opened
   // workspace.onDidOpenTextDocument may not be implemented in some test mocks

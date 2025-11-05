@@ -166,6 +166,28 @@ export interface SkillApi {
 }
 
 /**
+ * Parameter metadata for a skill.
+ * Describes a single parameter that can be passed to a skill via flags.
+ */
+export interface SkillParameter {
+	/**
+	 * Parameter name (e.g., 'prompt', 'path', 'action')
+	 */
+	name: string;
+
+	/**
+	 * Description of what this parameter does
+	 */
+	description: string;
+
+	/**
+	 * Whether this parameter is required
+	 * @default false
+	 */
+	required?: boolean;
+}
+
+/**
  * Skill interface that all skills must implement.
  * 
  * Skills are modular, async functions that can be invoked from markdown playbooks.
@@ -177,6 +199,11 @@ export interface SkillApi {
  * export const fileSkill: Skill = {
  *   name: 'file',
  *   description: 'Read, write and delete files.',
+ *   params: [
+ *     { name: 'action', description: 'Action to perform (read|write|delete)', required: true },
+ *     { name: 'path', description: 'File path', required: true },
+ *     { name: 'content', description: 'File content for write action', required: false }
+ *   ],
  *   async execute(api, params) {
  *     const { action, path, content } = params;
  *     // Implementation logic here
@@ -197,6 +224,13 @@ export interface Skill {
 	 * Used for documentation and UI tooltips.
 	 */
 	description: string;
+
+	/**
+	 * Optional array of parameter definitions for this skill.
+	 * Used for autocomplete, validation, and documentation.
+	 * If not provided, no parameter suggestions will be shown in autocomplete.
+	 */
+	params?: SkillParameter[];
 
 	/**
 	 * Executes the skill with the provided API and parameters.

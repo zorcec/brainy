@@ -309,4 +309,61 @@ echo "Line 3"`,
 		// The output should be the current working directory
 		expect(result.messages[0].content.length).toBeGreaterThan(0);
 	});
+
+	it('should store output in variable when --variable flag is provided', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "result"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'echo "test output"',
+				line: 2,
+				metadata: { language: 'bash' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'result' });
+
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].content).toContain('test output');
+		
+		// Verify the variable was set
+		expect(mockApi.setVariable).toHaveBeenCalledWith('result', expect.stringContaining('test output'));
+	});
+
+	it('should not store output when --variable flag is not provided', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'echo "test output"',
+				line: 2,
+				metadata: { language: 'bash' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, {});
+
+		expect(result.messages).toHaveLength(1);
+		
+		// Verify setVariable was not called
+		expect(mockApi.setVariable).not.toHaveBeenCalled();
+	});
 });

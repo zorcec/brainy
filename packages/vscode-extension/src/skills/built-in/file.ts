@@ -20,43 +20,7 @@
 
 import { promises as fs } from 'fs';
 import * as path from 'path';
-
-/**
- * Parameters passed to skill execution.
- */
-type SkillParams = Record<string, string | undefined>;
-
-/**
- * Message structure for skill results.
- */
-interface SkillMessage {
-	role: 'user' | 'assistant';
-	content: string;
-}
-
-/**
- * Result object returned by skill execution.
- */
-interface SkillResult {
-	messages: SkillMessage[];
-}
-
-/**
- * API provided to skills (not used by this skill).
- */
-interface SkillApi {
-	sendRequest(role: 'user' | 'assistant', content: string, modelId?: string): Promise<{ response: string }>;
-	selectChatModel(modelId: string): Promise<void>;
-}
-
-/**
- * Skill interface.
- */
-interface Skill {
-	name: string;
-	description: string;
-	execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
-}
+import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 
 /**
  * File skill implementation.
@@ -64,6 +28,11 @@ interface Skill {
 export const fileSkill: Skill = {
 	name: 'file',
 	description: 'Read, write and delete files.',
+	params: [
+		{ name: 'action', description: 'Action to perform (read|write|delete)', required: true },
+		{ name: 'path', description: 'File path (relative or absolute)', required: true },
+		{ name: 'content', description: 'File content (required for write action)', required: false }
+	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		// Defensive: params must be an object
