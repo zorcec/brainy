@@ -22,10 +22,17 @@ Develop a "ref" skill that accepts a file path and uses the official VS Code API
 - [ ] Handle errors and edge cases
 - [ ] Write unit and integration tests
 
-## Open Questions
-- What is the full list of officially supported file types?
-- Should the skill support multiple files at once?
-- How should errors be communicated to the user?
+
+## Design Decisions & Open Questions
+
+- **Supported File Types:** The list of supported file types is hardcoded and maintained manually as VS Code support changes.
+- **Invalid Paths:** If a user provides a directory, symlink, or non-existent file, an error is raised during playbook parsing (live-time error).
+- **Workspace Restriction:** Only files within the current project/workspace can be referenced.
+- **Large/Locked Files:** Large or locked files are simply passed to the VS Code API; no special handling is done.
+- **API Failures:** If the VS Code API call fails (e.g., permissions, API changes), the request fails, breaking the playbook and propagating the error to the UI. The error is colored the same as validation errors, with the exception message shown on hover.
+- **Input Method:** Only explicit file path input is supported (no drag-and-drop).
+- **Testing:** Integration with the VS Code chat UI is tested using easier automated methods.
+- **Feedback:** The skill provides feedback only on errors, not on successful attachment.
 
 ## Additional Info & References
 - See VS Code API docs: chat.createChatParticipant, ChatPromptReference
