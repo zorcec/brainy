@@ -81,7 +81,7 @@
           "enabled": true,
           "rules": {
             "annotation": {
-              "foreground": "#569CD6",
+              "foreground": "#8607f4",
               "fontStyle": "bold"
             },
             "flag": {

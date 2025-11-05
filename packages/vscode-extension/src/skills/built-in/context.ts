@@ -6,6 +6,8 @@
  *   Allows users to switch to or create named agent contexts within playbooks.
  *   Contexts are tracked in memory for the session and messages are stored
  *   in chronological order with role and content for LLM API compatibility.
+ *   Enforces model-specific token limits and automatically truncates contexts
+ *   by removing oldest messages first (FIFO) when limits are exceeded.
  *
  * Usage in playbooks:
  *   @context --name "research"
@@ -18,10 +20,36 @@
  * Context Structure:
  *   Each context stores an array of message objects:
  *   [{ role: 'user' | 'assistant', content: string }, ...]
+ *
+ * Token Limits:
+ *   Each model has a hardcoded input token limit. When a context exceeds the limit,
+ *   the oldest messages are removed until the context is under the limit.
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 import { isValidString } from '../validation';
+
+/**
+ * Model-specific input token limits.
+ * These are hardcoded based on known model specifications.
+ */
+const MODEL_TOKEN_LIMITS: Record<string, number> = {
+	'gpt-4': 8192,
+	'gpt-4-32k': 32768,
+	'gpt-4o': 128000,
+	'gpt-4o-mini': 128000,
+	'claude-3': 200000,
+	'claude-3-opus': 200000,
+	'claude-3-sonnet': 200000,
+	'claude-3-haiku': 200000,
+	'claude-3.5': 200000,
+	'claude-3.5-sonnet': 200000,
+};
+
+/**
+ * Default token limit if model is not recognized.
+ */
+const DEFAULT_TOKEN_LIMIT = 8192;
 
 /**
  * Message structure for context tracking.
@@ -50,6 +78,90 @@ const contextStore = new Map<string, ContextMessage[]>();
  * Currently selected context names for the session.
  */
 let selectedContextNames: string[] = [];
+
+/**
+ * Currently selected model ID for token limit enforcement.
+ */
+let currentModelId: string | undefined;
+
+/**
+ * Callback function to show warnings to the user.
+ */
+let warningCallback: ((message: string) => void) | undefined;
+
+/**
+ * Estimates the number of tokens in a text string.
+ * Uses a simple heuristic: ~4 characters per token for English text.
+ * 
+ * @param text - Text to count tokens for
+ * @returns Estimated token count
+ */
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
+}
+
+/**
+ * Gets the token limit for the current model.
+ * 
+ * @returns Token limit for current model or default limit
+ */
+function getModelTokenLimit(): number {
+	if (!currentModelId) {
+		return DEFAULT_TOKEN_LIMIT;
+	}
+	return MODEL_TOKEN_LIMITS[currentModelId] || DEFAULT_TOKEN_LIMIT;
+}
+
+/**
+ * Counts total tokens in an array of messages.
+ * 
+ * @param messages - Array of messages
+ * @returns Total estimated token count
+ */
+function countMessagesTokens(messages: ContextMessage[]): number {
+	return messages.reduce((total, msg) => total + estimateTokens(msg.content), 0);
+}
+
+/**
+ * Truncates messages by removing oldest first until under token limit.
+ * Shows a warning if any messages were removed.
+ * 
+ * @param messages - Array of messages to truncate
+ * @param contextName - Name of the context (for warning message)
+ * @returns Truncated array of messages
+ */
+function truncateMessages(messages: ContextMessage[], contextName: string): ContextMessage[] {
+	const limit = getModelTokenLimit();
+	let totalTokens = countMessagesTokens(messages);
+	
+	if (totalTokens <= limit) {
+		return messages;
+	}
+	
+	// Create a copy to avoid mutating original
+	const truncated = [...messages];
+	let removedCount = 0;
+	
+	// Remove oldest messages first (FIFO) until under limit
+	while (totalTokens > limit && truncated.length > 0) {
+		const removed = truncated.shift();
+		if (removed) {
+			totalTokens -= estimateTokens(removed.content);
+			removedCount++;
+		}
+	}
+	
+	// Show warning if truncation occurred
+	if (removedCount > 0 && warningCallback) {
+		const modelInfo = currentModelId ? ` for model ${currentModelId}` : '';
+		warningCallback(
+			`Context "${contextName}" exceeded token limit${modelInfo} (${limit} tokens). ` +
+			`Removed ${removedCount} oldest message${removedCount > 1 ? 's' : ''}.`
+		);
+	}
+	
+	return truncated;
+}
 
 /**
  * Context skill implementation.
@@ -94,6 +206,12 @@ export const contextSkill: Skill = {
 			}
 		}
 		
+		// Check for duplicate names
+		const uniqueNames = new Set(nameList);
+		if (uniqueNames.size !== nameList.length) {
+			throw new Error('Duplicate context names are not allowed');
+		}
+		
 		// Create contexts if they don't exist
 		for (const contextName of nameList) {
 			if (!contextStore.has(contextName)) {
@@ -129,14 +247,19 @@ export function contextNames(): string[] {
 
 /**
  * API: Gets all selected contexts with their messages.
+ * Messages are automatically truncated if they exceed the model's token limit.
  * 
- * @returns Array of context objects with name and messages
+ * @returns Array of context objects with name and truncated messages
  */
 export function getContext(): Context[] {
-	return selectedContextNames.map(name => ({
-		name,
-		messages: contextStore.get(name) || []
-	}));
+	return selectedContextNames.map(name => {
+		const messages = contextStore.get(name) || [];
+		const truncated = truncateMessages(messages, name);
+		return {
+			name,
+			messages: truncated
+		};
+	});
 }
 
 /**
@@ -145,6 +268,7 @@ export function getContext(): Context[] {
  * 
  * @param names - Array of context names to select
  * @throws Error if names array is empty or invalid
+ * @throws Error if context names contain duplicates
  */
 export function selectContext(names: string[]): void {
 	if (!Array.isArray(names) || names.length === 0) {
@@ -156,6 +280,12 @@ export function selectContext(names: string[]): void {
 		if (!isValidString(name)) {
 			throw new Error('Invalid context name: must be non-empty string');
 		}
+	}
+	
+	// Check for duplicate names
+	const uniqueNames = new Set(names);
+	if (uniqueNames.size !== names.length) {
+		throw new Error('Duplicate context names are not allowed');
 	}
 	
 	// Create contexts if they don't exist
@@ -216,4 +346,46 @@ export function setContext(contextName: string, messages: ContextMessage[]): voi
 export function resetState(): void {
 	contextStore.clear();
 	selectedContextNames = [];
+	currentModelId = undefined;
+	warningCallback = undefined;
+}
+
+/**
+ * API: Sets the current model ID for token limit enforcement.
+ * 
+ * @param modelId - Model ID to set (e.g., 'gpt-4o', 'claude-3')
+ */
+export function setModelId(modelId: string | undefined): void {
+	currentModelId = modelId;
+}
+
+/**
+ * API: Gets the current model ID.
+ * 
+ * @returns Current model ID or undefined
+ */
+export function getModelId(): string | undefined {
+	return currentModelId;
+}
+
+/**
+ * API: Sets a callback function to show warnings to the user.
+ * 
+ * @param callback - Function to call when showing warnings
+ */
+export function setWarningCallback(callback: (message: string) => void): void {
+	warningCallback = callback;
+}
+
+/**
+ * API: Gets the token limit for a specific model.
+ * 
+ * @param modelId - Model ID to check (optional, uses current model if not provided)
+ * @returns Token limit for the model
+ */
+export function getTokenLimit(modelId?: string): number {
+	if (modelId) {
+		return MODEL_TOKEN_LIMITS[modelId] || DEFAULT_TOKEN_LIMIT;
+	}
+	return getModelTokenLimit();
 }

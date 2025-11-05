@@ -66,6 +66,9 @@ export function parseAnnotations(markdown: string): ParseResult {
 	const lines = markdown.split('\n');
 	let currentLineNumber = 0;
 
+	// First pass: validate syntax for common errors
+	validateSyntax(lines, errors);
+
 	while (currentLineNumber < lines.length) {
 		const line = lines[currentLineNumber];
 		const trimmedLine = trimLine(line);
@@ -116,4 +119,37 @@ export function parseAnnotations(markdown: string): ParseResult {
 	}
 
 	return { blocks, errors };
+}
+
+/**
+ * Validates syntax for common errors before parsing.
+ * Checks for invalid trailing characters after quoted values.
+ *
+ * @param lines - Array of lines to validate
+ * @param errors - Array to push errors into
+ */
+function validateSyntax(lines: string[], errors: ParserError[]): void {
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		const trimmed = trimLine(line);
+		
+		// Skip empty lines and comments
+		if (isEmptyLine(line) || isCommentStart(trimmed)) {
+			continue;
+		}
+		
+		// Check for invalid trailing characters after quoted values
+		// Pattern: @annotation --flag "value" [invalid chars]
+		// Example: @model "gpt-4.1" e
+		const invalidTrailingPattern = /@\w+\s+(--\w+\s+)?"[^"]*"\s+\w+/;
+		if (invalidTrailingPattern.test(trimmed)) {
+			errors.push({
+				type: 'INVALID_SYNTAX',
+				message: 'Invalid syntax: unexpected trailing characters after quoted value',
+				line: i + 1,
+				severity: 'critical',
+				context: trimmed
+			});
+		}
+	}
 }

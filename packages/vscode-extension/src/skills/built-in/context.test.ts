@@ -15,7 +15,11 @@ import {
 	addMessageToContext,
 	appendContext,
 	setContext,
-	resetState 
+	resetState,
+	setModelId,
+	getModelId,
+	setWarningCallback,
+	getTokenLimit
 } from './context';
 import { createMockSkillApi } from '../testUtils';
 
@@ -560,5 +564,276 @@ describe('setContext API', () => {
 		selectContext(['chat']);
 		expect(getContext()[0].messages).toHaveLength(1);
 		expect(getContext()[0].messages[0].content).toBe('Third set');
+	});
+});
+
+describe('duplicate context names validation', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('should throw error on duplicate context names in skill execution', async () => {
+		const mockApi = createMockSkillApi();
+		await expect(
+			contextSkill.execute(mockApi, { names: 'ctx1,ctx2,ctx1' })
+		).rejects.toThrow('Duplicate context names are not allowed');
+	});
+
+	it('should throw error on duplicate context names in selectContext API', () => {
+		expect(() => selectContext(['ctx1', 'ctx2', 'ctx1'])).toThrow('Duplicate context names are not allowed');
+	});
+
+	it('should allow same context name if called separately', async () => {
+		const mockApi = createMockSkillApi();
+		await contextSkill.execute(mockApi, { name: 'ctx1' });
+		await contextSkill.execute(mockApi, { name: 'ctx1' }); // Should not throw
+		
+		expect(contextNames()).toEqual(['ctx1']);
+	});
+});
+
+describe('token limits and truncation', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('should return correct token limits for known models', () => {
+		expect(getTokenLimit('gpt-4')).toBe(8192);
+		expect(getTokenLimit('gpt-4-32k')).toBe(32768);
+		expect(getTokenLimit('gpt-4o')).toBe(128000);
+		expect(getTokenLimit('gpt-4o-mini')).toBe(128000);
+		expect(getTokenLimit('claude-3')).toBe(200000);
+		expect(getTokenLimit('claude-3-opus')).toBe(200000);
+		expect(getTokenLimit('claude-3-sonnet')).toBe(200000);
+		expect(getTokenLimit('claude-3-haiku')).toBe(200000);
+		expect(getTokenLimit('claude-3.5')).toBe(200000);
+		expect(getTokenLimit('claude-3.5-sonnet')).toBe(200000);
+	});
+
+	it('should return default token limit for unknown model', () => {
+		expect(getTokenLimit('unknown-model')).toBe(8192);
+	});
+
+	it('should return current model token limit when no model specified', () => {
+		setModelId('gpt-4o');
+		expect(getTokenLimit()).toBe(128000);
+	});
+
+	it('should return default limit when no model is set', () => {
+		expect(getTokenLimit()).toBe(8192);
+	});
+
+	it('should truncate context when exceeding token limit', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		// Add messages that exceed the limit
+		// Each character is ~0.25 tokens, so 40000 chars = ~10000 tokens
+		const longMessage = 'x'.repeat(40000);
+		addMessageToContext('chat', 'user', longMessage);
+		addMessageToContext('chat', 'assistant', 'Short response');
+		
+		selectContext(['chat']);
+		const contexts = getContext();
+		
+		// First message should be truncated
+		expect(contexts[0].messages).toHaveLength(1);
+		expect(contexts[0].messages[0].content).toBe('Short response');
+	});
+
+	it('should keep messages under token limit intact', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		// Add messages well under the limit
+		addMessageToContext('chat', 'user', 'Hello');
+		addMessageToContext('chat', 'assistant', 'Hi there');
+		addMessageToContext('chat', 'user', 'How are you?');
+		
+		selectContext(['chat']);
+		const contexts = getContext();
+		
+		// All messages should be preserved
+		expect(contexts[0].messages).toHaveLength(3);
+		expect(contexts[0].messages[0].content).toBe('Hello');
+		expect(contexts[0].messages[1].content).toBe('Hi there');
+		expect(contexts[0].messages[2].content).toBe('How are you?');
+	});
+
+	it('should truncate oldest messages first (FIFO)', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		// Add 5 messages, each ~3000 tokens (12000 chars)
+		const msg = 'x'.repeat(12000);
+		addMessageToContext('chat', 'user', msg + '1');
+		addMessageToContext('chat', 'assistant', msg + '2');
+		addMessageToContext('chat', 'user', msg + '3');
+		addMessageToContext('chat', 'assistant', msg + '4');
+		addMessageToContext('chat', 'user', msg + '5');
+		
+		selectContext(['chat']);
+		const contexts = getContext();
+		
+		// Should keep only the last 2-3 messages to stay under 8192 tokens
+		// First messages (1, 2, 3) should be removed, keeping newer ones
+		const contents = contexts[0].messages.map(m => m.content);
+		expect(contents.every(c => c.endsWith('4') || c.endsWith('5'))).toBe(true);
+	});
+
+	it('should call warning callback when truncation occurs', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		const warnings: string[] = [];
+		setWarningCallback((msg) => warnings.push(msg));
+		
+		// Add messages that exceed the limit
+		const longMessage = 'x'.repeat(40000);
+		addMessageToContext('chat', 'user', longMessage);
+		addMessageToContext('chat', 'assistant', 'Short response');
+		
+		selectContext(['chat']);
+		getContext(); // Trigger truncation
+		
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('Context "chat" exceeded token limit');
+		expect(warnings[0]).toContain('for model gpt-4');
+		expect(warnings[0]).toContain('8192 tokens');
+		expect(warnings[0]).toContain('Removed 1 oldest message');
+	});
+
+	it('should handle warning callback for multiple messages removed', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		const warnings: string[] = [];
+		setWarningCallback((msg) => warnings.push(msg));
+		
+		// Add many messages that exceed the limit
+		const msg = 'x'.repeat(12000);
+		for (let i = 0; i < 5; i++) {
+			addMessageToContext('chat', 'user', msg);
+		}
+		
+		selectContext(['chat']);
+		getContext(); // Trigger truncation
+		
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('Removed');
+		expect(warnings[0]).toContain('oldest messages'); // plural
+	});
+
+	it('should not call warning callback when no truncation occurs', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		const warnings: string[] = [];
+		setWarningCallback((msg) => warnings.push(msg));
+		
+		// Add small messages
+		addMessageToContext('chat', 'user', 'Hello');
+		addMessageToContext('chat', 'assistant', 'Hi');
+		
+		selectContext(['chat']);
+		getContext();
+		
+		expect(warnings).toHaveLength(0);
+	});
+
+	it('should allow empty context after complete truncation', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		// Add single massive message that exceeds limit
+		const hugeMessage = 'x'.repeat(100000); // Way over limit
+		addMessageToContext('chat', 'user', hugeMessage);
+		
+		selectContext(['chat']);
+		const contexts = getContext();
+		
+		// Should truncate completely, leaving empty context
+		expect(contexts[0].messages).toHaveLength(0);
+	});
+
+	it('should handle multiple contexts independently for truncation', () => {
+		setModelId('gpt-4'); // 8192 token limit
+		
+		// Context 1: exceeds limit
+		const longMessage = 'x'.repeat(40000);
+		addMessageToContext('ctx1', 'user', longMessage);
+		addMessageToContext('ctx1', 'assistant', 'Response');
+		
+		// Context 2: under limit
+		addMessageToContext('ctx2', 'user', 'Hello');
+		addMessageToContext('ctx2', 'assistant', 'Hi');
+		
+		selectContext(['ctx1', 'ctx2']);
+		const contexts = getContext();
+		
+		// ctx1 should be truncated, ctx2 should not
+		expect(contexts[0].messages).toHaveLength(1); // Truncated
+		expect(contexts[1].messages).toHaveLength(2); // Preserved
+	});
+});
+
+describe('model ID management', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('should set and get model ID', () => {
+		expect(getModelId()).toBeUndefined();
+		
+		setModelId('gpt-4o');
+		expect(getModelId()).toBe('gpt-4o');
+		
+		setModelId('claude-3');
+		expect(getModelId()).toBe('claude-3');
+	});
+
+	it('should allow setting model ID to undefined', () => {
+		setModelId('gpt-4o');
+		expect(getModelId()).toBe('gpt-4o');
+		
+		setModelId(undefined);
+		expect(getModelId()).toBeUndefined();
+	});
+
+	it('should reset model ID on resetState', () => {
+		setModelId('gpt-4o');
+		resetState();
+		expect(getModelId()).toBeUndefined();
+	});
+});
+
+describe('warning callback management', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('should set and use warning callback', () => {
+		const warnings: string[] = [];
+		setWarningCallback((msg) => warnings.push(msg));
+		
+		setModelId('gpt-4');
+		const longMessage = 'x'.repeat(40000);
+		addMessageToContext('chat', 'user', longMessage);
+		addMessageToContext('chat', 'assistant', 'Response');
+		
+		selectContext(['chat']);
+		getContext();
+		
+		expect(warnings.length).toBeGreaterThan(0);
+	});
+
+	it('should reset warning callback on resetState', () => {
+		const warnings: string[] = [];
+		setWarningCallback((msg) => warnings.push(msg));
+		
+		resetState();
+		
+		// Add data that would trigger warning
+		setModelId('gpt-4');
+		const longMessage = 'x'.repeat(40000);
+		addMessageToContext('chat', 'user', longMessage);
+		selectContext(['chat']);
+		getContext();
+		
+		// Callback should not be called after reset
+		expect(warnings).toHaveLength(0);
 	});
 });

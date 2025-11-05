@@ -11,6 +11,8 @@ import {
   AnnotationErrorHoverProvider,
   createLegend
 } from './markdown/annotationHighlightProvider';
+import { SkillHoverProvider } from './markdown/skillHoverProvider';
+import { BrainyCompletionProvider } from './markdown/completionProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 import { refreshSkills } from './skills/skillScanner';
 
@@ -75,7 +77,8 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log('Registering annotation highlighting...');
   const legend = createLegend();
   const highlightProvider = new AnnotationHighlightProvider();
-  const hoverProvider = new AnnotationErrorHoverProvider();
+  const errorHoverProvider = new AnnotationErrorHoverProvider();
+  const skillHoverProvider = new SkillHoverProvider();
 
   context.subscriptions.push(
     vscode.languages.registerDocumentSemanticTokensProvider(
@@ -85,14 +88,31 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  // Register hover providers (error hover takes precedence, then skill info)
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
       { language: 'markdown' },
-      hoverProvider
+      errorHoverProvider
     )
   );
 
-  console.log('✓ Annotation highlighting registered for markdown files');
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      { language: 'markdown' },
+      skillHoverProvider
+    )
+  );
+
+  // Register completion provider for autocomplete
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      { language: 'markdown' },
+      new BrainyCompletionProvider(),
+      '@', '-', '"' // Trigger characters
+    )
+  );
+
+  console.log('✓ Annotation highlighting and hover providers registered for markdown files');
 
   // Initialize and watch skills directory
   console.log('Setting up skills scanner...');

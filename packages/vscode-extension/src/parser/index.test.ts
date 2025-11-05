@@ -630,3 +630,53 @@ Line 5`;
 	});
 });
 
+describe('Markdown validation', () => {
+	describe('invalid trailing characters', () => {
+		it('should detect invalid trailing characters after quoted value', () => {
+			const md = '@model "gpt-4.1" e';
+			const result = parseAnnotations(md);
+			
+			expect(result.errors).toHaveLength(1);
+			expect(result.errors[0].type).toBe('INVALID_SYNTAX');
+			expect(result.errors[0].message).toContain('trailing characters');
+		});
+
+		it('should detect invalid trailing characters with flag', () => {
+			const md = '@model --id "gpt-4" extra';
+			const result = parseAnnotations(md);
+			
+			expect(result.errors).toHaveLength(1);
+			expect(result.errors[0].type).toBe('INVALID_SYNTAX');
+		});
+
+		it('should not error on valid syntax', () => {
+			const md = '@model --id "gpt-4"';
+			const result = parseAnnotations(md);
+			
+			// May have MissingSkill error since 'model' skill needs to be available
+			// But should not have INVALID_SYNTAX error
+			const syntaxErrors = result.errors.filter(e => e.type === 'INVALID_SYNTAX');
+			expect(syntaxErrors).toHaveLength(0);
+		});
+
+		it('should not error on multi-line valid syntax', () => {
+			const md = `@context --name "research"
+			
+Some text`;
+			const result = parseAnnotations(md);
+			
+			const syntaxErrors = result.errors.filter(e => e.type === 'INVALID_SYNTAX');
+			expect(syntaxErrors).toHaveLength(0);
+		});
+
+		it('should detect multiple invalid lines', () => {
+			const md = `@model "gpt-4" x
+@context "main" y`;
+			const result = parseAnnotations(md);
+			
+			const syntaxErrors = result.errors.filter(e => e.type === 'INVALID_SYNTAX');
+			expect(syntaxErrors.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+});
+

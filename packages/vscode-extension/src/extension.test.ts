@@ -98,7 +98,8 @@ vi.mock('vscode', () => {
     languages: {
       registerDocumentSemanticTokensProvider: vi.fn(() => ({ dispose: vi.fn() })),
       registerHoverProvider: vi.fn(() => ({ dispose: vi.fn() })),
-      registerCodeLensProvider: vi.fn(() => ({ dispose: vi.fn() }))
+      registerCodeLensProvider: vi.fn(() => ({ dispose: vi.fn() })),
+      registerCompletionItemProvider: vi.fn(() => ({ dispose: vi.fn() }))
     },
     workspace: mockWorkspace,
     SemanticTokensLegend: MockSemanticTokensLegend,

@@ -4,25 +4,38 @@
  * Description:
  *   Registry for built-in skills that ship with the extension.
  *   Built-in skills are always available and take priority over project skills.
- *   Skills are not loaded here - they run in isolated processes.
- *   This module only tracks which skills are built-in.
+ *   Provides access to skill metadata and instances.
  *
  * Usage:
- *   import { isBuiltInSkill } from './skills/built-in';
+ *   import { isBuiltInSkill, getBuiltInSkill } from './skills/built-in';
  *   if (isBuiltInSkill('file')) { ... }
+ *   const skill = getBuiltInSkill('context');
  */
+
+import type { Skill } from '../types';
+import { contextSkill } from './context';
+import { modelSkill } from './model';
+import { taskSkill } from './task';
+import { executeSkill } from './execute';
+import { fileSkill } from './file';
+import { inputSkill } from './input';
+
+/**
+ * Map of built-in skill instances.
+ */
+const builtInSkills = new Map<string, Skill>([
+	['context', contextSkill],
+	['model', modelSkill],
+	['task', taskSkill],
+	['execute', executeSkill],
+	['file', fileSkill],
+	['input', inputSkill]
+]);
 
 /**
  * Set of built-in skill names.
  */
-const builtInSkillNames = new Set<string>([
-	'file',
-	'model',
-	'context',
-	'task',
-	'execute',
-	'input'
-]);
+const builtInSkillNames = new Set<string>(builtInSkills.keys());
 
 /**
  * Checks if a skill name is a built-in skill.
@@ -41,4 +54,14 @@ export function isBuiltInSkill(name: string): boolean {
  */
 export function getBuiltInSkillNames(): string[] {
 	return Array.from(builtInSkillNames);
+}
+
+/**
+ * Gets a built-in skill instance by name.
+ * 
+ * @param name - Skill name
+ * @returns Skill instance or undefined
+ */
+export function getBuiltInSkill(name: string): Skill | undefined {
+	return builtInSkills.get(name);
 }
