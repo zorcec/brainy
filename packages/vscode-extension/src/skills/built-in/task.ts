@@ -22,6 +22,7 @@
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+import { validateRequiredString, isValidString } from '../validation';
 
 /**
  * Substitutes variables in text using {{variableName}} syntax.
@@ -52,9 +53,7 @@ export const taskSkill: Skill = {
 		const { prompt, model, variable } = params;
 		
 		// Validate prompt parameter
-		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
-			throw new Error('Missing or invalid prompt');
-		}
+		validateRequiredString(prompt, 'prompt');
 		
 		// Substitute variables in the prompt
 		const processedPrompt = substituteVariables(prompt, api);
@@ -67,7 +66,7 @@ export const taskSkill: Skill = {
 		const result = await api.sendRequest('user', processedPrompt, model, { tools });
 		
 		// Store response in variable if requested
-		if (variable && typeof variable === 'string' && variable.trim() !== '') {
+		if (isValidString(variable)) {
 			api.setVariable(variable, result.response);
 		}
 		

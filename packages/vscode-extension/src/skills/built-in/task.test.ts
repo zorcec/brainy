@@ -73,7 +73,12 @@ describe('taskSkill', () => {
 			async selectChatModel() {},
 			async getAllAvailableTools() {
 				return [];
-			}
+			},
+			getParsedBlocks() { return []; },
+			getCurrentBlockIndex() { return 0; },
+			setVariable() {},
+			getVariable() { return undefined; },
+			async openInputDialog() { return 'test'; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test' })).rejects.toThrow('LLM timeout');
@@ -87,7 +92,12 @@ describe('taskSkill', () => {
 			async selectChatModel() {},
 			async getAllAvailableTools() {
 				return [];
-			}
+			},
+			getParsedBlocks() { return []; },
+			getCurrentBlockIndex() { return 0; },
+			setVariable() {},
+			getVariable() { return undefined; },
+			async openInputDialog() { return 'test'; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test', model: 'invalid' })).rejects.toThrow('Invalid model ID');

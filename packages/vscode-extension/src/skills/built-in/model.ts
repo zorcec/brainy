@@ -15,6 +15,7 @@
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+import { validateRequiredString } from '../validation';
 
 /**
  * Model skill implementation.
@@ -28,9 +29,7 @@ export const modelSkill: Skill = {
 		const { id } = params;
 		
 		// Validate model ID parameter
-		if (!id || typeof id !== 'string' || id.trim() === '') {
-			throw new Error('Missing or invalid model id');
-		}
+		validateRequiredString(id, 'model id');
 		
 		// Select the model using the SkillApi
 		await api.selectChatModel(id);

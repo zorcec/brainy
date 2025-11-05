@@ -21,6 +21,7 @@
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+import { isValidString } from '../validation';
 
 /**
  * Message structure for context tracking.
@@ -67,8 +68,7 @@ export const contextSkill: Skill = {
 		
 		if (names !== undefined) {
 			// Multiple names provided as comma-separated string
-			// Check if names is empty or whitespace-only
-			if (typeof names !== 'string' || names.trim() === '') {
+			if (!isValidString(names)) {
 				throw new Error('Missing or invalid context name(s)');
 			}
 			nameList = names.split(',').map(n => n.trim()).filter(n => n.length > 0);
@@ -79,8 +79,7 @@ export const contextSkill: Skill = {
 			}
 		} else if (name !== undefined) {
 			// Single name provided
-			// Check if name is empty or whitespace-only
-			if (typeof name !== 'string' || name.trim() === '') {
+			if (!isValidString(name)) {
 				throw new Error('Invalid context name: empty string');
 			}
 			nameList = [name.trim()];
@@ -88,8 +87,7 @@ export const contextSkill: Skill = {
 			throw new Error('Missing context name(s)');
 		}
 		
-		// Validate each name (no empty strings) - should not happen after above checks
-		// but keeping as defensive check
+		// Validate each name (defensive check)
 		for (const contextName of nameList) {
 			if (!contextName || contextName.trim() === '') {
 				throw new Error('Invalid context name: empty string');
@@ -155,7 +153,7 @@ export function selectContext(names: string[]): void {
 	
 	// Validate each name
 	for (const name of names) {
-		if (!name || typeof name !== 'string' || name.trim() === '') {
+		if (!isValidString(name)) {
 			throw new Error('Invalid context name: must be non-empty string');
 		}
 	}

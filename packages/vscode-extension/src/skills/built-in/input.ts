@@ -23,6 +23,7 @@
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+import { validateRequiredString } from '../validation';
 
 /**
  * Input skill implementation.
@@ -35,15 +36,9 @@ export const inputSkill: Skill = {
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		const { prompt, variable } = params;
 		
-		// Validate prompt parameter
-		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
-			throw new Error('Missing or invalid prompt. Provide a non-empty prompt text.');
-		}
-		
-		// Validate variable parameter
-		if (!variable || typeof variable !== 'string' || variable.trim() === '') {
-			throw new Error('Missing or invalid variable name. Provide a non-empty variable name.');
-		}
+		// Validate parameters
+		validateRequiredString(prompt, 'prompt');
+		validateRequiredString(variable, 'variable name');
 		
 		// Open input dialog and wait for user input
 		const value = await api.openInputDialog(prompt);
