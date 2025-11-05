@@ -12,6 +12,7 @@ This epic tracks small but impactful improvements and missing safeguards in the 
 - Autocomplete for available models, available skills, and their options in the VS Code extension.
 - Once skill is executed, the returned object can be inspected on hover in the editor. (useful for debugging, you can pause the execution and inspect the results at that point)
 - Once playback is stopped, try to terminate the current skill execution (if possible).
+- When skill is exported, a `expose` flag can be set to true, in that case it gets registered as a vscode tool.
 
 ## Goals
 - Improve editor usability and clarity for skills.
