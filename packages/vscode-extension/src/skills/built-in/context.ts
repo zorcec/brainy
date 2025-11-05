@@ -56,7 +56,7 @@ const DEFAULT_TOKEN_LIMIT = 8192;
  * Matches VS Code LLM API requirements.
  */
 export type ContextMessage = {
-	role: 'user' | 'assistant';
+	role: 'user' | 'assistant' | 'agent';
 	content: string;
 };
 
@@ -231,6 +231,13 @@ export const contextSkill: Skill = {
 			? `Context set to: ${nameList[0]}`
 			: `Contexts selected: ${nameList.join(', ')}`;
 		
+		// Add to context automatically as agent
+		// Note: We don't use api.addToContext here because it would add to all selected contexts
+		// Instead, we add directly to each context
+		for (const contextName of nameList) {
+			addMessageToContext(contextName, 'agent', message);
+		}
+		
 		return {
 			messages: [{
 				role: 'agent',
@@ -303,14 +310,14 @@ export function selectContext(names: string[]): void {
 }
 
 /**
- * API: Adds a message to a specific context.
+ * API: Adds a single message to a specific context.
  * Creates the context if it doesn't exist.
  * 
  * @param contextName - Name of the context
- * @param role - Message role ('user' or 'assistant')
+ * @param role - Message role ('user' or 'assistant' or 'agent')
  * @param content - Message content
  */
-export function addMessageToContext(contextName: string, role: 'user' | 'assistant', content: string): void {
+export function addMessageToContext(contextName: string, role: 'user' | 'assistant' | 'agent', content: string): void {
 	if (!contextStore.has(contextName)) {
 		contextStore.set(contextName, []);
 	}

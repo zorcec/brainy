@@ -1,0 +1,1 @@
+- Every skill returns the messages, so we can automatically add them to the current context, no need to do this manually in each skill.

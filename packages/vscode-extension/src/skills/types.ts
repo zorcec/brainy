@@ -163,6 +163,23 @@ export interface SkillApi {
 	 * @throws Error if the user cancels the input dialog
 	 */
 	openInputDialog(prompt: string): Promise<string>;
+
+	/**
+	 * Adds a message to the currently active contexts.
+	 * If no contexts are active, the message is not stored.
+	 * 
+	 * @param role - Message role ('user', 'assistant', or 'agent')
+	 * @param content - Message content
+	 */
+	addToContext(role: 'user' | 'assistant' | 'agent', content: string): void;
+
+	/**
+	 * Gets the current context (conversation history/messages) for the skill execution.
+	 * Typically includes all user/assistant/agent messages so far.
+	 *
+	 * @returns Array of SkillMessage objects representing the context
+	 */
+	getContext(): SkillMessage[];
 }
 
 /**

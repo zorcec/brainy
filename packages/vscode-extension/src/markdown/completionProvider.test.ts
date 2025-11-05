@@ -406,5 +406,55 @@ describe('BrainyCompletionProvider', () => {
 			expect(paramNames).toContain('variable');
 			expect(paramNames).not.toContain('action');
 		});
+
+		it('should provide completions after flag with value (generic test 1)', () => {
+			mockDocument = {
+				lineAt: () => ({
+					text: '@input --prompt "your name" --'
+				})
+			};
+
+			const position = new vscode.Position(0, 30);
+			const items = provider.provideCompletionItems(mockDocument, position);
+
+			expect(items).toBeDefined();
+			expect(items!.length).toBeGreaterThan(0);
+			// Should show completions for next parameter
+		});
+
+		it('should provide completions after flag with value (generic test 2)', () => {
+			mockDocument = {
+				lineAt: () => ({
+					text: '@task --prompt "do something" --'
+				})
+			};
+
+			const position = new vscode.Position(0, 32);
+			const items = provider.provideCompletionItems(mockDocument, position);
+
+			expect(items).toBeDefined();
+			expect(items!.length).toBeGreaterThan(0);
+			// Should show task-specific completions
+			const paramNames = items!.map(item => item.label);
+			expect(paramNames).toContain('model');
+			expect(paramNames).toContain('variable');
+		});
+
+		it('should provide completions after multiple flags with values', () => {
+			mockDocument = {
+				lineAt: () => ({
+					text: '@file --action "read" --path "/tmp/test.txt" --'
+				})
+			};
+
+			const position = new vscode.Position(0, 47);
+			const items = provider.provideCompletionItems(mockDocument, position);
+
+			expect(items).toBeDefined();
+			expect(items!.length).toBeGreaterThan(0);
+			// Should show file-specific completions
+			const paramNames = items!.map(item => item.label);
+			expect(paramNames).toContain('content');
+		});
 	});
 });

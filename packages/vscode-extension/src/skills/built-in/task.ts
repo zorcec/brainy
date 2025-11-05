@@ -44,24 +44,45 @@ function substituteVariables(text: string, api: SkillApi): string {
  * Sends a prompt to the LLM and returns the response.
  * Automatically uses all available tools unless explicitly disabled.
  * Supports variable substitution in prompts and storing responses in variables.
+ * Supports debug mode to dump context without calling LLM.
  */
 export const taskSkill: Skill = {
 	name: 'task',
-	description: 'Send a prompt to the LLM and return the response. Only user prompts are supported. The VS Code extension handles context. Automatically uses all available tools. Supports variable substitution using {{name}} syntax.',
+	description: 'Send a prompt to the LLM and return the response. Only user prompts are supported. The VS Code extension handles context. Automatically uses all available tools. Supports variable substitution using {{name}} syntax. Use --debug flag to dump context instead of calling LLM.',
 	params: [
 		{ name: 'prompt', description: 'Prompt text to send to the LLM', required: true },
 		{ name: 'model', description: 'Optional model ID (e.g., gpt-4o, claude-3)', required: false },
-		{ name: 'variable', description: 'Variable name to store the response', required: false }
+		{ name: 'variable', description: 'Variable name to store the response', required: false },
+		{ name: 'debug', description: 'Dump full context as JSON instead of calling LLM', required: false }
 	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
-		const { prompt, model, variable } = params;
+		const { prompt, model, variable, debug } = params;
 		
 		// Validate prompt parameter
 		validateRequiredString(prompt, 'prompt');
 		
 		// Substitute variables in the prompt
 		const processedPrompt = substituteVariables(prompt, api);
+		
+		// Debug mode: dump context and return without calling LLM
+		if (debug === 'true' || debug === '1') {
+			const contextDump = {
+				prompt: processedPrompt,
+				model: model || 'default',
+				context: api.getContext()
+			};
+			// Store in variable if requested
+			if (isValidString(variable)) {
+				api.setVariable(variable, 'dummy response in debug mode');
+			}
+			return {
+				messages: [
+					{ role: 'user', content: contextDump as any },
+					{ role: 'agent', content: `dummy LLM response` }
+				]
+			};
+		}
 		
 		// Get all available tools by default
 		const tools = await api.getAllAvailableTools();
@@ -75,12 +96,16 @@ export const taskSkill: Skill = {
 			api.setVariable(variable, result.response);
 		}
 		
-		// Return the response as an assistant message
+		// Add both user prompt and assistant response to context
+		api.addToContext('user', processedPrompt);
+		api.addToContext('assistant', result.response);
+		
+		// Return both user prompt and assistant response
 		return {
-			messages: [{
-				role: 'assistant',
-				content: result.response
-			}]
+			messages: [
+				{ role: 'user', content: processedPrompt },
+				{ role: 'assistant', content: result.response }
+			]
 		};
 	}
 };

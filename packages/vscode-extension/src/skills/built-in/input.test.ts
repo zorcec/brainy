@@ -33,7 +33,7 @@ describe('input skill', () => {
 		expect(mockApi.setVariable).toHaveBeenCalledWith('userName', 'John Doe');
 	});
 
-	it('should return empty messages array', async () => {
+	it('should return user-type message with prompt and value', async () => {
 		mockApi.openInputDialog = vi.fn(async () => 'test value');
 		mockApi.setVariable = vi.fn();
 
@@ -42,7 +42,9 @@ describe('input skill', () => {
 			variable: 'myVar'
 		});
 
-		expect(result.messages).toEqual([]);
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[0].content).toBe('Enter something: test value');
 	});
 
 	it('should throw error if prompt is missing', async () => {

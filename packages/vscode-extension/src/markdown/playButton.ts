@@ -118,8 +118,8 @@ export class PlaybookCodeLensProvider implements vscode.CodeLensProvider {
 		const codeLenses: vscode.CodeLens[] = [];
 
 		// Only show buttons that are currently enabled
-		if (state === 'idle') {
-			// In idle state, show Play button (enabled only if no errors)
+		if (state === 'idle' || state === 'error') {
+			// In idle or error state, show Play button (enabled only if no errors)
 			if (!hasErrors) {
 				codeLenses.push(new vscode.CodeLens(firstLine, {
 					title: '$(play) Play',
@@ -191,7 +191,7 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext, codeL
 			
 			// Check current state
 			const currentState = getExecutionState(editorUri);
-			if (currentState !== 'idle') {
+			if (currentState !== 'idle' && currentState !== 'error') {
 				vscode.window.showWarningMessage('Playbook is already running or paused');
 				return;
 			}

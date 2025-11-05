@@ -6,9 +6,17 @@
  *   Tests model selection with various scenarios and error cases.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { modelSkill } from './model';
 import { createMockSkillApi } from '../testUtils';
+import * as vscode from 'vscode';
+
+// Mock vscode.lm.selectChatModels
+vi.mock('vscode', () => ({
+	lm: {
+		selectChatModels: vi.fn()
+	}
+}));
 
 describe('modelSkill', () => {
 	let mockApi: ReturnType<typeof createMockSkillApi>;
@@ -16,6 +24,11 @@ describe('modelSkill', () => {
 	beforeEach(() => {
 		// Create a fresh mock API for each test
 		mockApi = createMockSkillApi();
+		
+		// Default: model exists
+		vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([
+			{ id: 'gpt-4o' } as any,
+		]);
 	});
 
 	describe('metadata', () => {
@@ -37,6 +50,7 @@ describe('modelSkill', () => {
 		it('should set model and return confirmation message', async () => {
 			const result = await modelSkill.execute(mockApi, { id: 'gpt-4o' });
 			
+			expect(vscode.lm.selectChatModels).toHaveBeenCalledWith({ id: 'gpt-4o' });
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('gpt-4o');
 			expect(mockApi.selectChatModel).toHaveBeenCalledTimes(1);
 			expect(result.messages).toHaveLength(1);
@@ -45,17 +59,27 @@ describe('modelSkill', () => {
 		});
 
 		it('should handle different model IDs', async () => {
+			vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([
+				{ id: 'claude-3' } as any,
+			]);
+			
 			const result = await modelSkill.execute(mockApi, { id: 'claude-3' });
 			
+			expect(vscode.lm.selectChatModels).toHaveBeenCalledWith({ id: 'claude-3' });
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('claude-3');
 			expect(result.messages[0].content).toBe('Model set to: claude-3');
 		});
 
 		it('should trim whitespace from model ID', async () => {
+			vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([
+				{ id: '  gpt-4o  ' } as any,
+			]);
+			
 			const result = await modelSkill.execute(mockApi, { id: '  gpt-4o  ' });
 			
 			// Note: The skill validates that id.trim() !== '', but passes original id to API
 			// This is intentional - API should handle trimming if needed
+			expect(vscode.lm.selectChatModels).toHaveBeenCalledWith({ id: '  gpt-4o  ' });
 			expect(mockApi.selectChatModel).toHaveBeenCalledWith('  gpt-4o  ');
 			expect(result.messages[0].content).toBe('Model set to:   gpt-4o  ');
 		});
@@ -83,11 +107,18 @@ describe('modelSkill', () => {
 			await expect(modelSkill.execute(mockApi, { id: 123 })).rejects.toThrow('Missing or invalid model id');
 		});
 
+		it('should throw error if model is not available', async () => {
+			// Mock: model not found
+			vi.mocked(vscode.lm.selectChatModels).mockResolvedValue([]);
+			
+			await expect(modelSkill.execute(mockApi, { id: 'invalid-model' })).rejects.toThrow('Model "invalid-model" is not available');
+		});
+
 		it('should propagate errors from selectChatModel', async () => {
 			// Cast to any to access mock methods
 			(mockApi.selectChatModel as any).mockRejectedValue(new Error('Model not found'));
 			
-			await expect(modelSkill.execute(mockApi, { id: 'invalid-model' })).rejects.toThrow('Model not found');
+			await expect(modelSkill.execute(mockApi, { id: 'gpt-4o' })).rejects.toThrow('Model not found');
 		});
 	});
 });

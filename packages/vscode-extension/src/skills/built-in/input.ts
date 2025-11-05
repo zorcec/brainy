@@ -50,9 +50,17 @@ export const inputSkill: Skill = {
 		// Store the value in the variable
 		api.setVariable(variable, value);
 		
-		// Return empty message (no LLM interaction needed)
+		// Return user-type message with prompt and user input
+		const message = `${prompt}: ${value}`;
+		
+		// Add to context automatically
+		api.addToContext('user', message);
+		
 		return {
-			messages: []
+			messages: [{
+				role: 'user',
+				content: message
+			}]
 		};
 	}
 };

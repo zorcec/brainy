@@ -61,16 +61,21 @@ export const fileSkill: Skill = {
 		const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
 
 		// Execute action and get result message
-		let resultMessage: string;
+		let operationDesc: string;
+		let resultContent: string | null = null;
+		
 		switch (action) {
 			case 'read':
-				resultMessage = await readFile(resolvedPath);
+				resultContent = await readFile(resolvedPath);
+				operationDesc = 'read';
 				break;
 			case 'write':
-				resultMessage = await writeFile(resolvedPath, content!);
+				await writeFile(resolvedPath, content!);
+				operationDesc = 'write';
 				break;
 			case 'delete':
-				resultMessage = await deleteFile(resolvedPath);
+				await deleteFile(resolvedPath);
+				operationDesc = 'delete';
 				break;
 			default:
 				// TypeScript should prevent this, but just in case
@@ -78,12 +83,29 @@ export const fileSkill: Skill = {
 		}
 		
 		// Return result as SkillResult
-		return {
-			messages: [{
+		// For read operations, return file content as assistant message
+		// For write/delete, return operation description as agent message
+		const messages: Array<{ role: 'user' | 'assistant' | 'agent'; content: string }> = [];
+		
+		if (action === 'read' && resultContent !== null) {
+			// Read: return content as assistant message
+			messages.push({
 				role: 'assistant',
-				content: resultMessage
-			}]
-		};
+				content: resultContent
+			});
+		}
+		
+		// Always add agent message with operation description and filename
+		const agentMessage = `File ${operationDesc}: ${filePath}`;
+		messages.push({
+			role: 'agent',
+			content: agentMessage
+		});
+		
+		// Add to context automatically
+		api.addToContext('agent', agentMessage);
+		
+		return { messages };
 	}
 };
 
@@ -110,9 +132,8 @@ async function readFile(filePath: string): Promise<string> {
  *
  * @param filePath - Absolute file path to write
  * @param content - Content to write
- * @returns Success message
  */
-async function writeFile(filePath: string, content: string): Promise<string> {
+async function writeFile(filePath: string, content: string): Promise<void> {
 	try {
 		// Create parent directories if they don't exist
 		const dir = path.dirname(filePath);
@@ -120,7 +141,6 @@ async function writeFile(filePath: string, content: string): Promise<string> {
 		
 		// Write the file
 		await fs.writeFile(filePath, content, 'utf8');
-		return `File written successfully: ${filePath}`;
 	} catch (error) {
 		throw new Error(
 			`Failed to write file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
@@ -132,12 +152,10 @@ async function writeFile(filePath: string, content: string): Promise<string> {
  * Deletes a file.
  *
  * @param filePath - Absolute file path to delete
- * @returns Success message
  */
-async function deleteFile(filePath: string): Promise<string> {
+async function deleteFile(filePath: string): Promise<void> {
 	try {
 		await fs.unlink(filePath);
-		return `File deleted successfully: ${filePath}`;
 	} catch (error) {
 		throw new Error(
 			`Failed to delete file ${filePath}: ${error instanceof Error ? error.message : String(error)}`

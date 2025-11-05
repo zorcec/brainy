@@ -115,6 +115,24 @@ export function createMockSkillApi(): SkillApi {
 		 */
 		openInputDialog: vi.fn(async (prompt) => {
 			return 'mock input';
+		}),
+
+		/**
+		 * Mock implementation of addToContext.
+		 * By default, does nothing.
+		 * Override with mockImplementation() as needed.
+		 */
+		addToContext: vi.fn((role, content) => {
+			// No-op by default
+		})
+,
+		/**
+		 * Mock implementation of getContext.
+		 * By default, returns an empty array.
+		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 */
+		getContext: vi.fn(() => {
+			return [];
 		})
 	};
 }

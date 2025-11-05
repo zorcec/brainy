@@ -21,6 +21,10 @@ import {
 	getVariable as getVarFromStore,
 	setVariable as setVarToStore
 } from './variableStore';
+import {
+	contextNames,
+	addMessageToContext
+} from './built-in/context';
 
 /**
  * Creates a SkillApi instance for injecting into skills.
@@ -132,6 +136,39 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			}
 			
 			return value;
-		}
+		},
+
+		/**
+		 * Adds a message to the currently active contexts.
+		 * 
+		 * @param role - Message role ('user', 'assistant', or 'agent')
+		 * @param content - Message content
+		 */
+	       addToContext(role, content) {
+		       const activeContexts = contextNames();
+		       for (const contextName of activeContexts) {
+			       addMessageToContext(contextName, role, content);
+		       }
+	       },
+
+	       /**
+		* Gets the current context (conversation history/messages) for the skill execution.
+		* Returns the messages from the first active context, or an empty array if none.
+		*/
+	       getContext() {
+		       // Import getContextMessages from context skill if available
+		       try {
+			       // Dynamically require to avoid circular deps if needed
+			       // eslint-disable-next-line @typescript-eslint/no-var-requires
+			       const { getContextMessages } = require('./built-in/context');
+			       const activeContexts = contextNames();
+			       if (activeContexts.length > 0) {
+				       return getContextMessages(activeContexts[0]);
+			       }
+		       } catch (e) {
+			       // Fallback: return empty array
+		       }
+		       return [];
+	       }
 	};
 }

@@ -19,14 +19,16 @@ describe('taskSkill', () => {
 		expect(taskSkill.description).toContain('Send a prompt to the LLM');
 	});
 
-	test('sends prompt to LLM and returns assistant message', async () => {
+	test('sends prompt to LLM and returns user + assistant messages', async () => {
 		const result = await taskSkill.execute(mockApi, {
 			prompt: 'Summarize this text'
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].role).toBe('assistant');
-		expect(result.messages[0].content).toBe('Mock response for: Summarize this text');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[0].content).toBe('Summarize this text');
+		expect(result.messages[1].role).toBe('assistant');
+		expect(result.messages[1].content).toBe('Mock response for: Summarize this text');
 	});
 
 	test('sends prompt with model parameter', async () => {
@@ -35,9 +37,11 @@ describe('taskSkill', () => {
 			model: 'gpt-4o'
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].role).toBe('assistant');
-		expect(result.messages[0].content).toBe('Mock response for: Analyze the code');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[0].content).toBe('Analyze the code');
+		expect(result.messages[1].role).toBe('assistant');
+		expect(result.messages[1].content).toBe('Mock response for: Analyze the code');
 	});
 
 	test('uses globally selected model when model not provided', async () => {
@@ -45,8 +49,9 @@ describe('taskSkill', () => {
 			prompt: 'Hello world'
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].content).toBe('Mock response for: Hello world');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].content).toBe('Mock response for: Hello world');
 	});
 
 	test('throws error for missing prompt', async () => {
@@ -78,7 +83,9 @@ describe('taskSkill', () => {
 			getCurrentBlockIndex() { return 0; },
 			setVariable() {},
 			getVariable() { return undefined; },
-			async openInputDialog() { return 'test'; }
+			async openInputDialog() { return 'test'; },
+				addToContext() {},
+				getContext() { return []; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test' })).rejects.toThrow('LLM timeout');
@@ -97,7 +104,9 @@ describe('taskSkill', () => {
 			getCurrentBlockIndex() { return 0; },
 			setVariable() {},
 			getVariable() { return undefined; },
-			async openInputDialog() { return 'test'; }
+			async openInputDialog() { return 'test'; },
+				addToContext() {},
+				getContext() { return []; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test', model: 'invalid' })).rejects.toThrow('Invalid model ID');
@@ -109,9 +118,10 @@ describe('taskSkill', () => {
 			prompt: complexPrompt
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].role).toBe('assistant');
-		expect(result.messages[0].content).toContain('Mock response for:');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].role).toBe('assistant');
+		expect(result.messages[1].content).toContain('Mock response for:');
 	});
 
 	test('handles long prompts', async () => {
@@ -120,8 +130,9 @@ describe('taskSkill', () => {
 			prompt: longPrompt
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].role).toBe('assistant');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].role).toBe('assistant');
 	});
 
 	test('ignores extra parameters', async () => {
@@ -131,8 +142,9 @@ describe('taskSkill', () => {
 			anotherParam: '123'
 		});
 
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].content).toBe('Mock response for: Test');
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].content).toBe('Mock response for: Test');
 	});
 
 	test('automatically uses all available tools', async () => {

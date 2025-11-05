@@ -79,7 +79,8 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 
 		// Suggest parameters after '-' or '--'
 		// Match patterns like: "@skill -", "@skill --", "@skill --pro"
-		if (/@\w+\s+--?\w*$/.test(linePrefix)) {
+		// Also match after flags with values: "@skill --flag "value" --"
+		if (/@\w+.*\s+--?\w*$/.test(linePrefix)) {
 			return this.getParameterCompletions(linePrefix);
 		}
 

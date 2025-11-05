@@ -64,7 +64,10 @@ describe('contextSkill', () => {
 			const contexts = getContext();
 			expect(contexts).toHaveLength(1);
 			expect(contexts[0].name).toBe('new-context');
-			expect(contexts[0].messages).toEqual([]);
+			// Context now has the confirmation message
+			expect(contexts[0].messages).toEqual([
+				{ role: 'agent', content: 'Context set to: new-context' }
+			]);
 		});
 
 		it('should switch to existing context', async () => {
@@ -82,8 +85,11 @@ describe('contextSkill', () => {
 			
 			// Verify context1 still has its messages
 			const contexts = getContext();
-			expect(contexts[0].messages).toHaveLength(1);
-			expect(contexts[0].messages[0].content).toBe('Hello');
+			// context1 has: first confirmation + user message + second confirmation
+			expect(contexts[0].messages).toHaveLength(3);
+			expect(contexts[0].messages[0].content).toBe('Context set to: context1');
+			expect(contexts[0].messages[1].content).toBe('Hello');
+			expect(contexts[0].messages[2].content).toBe('Context set to: context1');
 		});
 
 		it('should trim whitespace from context name', async () => {
@@ -130,9 +136,11 @@ describe('contextSkill', () => {
 			
 			const contexts = getContext();
 			expect(contexts).toHaveLength(3);
-			expect(contexts[0].messages).toHaveLength(1); // existing context preserved
-			expect(contexts[1].messages).toHaveLength(0); // new contexts empty
-			expect(contexts[2].messages).toHaveLength(0);
+			// existing context: confirmation from first execute + test message + confirmation from second execute
+			expect(contexts[0].messages).toHaveLength(3);
+			// new contexts: only confirmation message from second execute
+			expect(contexts[1].messages).toHaveLength(1);
+			expect(contexts[2].messages).toHaveLength(1);
 		});
 	});
 
@@ -219,11 +227,17 @@ describe('getContext API', () => {
 		expect(contexts).toHaveLength(2);
 		expect(contexts[0]).toEqual({
 			name: 'ctx1',
-			messages: [{ role: 'user', content: 'Hello' }]
+			messages: [
+				{ role: 'agent', content: 'Contexts selected: ctx1, ctx2' },
+				{ role: 'user', content: 'Hello' }
+			]
 		});
 		expect(contexts[1]).toEqual({
 			name: 'ctx2',
-			messages: [{ role: 'assistant', content: 'Hi there' }]
+			messages: [
+				{ role: 'agent', content: 'Contexts selected: ctx1, ctx2' },
+				{ role: 'assistant', content: 'Hi there' }
+			]
 		});
 	});
 
@@ -292,9 +306,10 @@ describe('addMessageToContext API', () => {
 		addMessageToContext('test', 'assistant', 'Hi there');
 		
 		const contexts = getContext();
-		expect(contexts[0].messages).toHaveLength(2);
-		expect(contexts[0].messages[0]).toEqual({ role: 'user', content: 'Hello' });
-		expect(contexts[0].messages[1]).toEqual({ role: 'assistant', content: 'Hi there' });
+		expect(contexts[0].messages).toHaveLength(3); // confirmation + 2 added messages
+		expect(contexts[0].messages[0]).toEqual({ role: 'agent', content: 'Context set to: test' });
+		expect(contexts[0].messages[1]).toEqual({ role: 'user', content: 'Hello' });
+		expect(contexts[0].messages[2]).toEqual({ role: 'assistant', content: 'Hi there' });
 	});
 
 	it('should create context if it does not exist', () => {
@@ -346,8 +361,12 @@ describe('context isolation', () => {
 		const contexts = getContext();
 		
 		expect(contexts).toHaveLength(2);
-		expect(contexts[0].messages[0].content).toBe('Context 1 message');
-		expect(contexts[1].messages[0].content).toBe('Context 2 message');
+		// ctx1 has: confirmation from execute + user message
+		expect(contexts[0].messages[0].content).toBe('Context set to: ctx1');
+		expect(contexts[0].messages[1].content).toBe('Context 1 message');
+		// ctx2 has: confirmation from execute + user message
+		expect(contexts[1].messages[0].content).toBe('Context set to: ctx2');
+		expect(contexts[1].messages[1].content).toBe('Context 2 message');
 	});
 });
 
