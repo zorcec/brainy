@@ -234,10 +234,13 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext, codeL
 				await executePlaybook(
 					editor,
 					result.blocks,
-					// onProgress
-					(stepIndex, block) => {
-						outputChannel.appendLine(`Step ${stepIndex + 1}/${result.blocks.length}: ${block.name}`);
-					},
+					   // onProgress
+					   (stepIndex, block, skillResult) => {
+						   outputChannel.appendLine(`Step ${stepIndex + 1}/${result.blocks.length}: ${block.name}`);
+						   if (skillResult) {
+							   outputChannel.appendLine(`Result: ${JSON.stringify(skillResult, null, 2)}`);
+						   }
+					   },
 					// onError
 					(stepIndex, block, error) => {
 						outputChannel.appendLine(`\nError at step ${stepIndex + 1}: ${error.message}`);

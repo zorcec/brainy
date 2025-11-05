@@ -5,6 +5,20 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { setExecutionState, resetAllExecutionState } from './executionState';
 
+// Mock skill loader module
+vi.mock('../skills/skillLoader', () => ({
+	loadSkill: vi.fn(async (skillName: string) => ({
+		name: skillName,
+		skillPath: `/mock/path/${skillName}.ts`,
+		isBuiltIn: false,
+	})),
+	executeSkill: vi.fn(async () => ({
+		messages: [
+			{ role: 'assistant', content: 'Mock skill result' }
+		]
+	})),
+}));
+
 // Mock VS Code module
 vi.mock('vscode', () => {
 	class MockRange {
@@ -20,6 +34,16 @@ vi.mock('vscode', () => {
 		constructor(public id: string) {}
 	}
 
+	class MockUri {
+		constructor(public fsPath: string) {}
+		toString() {
+			return this.fsPath;
+		}
+		static parse(path: string) {
+			return new MockUri(path);
+		}
+	}
+
 	return {
 		window: {
 			createTextEditorDecorationType: vi.fn(() => ({
@@ -28,6 +52,7 @@ vi.mock('vscode', () => {
 		},
 		Range: MockRange,
 		ThemeColor: MockThemeColor,
+		Uri: MockUri,
 	};
 });
 
@@ -38,9 +63,7 @@ import type * as vscode from 'vscode';
 // Mock editor interface
 interface MockTextEditor {
 	document: {
-		uri: {
-			toString: () => string;
-		};
+		uri: any;
 	};
 	setDecorations: ReturnType<typeof vi.fn>;
 }
@@ -54,6 +77,7 @@ describe('playbookExecutor', () => {
 			document: {
 				uri: {
 					toString: () => testUri,
+					fsPath: '/test.brainy.md',
 				},
 			},
 			setDecorations: vi.fn(),

@@ -6,10 +6,14 @@
  *   Supports pause, resume, and stop operations. Only annotation blocks (e.g., @task, @model)
  *   trigger execution; plainText, plainComment, and code blocks are logged but not executed.
  *
+ *   Integrates with the skills system to load and execute skills for annotation blocks.
+ *   Returns skill execution results through the onProgress callback for logging and display.
+ *
  * Architecture:
  *   - Async execution loop with state checking between steps
  *   - Integration with execution state and decorations
  *   - Error handling with proper state transitions
+ *   - Skill loading and execution for annotation blocks
  *
  * Usage:
  *   import { executePlaybook, stopPlaybookExecution } from './playbookExecutor';
@@ -18,6 +22,8 @@
 
 import * as vscode from 'vscode';
 import type { AnnotationBlock } from '../parser';
+import { loadSkill, executeSkill } from '../skills/skillLoader';
+import type { SkillResult } from '../skills/types';
 import { getExecutionState, setExecutionState, resetExecutionState } from './executionState';
 import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations } from './executionDecorations';
 
@@ -26,8 +32,9 @@ import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations 
  * 
  * @param stepIndex - The zero-based index of the current step
  * @param block - The block being executed
+ * @param result - The skill execution result (if block is an annotation that was executed)
  */
-export type OnProgressCallback = (stepIndex: number, block: AnnotationBlock) => void;
+export type OnProgressCallback = (stepIndex: number, block: AnnotationBlock, result?: import('../skills/types').SkillResult) => void;
 
 /**
  * Callback for error handling during playbook execution
@@ -62,66 +69,66 @@ export async function executePlaybook(
 	const editorUri = editor.document.uri.toString();
 
 	// Execute blocks sequentially
-	for (let i = 0; i < blocks.length; i++) {
-		const block = blocks[i];
-		const state = getExecutionState(editorUri);
+	   for (let i = 0; i < blocks.length; i++) {
+		   const block = blocks[i];
+		   const state = getExecutionState(editorUri);
 
-		// Check if stopped
-		if (state === 'stopped' || state === 'idle') {
-			console.log('Playbook execution stopped');
-			clearExecutionDecorations(editor);
-			return;
-		}
+		   // Check if stopped
+		   if (state === 'stopped' || state === 'idle') {
+			   console.log('Playbook execution stopped');
+			   clearExecutionDecorations(editor);
+			   return;
+		   }
 
-		// Wait while paused
-		while (getExecutionState(editorUri) === 'paused') {
-			await new Promise(resolve => setTimeout(resolve, 100));
-		}
+		   // Wait while paused
+		   while (getExecutionState(editorUri) === 'paused') {
+			   await new Promise(resolve => setTimeout(resolve, 100));
+		   }
 
-		// Check state again after pause
-		const stateAfterPause = getExecutionState(editorUri);
-		if (stateAfterPause === 'stopped' || stateAfterPause === 'idle') {
-			console.log('Playbook execution stopped after pause');
-			clearExecutionDecorations(editor);
-			return;
-		}
+		   // Check state again after pause
+		   const stateAfterPause = getExecutionState(editorUri);
+		   if (stateAfterPause === 'stopped' || stateAfterPause === 'idle') {
+			   console.log('Playbook execution stopped after pause');
+			   clearExecutionDecorations(editor);
+			   return;
+		   }
 
-		try {
-			// Highlight current step
-			if (block.line !== undefined) {
-				highlightCurrentSkill(editor, block.line - 1);  // Convert to 0-based
-			}
+		   try {
+			   // Highlight current step
+			   if (block.line !== undefined) {
+				   highlightCurrentSkill(editor, block.line - 1);  // Convert to 0-based
+			   }
 
-			// Notify progress
-			if (onProgress) {
-				onProgress(i, block);
-			}
+			   // Execute the block and get result
+			   const result = await executeBlock(block, editor.document.uri);
 
-			// Execute the block
-			await executeBlock(block);
+			   // Notify progress with result
+			   if (onProgress) {
+				   onProgress(i, block, result);
+			   }
 
-			// Small delay between steps for UI feedback
-			await new Promise(resolve => setTimeout(resolve, 100));
+			   // Small delay between steps for UI feedback
+			   await new Promise(resolve => setTimeout(resolve, 100));
 
-		} catch (error) {
-			console.error('Error executing block:', error);
+		   } catch (error) {
+			   console.error('Error executing block:', error);
 
-			// Highlight failed block
-			if (block.line !== undefined) {
-				highlightFailedSkill(editor, block.line - 1);  // Convert to 0-based
-			}
+			   // Highlight failed block
+			   if (block.line !== undefined) {
+				   highlightFailedSkill(editor, block.line - 1);  // Convert to 0-based
+			   }
 
-			// Set error state
-			setExecutionState(editorUri, 'error');
+			   // Set error state
+			   setExecutionState(editorUri, 'error');
 
-			// Notify error
-			if (onError && error instanceof Error) {
-				onError(i, block, error);
-			}
+			   // Notify error
+			   if (onError && error instanceof Error) {
+				   onError(i, block, error);
+			   }
 
-			return;
-		}
-	}
+			   return;
+		   }
+	   }
 
 	// Clear decorations and reset state on successful completion
 	clearExecutionDecorations(editor);
@@ -134,23 +141,48 @@ export async function executePlaybook(
 }
 
 /**
- * Executes a single block based on its type
+ * Executes a single block based on its type and returns the skill result if applicable
  * 
  * @param block - The block to execute
+ * @param workspaceUri - The workspace URI for skill loading
+ * @returns SkillResult if annotation block, otherwise undefined
  */
-async function executeBlock(block: AnnotationBlock): Promise<void> {
-	// Skip non-annotation blocks (plainText, plainComment, code blocks)
-	if (block.name === 'plainText' || block.name === 'plainComment' || block.name === 'plainCodeBlock') {
-		console.log(`Skipping ${block.name} block`);
-		return;
-	}
+async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): Promise<SkillResult | undefined> {
+   // Skip non-annotation blocks (plainText, plainComment, code blocks)
+   if (block.name === 'plainText' || block.name === 'plainComment' || block.name === 'plainCodeBlock') {
+	   console.log(`Skipping ${block.name} block`);
+	   return;
+   }
 
-	// For now, just log the block
-	// TODO: Integrate with skills system in future iterations
-	console.log(`Executing block: ${block.name}`, block);
-
-	// Simulate async work
-	await new Promise(resolve => setTimeout(resolve, 200));
+   // Try to load and execute the skill
+   try {
+	   if (!workspaceUri) {
+		   console.warn('No workspaceUri provided to executeBlock. Skill execution skipped.');
+		   return;
+	   }
+	   const skillMeta = await loadSkill(block.name, workspaceUri);
+	   
+	   // Convert flags to params (string values only)
+	   // Flag values are arrays, so we join them or take the first value
+	   const params: Record<string, string | undefined> = {};
+	   if (block.flags) {
+		   for (const f of block.flags) {
+			   if (Array.isArray(f.value)) {
+				   // Join multiple values with space, or take first value if single
+				   params[f.name] = f.value.length > 0 ? f.value.join(' ') : undefined;
+			   } else if (typeof f.value === 'string') {
+				   params[f.name] = f.value;
+			   }
+		   }
+	   }
+	   
+	   const result = await executeSkill(skillMeta, params, workspaceUri);
+	   console.log(`Executed skill: ${block.name}`, result);
+	   return result;
+   } catch (err) {
+	   console.error(`Failed to execute skill: ${block.name}`, err);
+	   throw err;
+   }
 }
 
 /**
