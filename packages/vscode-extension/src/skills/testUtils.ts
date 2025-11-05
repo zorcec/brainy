@@ -50,7 +50,7 @@ export function createMockSkillApi(): SkillApi {
 		 * By default, returns a promise resolving to { response: 'mock response' }.
 		 * Override with mockResolvedValue() or mockImplementation() as needed.
 		 */
-		sendRequest: vi.fn(async (role, content, modelId) => {
+		sendRequest: vi.fn(async (role, content, modelId, options) => {
 			return { response: `Mock response for: ${content}` };
 		}),
 
@@ -61,6 +61,60 @@ export function createMockSkillApi(): SkillApi {
 		 */
 		selectChatModel: vi.fn(async (modelId) => {
 			// No-op by default
+		}),
+
+		/**
+		 * Mock implementation of getAllAvailableTools.
+		 * By default, returns an empty array.
+		 * Override with mockResolvedValue() or mockImplementation() as needed.
+		 */
+		getAllAvailableTools: vi.fn(async () => {
+			return [];
+		}),
+
+		/**
+		 * Mock implementation of getParsedBlocks.
+		 * By default, returns an empty array.
+		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 */
+		getParsedBlocks: vi.fn(() => {
+			return [];
+		}),
+
+		/**
+		 * Mock implementation of getCurrentBlockIndex.
+		 * By default, returns 0.
+		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 */
+		getCurrentBlockIndex: vi.fn(() => {
+			return 0;
+		}),
+
+		/**
+		 * Mock implementation of setVariable.
+		 * By default, does nothing.
+		 * Override with mockImplementation() as needed.
+		 */
+		setVariable: vi.fn((name, value) => {
+			// No-op by default
+		}),
+
+		/**
+		 * Mock implementation of getVariable.
+		 * By default, returns undefined.
+		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 */
+		getVariable: vi.fn((name) => {
+			return undefined;
+		}),
+
+		/**
+		 * Mock implementation of openInputDialog.
+		 * By default, returns a promise resolving to 'mock input'.
+		 * Override with mockResolvedValue() or mockRejectedValue() as needed.
+		 */
+		openInputDialog: vi.fn(async (prompt) => {
+			return 'mock input';
 		})
 	};
 }

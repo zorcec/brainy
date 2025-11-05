@@ -15,6 +15,8 @@
  *   });
  */
 
+import type * as vscode from 'vscode';
+
 /**
  * Request parameters for sending a message to the model.
  */
@@ -27,6 +29,8 @@ export type SendRequestParams = {
 	content: string;
 	/** Optional timeout in milliseconds (overrides default) */
 	timeoutMs?: number;
+	/** Optional list of tools available to the LLM */
+	tools?: vscode.LanguageModelChatTool[];
 };
 
 /**

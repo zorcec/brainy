@@ -16,19 +16,28 @@ vi.mock('./sessionStore', () => ({
 	setSelectedModel: vi.fn()
 }));
 
+// Mock vscode module
+vi.mock('vscode', () => ({
+	lm: {
+		tools: []
+	}
+}));
+
 describe('skillApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
 	describe('createSkillApi', () => {
-		test('creates an API object with sendRequest and selectChatModel methods', () => {
+		test('creates an API object with sendRequest, selectChatModel, and getAllAvailableTools methods', () => {
 			const api = createSkillApi();
 			
 			expect(api).toHaveProperty('sendRequest');
 			expect(api).toHaveProperty('selectChatModel');
+			expect(api).toHaveProperty('getAllAvailableTools');
 			expect(typeof api.sendRequest).toBe('function');
 			expect(typeof api.selectChatModel).toBe('function');
+			expect(typeof api.getAllAvailableTools).toBe('function');
 		});
 	});
 
@@ -132,6 +141,59 @@ describe('skillApi', () => {
 
 			expect(result1).toEqual({ response: 'Response 1' });
 			expect(result2).toEqual({ response: 'Response 2' });
+		});
+	});
+
+	describe('getAllAvailableTools', () => {
+		test('returns all available tools from vscode.lm.tools', async () => {
+			const api = createSkillApi();
+			const tools = await api.getAllAvailableTools();
+			
+			expect(Array.isArray(tools)).toBe(true);
+			// In the mocked environment, tools will be an empty array
+			expect(tools).toEqual([]);
+		});
+
+		test('returns tools as an array', async () => {
+			const api = createSkillApi();
+			const tools = await api.getAllAvailableTools();
+			
+			expect(tools).toBeInstanceOf(Array);
+		});
+	});
+
+	describe('sendRequest with tools', () => {
+		test('passes tools to modelClient.sendRequest', async () => {
+			const mockResponse = { reply: 'Test response', raw: {} };
+			vi.mocked(modelClient.sendRequest).mockResolvedValue(mockResponse);
+
+			const mockTools = [{ name: 'tool1' } as any, { name: 'tool2' } as any];
+			const api = createSkillApi();
+			const result = await api.sendRequest('user', 'Test content', 'gpt-4o', { tools: mockTools });
+
+			expect(modelClient.sendRequest).toHaveBeenCalledWith({
+				role: 'user',
+				content: 'Test content',
+				modelId: 'gpt-4o',
+				tools: mockTools
+			});
+			expect(result).toEqual({ response: 'Test response' });
+		});
+
+		test('works without tools parameter', async () => {
+			const mockResponse = { reply: 'Test response', raw: {} };
+			vi.mocked(modelClient.sendRequest).mockResolvedValue(mockResponse);
+
+			const api = createSkillApi();
+			const result = await api.sendRequest('user', 'Test content');
+
+			expect(modelClient.sendRequest).toHaveBeenCalledWith({
+				role: 'user',
+				content: 'Test content',
+				modelId: undefined,
+				tools: undefined
+			});
+			expect(result).toEqual({ response: 'Test response' });
 		});
 	});
 });

@@ -6,37 +6,70 @@
  *   Allows users to send prompts to the LLM and capture responses as part of automated workflows.
  *   The skill sends the prompt as a user message and returns the LLM's reply as an assistant message.
  *   The VS Code extension handles context; the skill only sends the user prompt.
+ *   Supports automatic tool-calling - if no tools are specified, all available tools are used by default.
+ *   Supports variable substitution in prompts using {{variableName}} syntax.
+ *   Supports storing the response in a variable using the --variable parameter.
  *
  * Usage in playbooks:
  *   @task --prompt "Summarize this text"
  *   @task --prompt "Analyze the code" --model "gpt-4o"
+ *   @task --prompt "Hello, {{userName}}!" --variable greeting
  *
  * Parameters:
  *   - prompt: The text to send to the LLM (required, non-empty string)
  *   - model: Optional model ID (e.g., 'gpt-4o'). If not provided, uses globally selected model.
+ *   - variable: Optional variable name to store the response in
  */
 
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 
 /**
+ * Substitutes variables in text using {{variableName}} syntax.
+ * Variables are case-sensitive. Undefined variables are replaced with empty string.
+ * 
+ * @param text - Text with potential variable placeholders
+ * @param api - SkillApi for accessing variables
+ * @returns Text with variables substituted
+ */
+function substituteVariables(text: string, api: SkillApi): string {
+	return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+		const value = api.getVariable(varName);
+		return value ?? '';
+	});
+}
+
+/**
  * Task skill implementation.
  * Sends a prompt to the LLM and returns the response.
+ * Automatically uses all available tools unless explicitly disabled.
+ * Supports variable substitution in prompts and storing responses in variables.
  */
 export const taskSkill: Skill = {
 	name: 'task',
-	description: 'Send a prompt to the LLM and return the response. Only user prompts are supported. The VS Code extension handles context.',
+	description: 'Send a prompt to the LLM and return the response. Only user prompts are supported. The VS Code extension handles context. Automatically uses all available tools. Supports variable substitution using {{name}} syntax.',
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
-		const { prompt, model } = params;
+		const { prompt, model, variable } = params;
 		
 		// Validate prompt parameter
 		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
 			throw new Error('Missing or invalid prompt');
 		}
 		
-		// Send request to LLM (internally always uses role 'user')
+		// Substitute variables in the prompt
+		const processedPrompt = substituteVariables(prompt, api);
+		
+		// Get all available tools by default
+		const tools = await api.getAllAvailableTools();
+		
+		// Send request to LLM with tools (internally always uses role 'user')
 		// If model is not provided, the globally selected model is used
-		const result = await api.sendRequest('user', prompt, model);
+		const result = await api.sendRequest('user', processedPrompt, model, { tools });
+		
+		// Store response in variable if requested
+		if (variable && typeof variable === 'string' && variable.trim() !== '') {
+			api.setVariable(variable, result.response);
+		}
 		
 		// Return the response as an assistant message
 		return {

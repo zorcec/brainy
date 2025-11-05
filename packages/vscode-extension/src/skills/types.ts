@@ -19,6 +19,9 @@
  *   };
  */
 
+import type * as vscode from 'vscode';
+import type { AnnotationBlock } from '../parser';
+
 /**
  * Parameters passed to skill execution.
  * Flags from annotations are translated into this object.
@@ -49,8 +52,19 @@ export interface SkillResult {
 }
 
 /**
+ * Options for sending a request to the LLM.
+ */
+export interface SendRequestOptions {
+	/**
+	 * Optional list of tools available to the LLM.
+	 * If not provided, all available tools from vscode.lm.tools will be used by default.
+	 */
+	tools?: vscode.LanguageModelChatTool[];
+}
+
+/**
  * API provided to skills for interacting with the VSCode extension.
- * Enables skills to send requests to LLM models and select chat models.
+ * Enables skills to send requests to LLM models, select chat models, and access available tools.
  * 
  * IMPORTANT: When modifying this interface, update the mock implementation in testUtils.ts
  * to ensure all built-in skill tests remain in sync. See createMockSkillApi() in testUtils.ts.
@@ -63,18 +77,16 @@ export interface SkillResult {
  * // Send a request
  * const response = await api.sendRequest('user', 'Summarize this text');
  * console.log(response.response);
+ * 
+ * // Send a request with specific tools
+ * const tools = await api.getAllAvailableTools();
+ * const response = await api.sendRequest('user', 'What tools are available?', undefined, { tools });
+ * 
+ * // Send a request with all tools (default)
+ * const response = await api.sendRequest('user', 'Help me with this task');
  * ```
  */
 export interface SkillApi {
-	/**
-	 * Sends a request to the selected or specified model.
-	 * 
-	 * @param role - Message role ('user' or 'assistant')
-	 * @param content - Message content
-	 * @param modelId - Optional model ID override (e.g., 'gpt-4o', 'claude-3')
-	 * @returns Promise resolving to response object with 'response' field
-	 * @throws Error on timeout or provider failures
-	 */
 	/**
 	 * Sends a request to the selected or specified model.
 	 *
@@ -82,10 +94,16 @@ export interface SkillApi {
 	 *   'agent' is only for system messages and will throw if used for LLM requests.
 	 * @param content - Message content
 	 * @param modelId - Optional model ID override (e.g., 'gpt-4o', 'claude-3')
+	 * @param options - Optional request options including tools
 	 * @returns Promise resolving to response object with 'response' field
 	 * @throws Error on timeout, provider failures, or if role is 'agent'
 	 */
-	sendRequest(role: 'user' | 'assistant' | 'agent', content: string, modelId?: string): Promise<{ response: string }>;
+	sendRequest(
+		role: 'user' | 'assistant' | 'agent',
+		content: string,
+		modelId?: string,
+		options?: SendRequestOptions
+	): Promise<{ response: string }>;
 
 	/**
 	 * Selects a chat model globally for subsequent requests.
@@ -94,6 +112,57 @@ export interface SkillApi {
 	 * @returns Promise that resolves when the model is selected
 	 */
 	selectChatModel(modelId: string): Promise<void>;
+
+	/**
+	 * Gets all available tools from vscode.lm.tools.
+	 * 
+	 * @returns Promise resolving to an array of all available tools
+	 */
+	getAllAvailableTools(): Promise<vscode.LanguageModelChatTool[]>;
+
+	/**
+	 * Gets all parsed blocks from the current playbook.
+	 * This includes annotations, plain text, comments, and code blocks.
+	 * 
+	 * @returns Array of all parsed blocks
+	 */
+	getParsedBlocks(): AnnotationBlock[];
+
+	/**
+	 * Gets the index of the currently executing block.
+	 * This can be used by skills to determine context or access adjacent blocks.
+	 * 
+	 * @returns Zero-based index of the current block
+	 */
+	getCurrentBlockIndex(): number;
+
+	/**
+	 * Sets a variable value for use in playbook execution.
+	 * Variable names are case-sensitive.
+	 * 
+	 * @param name - Variable name
+	 * @param value - Variable value (must be a string)
+	 */
+	setVariable(name: string, value: string): void;
+
+	/**
+	 * Gets a variable value by name.
+	 * Variable names are case-sensitive.
+	 * 
+	 * @param name - Variable name
+	 * @returns Variable value, or undefined if not set
+	 */
+	getVariable(name: string): string | undefined;
+
+	/**
+	 * Opens an input dialog in VS Code and prompts the user for input.
+	 * The execution pauses until the user provides input or cancels.
+	 * 
+	 * @param prompt - The prompt text to display to the user
+	 * @returns Promise resolving to the user's input string
+	 * @throws Error if the user cancels the input dialog
+	 */
+	openInputDialog(prompt: string): Promise<string>;
 }
 
 /**

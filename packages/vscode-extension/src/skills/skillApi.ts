@@ -12,17 +12,25 @@
  *   const response = await api.sendRequest('user', 'Hello!');
  */
 
-import { SkillApi } from './types';
+import * as vscode from 'vscode';
+import { SkillApi, SendRequestOptions } from './types';
+import type { AnnotationBlock } from '../parser';
 import { sendRequest as modelSendRequest } from './modelClient';
 import { setSelectedModel } from './sessionStore';
+import {
+	getVariable as getVarFromStore,
+	setVariable as setVarToStore
+} from './variableStore';
 
 /**
  * Creates a SkillApi instance for injecting into skills.
  * Wraps modelClient and sessionStore for a simplified skill-facing API.
  * 
+ * @param blocks - All parsed blocks from the playbook (optional)
+ * @param currentIndex - Index of the currently executing block (optional)
  * @returns SkillApi implementation
  */
-export function createSkillApi(): SkillApi {
+export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: number = 0): SkillApi {
 	return {
 		/**
 		 * Sends a request to the model and returns the response.
@@ -30,20 +38,22 @@ export function createSkillApi(): SkillApi {
 		 * @param role - Message role ('user' or 'assistant')
 		 * @param content - Message content
 		 * @param modelId - Optional model ID override
+		 * @param options - Optional request options including tools
 		 * @returns Promise with response object containing 'response' field
 		 * @throws Error on validation, timeout, or provider failures
 		 */
-		   async sendRequest(role, content, modelId) {
-			   if (role === 'agent') {
-				   throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
-			   }
-			   const response = await modelSendRequest({
-				   role,
-				   content,
-				   modelId
-			   });
-			   return { response: response.reply };
-		   },
+		async sendRequest(role, content, modelId, options) {
+			if (role === 'agent') {
+				throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
+			}
+			const response = await modelSendRequest({
+				role,
+				content,
+				modelId,
+				tools: options?.tools
+			});
+			return { response: response.reply };
+		},
 
 		/**
 		 * Selects a chat model globally for subsequent requests.
@@ -53,6 +63,75 @@ export function createSkillApi(): SkillApi {
 		 */
 		async selectChatModel(modelId) {
 			setSelectedModel(modelId);
+		},
+
+		/**
+		 * Gets all available tools from vscode.lm.tools.
+		 * 
+		 * @returns Promise resolving to an array of all available tools
+		 */
+		async getAllAvailableTools() {
+			// Return all tools registered in VS Code
+			return Array.from(vscode.lm.tools);
+		},
+
+		/**
+		 * Gets all parsed blocks from the current playbook.
+		 * 
+		 * @returns Array of all parsed blocks
+		 */
+		getParsedBlocks() {
+			return blocks;
+		},
+
+		/**
+		 * Gets the index of the currently executing block.
+		 * 
+		 * @returns Zero-based index of the current block
+		 */
+		getCurrentBlockIndex() {
+			return currentIndex;
+		},
+
+		/**
+		 * Sets a variable value for use in playbook execution.
+		 * 
+		 * @param name - Variable name
+		 * @param value - Variable value (must be a string)
+		 */
+		setVariable(name, value) {
+			setVarToStore(name, value);
+		},
+
+		/**
+		 * Gets a variable value by name.
+		 * 
+		 * @param name - Variable name
+		 * @returns Variable value, or undefined if not set
+		 */
+		getVariable(name) {
+			return getVarFromStore(name);
+		},
+
+		/**
+		 * Opens an input dialog in VS Code and prompts the user for input.
+		 * 
+		 * @param prompt - The prompt text to display
+		 * @returns Promise resolving to user input
+		 * @throws Error if user cancels
+		 */
+		async openInputDialog(prompt) {
+			const value = await vscode.window.showInputBox({
+				prompt,
+				placeHolder: 'Enter value...',
+				ignoreFocusOut: true
+			});
+			
+			if (value === undefined) {
+				throw new Error('User cancelled input');
+			}
+			
+			return value;
 		}
 	};
 }
