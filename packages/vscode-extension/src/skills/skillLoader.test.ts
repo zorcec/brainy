@@ -3,32 +3,29 @@
  *
  * Description:
  *   Unit tests for the skill loader.
- *   Tests loading of both built-in and project skills.
- *   Execution tests are limited due to process isolation - full tests are in e2e.
- *   
- * Note: executeSkill spawns child processes and is tested in e2e tests.
+ *   Tests loading and execution of built-in skills in-process.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Uri } from 'vscode';
+import { loadSkill, executeSkill, resetSkillLoader } from './skillLoader';
 
-// Mock vscode before imports
+// Mock vscode module
 vi.mock('vscode', () => ({
-	Uri: {
-		file: (path: string) => ({ fsPath: path }),
-		joinPath: (base: any, ...segments: string[]) => ({
-			fsPath: `${base.fsPath}/${segments.join('/')}`
-		})
+	window: {
+		showInformationMessage: vi.fn(),
+		showErrorMessage: vi.fn(),
 	},
 	workspace: {
+		workspaceFolders: [],
 		fs: {
-			stat: vi.fn()
-		}
-	}
+			readFile: vi.fn(),
+			writeFile: vi.fn(),
+		},
+	},
+	Uri: {
+		file: (path: string) => ({ fsPath: path, path }),
+	},
 }));
-
-import { loadSkill, resetSkillLoader, SkillMetadata } from './skillLoader';
-import { SkillParams } from './types';
 
 beforeEach(() => {
 	resetSkillLoader();
@@ -41,34 +38,51 @@ afterEach(() => {
 describe('skillLoader', () => {
 	describe('loadSkill', () => {
 		it('should load built-in skill by name', async () => {
-			const skillMeta = await loadSkill('file');
-			expect(skillMeta).toBeDefined();
-			expect(skillMeta.name).toBe('file');
-			expect(skillMeta.isBuiltIn).toBe(true);
-			expect(skillMeta.skillPath).toContain('file.ts');
+			const skill = await loadSkill('file');
+			expect(skill).toBeDefined();
+			expect(skill.name).toBe('file');
+			expect(skill.execute).toBeDefined();
+			expect(typeof skill.execute).toBe('function');
 		});
 
 		it('should throw error for invalid skill name', async () => {
 			await expect(loadSkill('')).rejects.toThrow('Skill name must be a non-empty string');
 		});
 
-		it('should throw error for non-existent skill without workspace', async () => {
+		it('should throw error for non-existent skill', async () => {
 			await expect(loadSkill('non-existent')).rejects.toThrow('not found');
 		});
 	});
 
 	describe('skill metadata', () => {
-		it('should return metadata with correct structure', async () => {
-			const skillMeta = await loadSkill('file');
-			expect(skillMeta).toHaveProperty('name');
-			expect(skillMeta).toHaveProperty('skillPath');
-			expect(skillMeta).toHaveProperty('isBuiltIn');
-			expect(typeof skillMeta.name).toBe('string');
-			expect(typeof skillMeta.skillPath).toBe('string');
-			expect(typeof skillMeta.isBuiltIn).toBe('boolean');
+		it('should return skill with correct structure', async () => {
+			const skill = await loadSkill('file');
+			expect(skill).toHaveProperty('name');
+			expect(skill).toHaveProperty('description');
+			expect(skill).toHaveProperty('execute');
+			expect(typeof skill.name).toBe('string');
+			expect(typeof skill.description).toBe('string');
+			expect(typeof skill.execute).toBe('function');
 		});
 	});
 
-	// Note: executeSkill tests are in e2e tests because they spawn child processes
-	// Unit tests for process isolation would require complex mocking
+	describe('executeSkill', () => {
+		it('should execute built-in skill in-process', async () => {
+			const skill = await loadSkill('file');
+			const result = await executeSkill(skill, { 
+				action: 'write',
+				path: '/tmp/test.txt',
+				content: 'test content'
+			});
+			
+			expect(result).toBeDefined();
+			expect(result.messages).toBeDefined();
+			expect(Array.isArray(result.messages)).toBe(true);
+		});
+
+		it('should throw error for invalid skill', async () => {
+			await expect(executeSkill(null as any, {})).rejects.toThrow('Invalid skill');
+		});
+	});
 });
+

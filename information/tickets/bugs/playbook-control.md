@@ -1,3 +1,0 @@
-- play button is displayed 3 times
-- it should be only once
-- same behaviour for other buttons

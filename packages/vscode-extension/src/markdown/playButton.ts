@@ -244,7 +244,7 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext, codeL
 					// onError
 					(stepIndex, block, error) => {
 						outputChannel.appendLine(`\nError at step ${stepIndex + 1}: ${error.message}`);
-						vscode.window.showErrorMessage(`Playbook execution failed at step ${stepIndex + 1}: ${error.message}`);
+						vscode.window.showErrorMessage(`Playbook execution failed at step ${stepIndex + 1}: ${error.stack}`);
 						codeLensProvider.refresh();
 					},
 					// onComplete

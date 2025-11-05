@@ -156,11 +156,7 @@ async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): 
 
    // Try to load and execute the skill
    try {
-	   if (!workspaceUri) {
-		   console.warn('No workspaceUri provided to executeBlock. Skill execution skipped.');
-		   return;
-	   }
-	   const skillMeta = await loadSkill(block.name, workspaceUri);
+	   const skill = await loadSkill(block.name);
 	   
 	   // Convert flags to params (string values only)
 	   // Flag values are arrays, so we join them or take the first value
@@ -176,7 +172,7 @@ async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): 
 		   }
 	   }
 	   
-	   const result = await executeSkill(skillMeta, params, workspaceUri);
+	   const result = await executeSkill(skill, params);
 	   console.log(`Executed skill: ${block.name}`, result);
 	   return result;
    } catch (err) {

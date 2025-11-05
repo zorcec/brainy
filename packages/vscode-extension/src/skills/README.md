@@ -2,7 +2,7 @@
 
 A minimal, testable skills API for Brainy extension. This module provides:
 - Skill definition API (Skill interface with name, description, execute)
-- Built-in skills (shipped with extension) and project skills (.brainy/skills)
+- Built-in skills (shipped with extension, executed in-process)
 - Skill loading and execution
 - Model selection and LLM request handling
 
@@ -10,7 +10,7 @@ A minimal, testable skills API for Brainy extension. This module provides:
 
 ## Overview
 
-The skills system provides a modular API for defining and executing skills in Brainy playbooks. Skills are async functions that can be invoked from markdown annotations and return string results.
+The skills system provides a modular API for defining and executing built-in skills in Brainy playbooks. Skills are async functions that can be invoked from markdown annotations and return SkillResult objects.
 
 ## Module Structure
 
@@ -19,10 +19,9 @@ skills/
 ├── index.ts                    # Public API singleton exports
 ├── index.test.ts               # API integration tests
 ├── types.ts                    # Core types (Skill, SkillParams)
-├── skillLoader.ts              # Skill loading and execution
+├── skillLoader.ts              # Skill loading and execution (in-process)
 ├── skillLoader.test.ts         # Skill loader tests
-├── skillScanner.ts             # Skill scanning and registry
-├── skillScanner.test.ts        # Skill scanner tests (if exists)
+├── skillScanner.ts             # Skill scanning (built-in only)
 ├── built-in/                   # Built-in skills directory
 │   ├── index.ts                # Built-in skills registry
 │   ├── file.ts                 # File manipulation skill
@@ -31,8 +30,6 @@ skills/
 ├── modelClient.test.ts         # Model client tests
 ├── sessionStore.ts             # In-memory model selection persistence
 ├── sessionStore.test.ts        # Session store tests
-├── skillRunner.ts              # Legacy skill runner (to be deprecated)
-├── skillRunner.test.ts         # Legacy skill runner tests
 └── README.md                   # This file
 ```
 
@@ -46,23 +43,27 @@ All skills must implement the `Skill` interface:
 export interface Skill {
   name: string;           // Unique skill identifier
   description: string;    // Brief description for tooltips/docs
-  execute(params: SkillParams): Promise<string>;  // Async execution function
+  execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }
 
 export type SkillParams = Record<string, string | undefined>;
+
+export interface SkillResult {
+  messages: SkillMessage[];
+}
 ```
 
 ### Example: File Skill
 
 ```typescript
 // skills/built-in/file.ts
-import { Skill, SkillParams } from '../types';
+import { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 
 export const fileSkill: Skill = {
   name: 'file',
   description: 'Read, write and delete files.',
   
-  async execute(params: SkillParams): Promise<string> {
+  async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
     const { action, path, content } = params;
     
     // Validate parameters
@@ -70,17 +71,28 @@ export const fileSkill: Skill = {
     if (!path) throw new Error('Missing required parameter: path');
     
     // Execute action
+    let resultMessage: string;
     switch (action) {
       case 'read':
-        return await readFile(path);
+        resultMessage = await readFile(path);
+        break;
       case 'write':
         if (!content) throw new Error('Missing content for write');
-        return await writeFile(path, content);
+        resultMessage = await writeFile(path, content);
+        break;
       case 'delete':
-        return await deleteFile(path);
+        resultMessage = await deleteFile(path);
+        break;
       default:
         throw new Error(`Invalid action: ${action}`);
     }
+    
+    return {
+      messages: [{
+        role: 'assistant',
+        content: resultMessage
+      }]
+    };
   }
 };
 ```
@@ -100,7 +112,7 @@ Flags are translated into `SkillParams`:
 
 ## Built-in Skills
 
-Built-in skills are shipped with the extension and always available:
+Built-in skills are shipped with the extension and always available. All skills execute in-process.
 
 ### File Skill
 
@@ -119,22 +131,6 @@ Built-in skills are shipped with the extension and always available:
 @file --action "write" --path "./output.txt" --content "Hello, World!"
 @file --action "delete" --path "./temp.log"
 ```
-
-## Project Skills
-
-Project skills are loaded from `.brainy/skills/` directory in the workspace. They can be `.js` or `.ts` files.
-
-**Convention:**
-```
-your-workspace/
-└── .brainy/
-    └── skills/
-        ├── custom.ts      # Custom TypeScript skill
-        ├── task.js        # Custom JavaScript skill
-        └── context.js     # Another custom skill
-```
-
-**Priority:** Built-in skills always take priority. If a project skill has the same name as a built-in skill, the built-in skill will be used and a warning will be logged.
 
 ## API Functions
 
@@ -157,48 +153,40 @@ export function resetSkills(): void;
 ### Skill Loading and Execution
 
 ```typescript
-// Load a skill by name (checks built-in first, then project skills)
+// Load a built-in skill by name
 export async function loadSkill(
-  skillName: string,
-  workspaceUri?: vscode.Uri
+  skillName: string
 ): Promise<Skill>;
 
-// Execute a loaded skill
+// Execute a loaded skill in-process
 export async function executeSkill(
   skill: Skill,
   params: SkillParams
-): Promise<string>;
+): Promise<SkillResult>;
 
 // Load and execute in one call (convenience function)
 export async function runSkill(
   skillName: string,
-  params: SkillParams,
-  workspaceUri?: vscode.Uri
-): Promise<string>;
+  params: SkillParams
+): Promise<SkillResult>;
 ```
 
 ### Skill Scanning
 
 ```typescript
-// Get all available skill names (built-in + project)
+// Get all available skill names (built-in only)
 export function getAvailableSkills(): string[];
 
-// Refresh skills list from workspace
-export async function refreshSkills(workspaceUri: vscode.Uri): Promise<string[]>;
+// Refresh skills list (loads built-in skills)
+export function refreshSkills(): string[];
 
 // Check if a skill is available
 export function isSkillAvailable(skillName: string): boolean;
-
-// Get project-specific skills only
-export function getProjectSkills(): string[];
 ```
 
 ### Built-in Skills Registry
 
 ```typescript
-// Get all built-in skills
-export function getBuiltInSkills(): Map<string, Skill>;
-
 // Get a specific built-in skill
 export function getBuiltInSkill(name: string): Skill | undefined;
 
@@ -207,6 +195,9 @@ export function isBuiltInSkill(name: string): boolean;
 
 // Get all built-in skill names
 export function getBuiltInSkillNames(): string[];
+
+// Get all built-in skills
+export function getAllBuiltInSkills(): Skill[];
 ```
 
 ### Model Selection and LLM Requests
@@ -230,10 +221,14 @@ export async function sendRequest(
 export interface Skill {
   name: string;
   description: string;
-  execute(params: SkillParams): Promise<string>;
+  execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
 }
 
 export type SkillParams = Record<string, string | undefined>;
+
+export interface SkillResult {
+  messages: SkillMessage[];
+}
 
 // Model types
 type ModelResponse = {
@@ -241,12 +236,6 @@ type ModelResponse = {
   raw: unknown;       // Raw provider response
 };
 ```
-
-## Creating Custom Skills
-
-Custom skills can be created in your project's `.brainy/skills` directory. Both JavaScript and TypeScript files are supported.
-
-### Step-by-Step Guide
 
 1. **Create the `.brainy/skills` directory** in your workspace root if it doesn't exist.
 

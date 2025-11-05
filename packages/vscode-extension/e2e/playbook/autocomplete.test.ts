@@ -119,18 +119,6 @@ test.describe('Skill-Specific Parameter Filtering', () => {
 		// Model skill should support these flags
 		expect(content).toContain('@model');
 	});
-
-	test('should handle project-specific skills with custom parameters', async ({ vscPage }) => {
-		// This test verifies that project-specific skills in .brainy/skills/
-		// can also define custom parameters
-		await vscPage.openFile('papercuts-test.brainy.md');
-		
-		const content = await vscPage.getEditorContent();
-		
-		// Project skills should be loadable and work with the parameter registry
-		// (even if this specific file doesn't use them)
-		expect(content).toBeTruthy();
-	});
 });
 
 test.describe('Variable Support in Execute Skill', () => {

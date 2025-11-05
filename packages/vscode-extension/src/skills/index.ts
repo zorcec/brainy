@@ -111,8 +111,7 @@ export {
 	getAvailableSkills,
 	refreshSkills,
 	isSkillAvailable,
-	getProjectSkills,
-	resetState as resetSkillScanner
+	resetSkillScanner
 } from './skillScanner';
 
 // Re-export built-in skills registry

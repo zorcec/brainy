@@ -4,8 +4,8 @@
  * Description:
  *   Built-in file manipulation skill for Brainy.
  *   Supports read, write, and delete operations on files.
- *   Uses Node.js fs.promises API for file system access (no VS Code APIs).
- *   Runs in an isolated Node.js process.
+ *   Uses Node.js fs.promises API for file system access.
+ *   Executes in-process.
  *
  * Usage in playbooks:
  *   @file --action "read" --path "./notes.md"

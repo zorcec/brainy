@@ -55,23 +55,18 @@ brainy/
 └── playwright.config.ts      # E2E test config
 ```
 
-## Skills Directory Convention
+## Built-in Skills
 
-Custom skills should be placed in the `.brainy/skills` directory in your workspace:
+Brainy includes built-in skills that are always available:
 
-```
-your-workspace/
-└── .brainy/
-    └── skills/
-        ├── execute.ts       # Custom TypeScript skill
-        ├── task.js          # Custom JavaScript skill
-        └── context.js       # Another custom skill
-```
+- **execute**: Execute the next code block
+- **file**: Read, write, and delete files
+- **context**: Manage context state
+- **model**: Select LLM model
+- **task**: Send prompts to LLM
+- **input**: Get user input via dialog
 
-- **Skill Discovery**: The extension automatically scans `.brainy/skills` for `.js` and `.ts` files
-- **Dynamic Highlighting**: Only annotations matching available skills are highlighted (case-sensitive)
-- **Live Updates**: Adding or removing skills triggers automatic re-highlighting
-- **Error Detection**: Missing skill references show editor errors with hover information
+All skills execute in-process and are bundled with the extension.
 
 ## Setup
 

@@ -121,39 +121,10 @@ export async function activate(context: vscode.ExtensionContext) {
   registerSkills(builtInSkills);
   console.log(`✓ Registered ${builtInSkills.length} built-in skills in parameters registry`);
 
-  // Initialize and watch skills directory
+  // Initialize skills scanner with built-in skills only
   console.log('Setting up skills scanner...');
-  if (workspaceFolders && workspaceFolders.length > 0) {
-    const workspaceUri = workspaceFolders[0].uri;
-    const workspaceRoot = workspaceUri.fsPath;
-    console.log('Workspace root for skills:', workspaceRoot);
-    console.log('Workspace URI:', workspaceUri.toString());
-    
-    // Initial scan of skills directory
-    await refreshSkills(workspaceUri);
-    console.log('✓ Skills directory scanned');
-    
-    // Watch for changes in .brainy/skills directory
-    const skillsWatcher = vscode.workspace.createFileSystemWatcher('**/.brainy/skills/**/*.{js,ts}');
-    
-    const onSkillsChange = async () => {
-      console.log('Skills directory changed, refreshing...');
-      await refreshSkills(workspaceUri);
-      // Trigger semantic tokens refresh for all open markdown files
-      vscode.window.visibleTextEditors.forEach(editor => {
-        if (editor.document.languageId === 'markdown') {
-          vscode.commands.executeCommand('vscode.executeDocumentSemanticTokens', editor.document.uri);
-        }
-      });
-    };
-    
-    skillsWatcher.onDidCreate(onSkillsChange);
-    skillsWatcher.onDidDelete(onSkillsChange);
-    skillsWatcher.onDidChange(onSkillsChange);
-    
-    context.subscriptions.push(skillsWatcher);
-    console.log('✓ Skills directory watcher registered');
-  }
+  refreshSkills();
+  console.log('✓ Built-in skills loaded');
 
   // Register play button for .brainy.md files
   console.log('Registering CodeLens provider for .brainy.md files...');
