@@ -43,12 +43,12 @@ test.describe('Play Button UI', () => {
       return;
     }
     
-    const playButton = vscPage.page.locator('.codelens-decoration, [class*="codelens"], [class*="CodeLens"]').filter({ hasText: 'Parse Playbook' }).first();
+    const playButton = vscPage.page.locator('.codelens-decoration, [class*="codelens"], [class*="CodeLens"]').filter({ hasText: /Play/ }).first();
     
     await expect(playButton).toBeVisible();
     
     const text = await playButton.textContent();
-    expect(text).toContain('Parse Playbook');
+    expect(text).toContain('Play');
   });
 
   test('play button appears on first line (line 1)', async ({ vscPage }) => {
@@ -61,7 +61,7 @@ test.describe('Play Button UI', () => {
       return;
     }
     
-    const playButton = vscPage.page.locator('.codelens-decoration, [class*="codelens"], [class*="CodeLens"]').filter({ hasText: 'Parse Playbook' }).first();
+    const playButton = vscPage.page.locator('.codelens-decoration, [class*="codelens"], [class*="CodeLens"]').filter({ hasText: /Play/ }).first();
     await expect(playButton).toBeVisible();
     
     const box = await playButton.boundingBox();

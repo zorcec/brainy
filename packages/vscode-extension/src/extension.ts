@@ -149,7 +149,7 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log('Registered CodeLens with selector:', JSON.stringify(selector));
   }
   
-  registerPlaybookCommands(context);
+  registerPlaybookCommands(context, playbookProvider);
   console.log('✓ CodeLens provider registered for .brainy.md files');
   
   // Force CodeLens refresh when files are opened

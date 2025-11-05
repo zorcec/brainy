@@ -82,6 +82,7 @@ vi.mock('vscode', () => {
 
 import { PlaybookCodeLensProvider } from './playButton';
 import type * as vscode from 'vscode';
+import { resetAllExecutionState, setExecutionState } from './executionState';
 
 // Mock document interface
 interface MockTextDocument {
@@ -108,12 +109,13 @@ describe('PlaybookCodeLensProvider', () => {
 			isCancellationRequested: false,
 			onCancellationRequested: vi.fn(),
 		};
+		resetAllExecutionState();
 	});
 
-	test('should provide CodeLens for .brainy.md files', () => {
+	test('should provide play button only when idle and no errors', () => {
 		mockDocument = {
 			fileName: '/path/to/playbook.brainy.md',
-			getText: () => '@model "gpt-4.1"',
+			getText: () => '',  // Empty content (no errors)
 			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
 			languageId: 'markdown',
 		};
@@ -126,9 +128,166 @@ describe('PlaybookCodeLensProvider', () => {
 		expect(codeLenses).toBeDefined();
 		expect(Array.isArray(codeLenses)).toBe(true);
 		if (Array.isArray(codeLenses)) {
+			// In idle state with no errors, should show 1 button: Play
 			expect(codeLenses.length).toBe(1);
-			expect(codeLenses[0].command?.title).toContain('Parse Playbook');
-			expect(codeLenses[0].command?.command).toBe('brainy.playbook.parse');
+			expect(codeLenses[0].command?.title).toContain('Play');
+		}
+	});
+
+	test('should enable play button when state is idle and no errors', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '',  // Empty content has no errors
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			expect(codeLenses.length).toBe(1);
+			const playButton = codeLenses[0];
+			expect(playButton.command?.command).toBe('brainy.playbook.play');
+			expect(playButton.command?.title).toContain('Play');
+		}
+	});
+
+	test('should hide play button when state is running', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '@model "gpt-4.1"',
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		// Set state to running
+		setExecutionState('file:///path/to/playbook.brainy.md', 'running');
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			// In running state, should show Pause and Stop, not Play
+			expect(codeLenses.length).toBe(2);
+			expect(codeLenses[0].command?.title).toContain('Pause');
+			expect(codeLenses[1].command?.title).toContain('Stop');
+		}
+	});
+
+	test('should show pause and stop buttons when state is running', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '@model "gpt-4.1"',
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		// Set state to running
+		setExecutionState('file:///path/to/playbook.brainy.md', 'running');
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			expect(codeLenses.length).toBe(2);
+			const pauseButton = codeLenses[0];
+			expect(pauseButton.command?.command).toBe('brainy.playbook.pause');
+			expect(pauseButton.command?.title).toContain('Pause');
+		}
+	});
+
+	test('should hide pause and stop when state is idle', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '',  // Empty content (no errors)
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			// In idle state, should only show Play button
+			expect(codeLenses.length).toBe(1);
+			expect(codeLenses[0].command?.title).toContain('Play');
+		}
+	});
+
+	test('should show stop button when state is running', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '@model "gpt-4.1"',
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		// Set state to running
+		setExecutionState('file:///path/to/playbook.brainy.md', 'running');
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			expect(codeLenses.length).toBe(2);
+			const stopButton = codeLenses[1];
+			expect(stopButton.command?.command).toBe('brainy.playbook.stop');
+			expect(stopButton.command?.title).toContain('Stop');
+		}
+	});
+
+	test('should show stop button when state is paused', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '@model "gpt-4.1"',
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		// Set state to paused
+		setExecutionState('file:///path/to/playbook.brainy.md', 'paused');
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			expect(codeLenses.length).toBe(2);
+			const stopButton = codeLenses[1];
+			expect(stopButton.command?.command).toBe('brainy.playbook.stop');
+			expect(stopButton.command?.title).toContain('Stop');
+		}
+	});
+
+	test('should hide stop button when state is idle', () => {
+		mockDocument = {
+			fileName: '/path/to/playbook.brainy.md',
+			getText: () => '',  // Empty content (no errors)
+			uri: { toString: () => 'file:///path/to/playbook.brainy.md' },
+			languageId: 'markdown',
+		};
+
+		const codeLenses = provider.provideCodeLenses(
+			mockDocument as unknown as vscode.TextDocument,
+			mockToken as unknown as vscode.CancellationToken
+		);
+
+		if (Array.isArray(codeLenses)) {
+			// In idle state, should only show Play button, not Stop
+			expect(codeLenses.length).toBe(1);
+			expect(codeLenses[0].command?.title).toContain('Play');
 		}
 	});
 
@@ -205,14 +364,17 @@ describe('PlaybookCodeLensProvider', () => {
 		}
 	});
 
-	test('should include document URI in command arguments', () => {
+	test('should include document URI in command arguments when enabled', () => {
 		const testUri = 'file:///path/to/test.brainy.md';
 		mockDocument = {
 			fileName: '/path/to/test.brainy.md',
-			getText: () => '@model "gpt-4.1"',
+			getText: () => '',  // Empty content has no errors
 			uri: { toString: () => testUri },
 			languageId: 'markdown',
 		};
+
+		// Set state to idle so play is enabled
+		setExecutionState(testUri, 'idle');
 
 		const codeLenses = provider.provideCodeLenses(
 			mockDocument as unknown as vscode.TextDocument,
@@ -220,8 +382,9 @@ describe('PlaybookCodeLensProvider', () => {
 		);
 
 		if (Array.isArray(codeLenses) && codeLenses.length > 0) {
-			expect(codeLenses[0].command?.arguments).toBeDefined();
-			expect(codeLenses[0].command?.arguments?.length).toBeGreaterThan(0);
+			const playButton = codeLenses[0];
+			expect(playButton.command?.arguments).toBeDefined();
+			expect(playButton.command?.arguments?.length).toBeGreaterThan(0);
 		}
 	});
 });
@@ -236,6 +399,7 @@ describe('PlaybookCodeLensProvider - Edge Cases', () => {
 			isCancellationRequested: false,
 			onCancellationRequested: vi.fn(),
 		};
+		resetAllExecutionState();
 	});
 
 	test('should handle empty .brainy.md files', () => {
@@ -251,10 +415,11 @@ describe('PlaybookCodeLensProvider - Edge Cases', () => {
 			mockToken as unknown as vscode.CancellationToken
 		);
 
-		// Should still show play button for empty files
+		// Should show 1 button for empty files (Play button) since no errors
 		expect(Array.isArray(codeLenses)).toBe(true);
 		if (Array.isArray(codeLenses)) {
 			expect(codeLenses.length).toBe(1);
+			expect(codeLenses[0].command?.title).toContain('Play');
 		}
 	});
 
@@ -279,7 +444,9 @@ describe('PlaybookCodeLensProvider - Edge Cases', () => {
 		// Should still provide CodeLens for large files
 		expect(Array.isArray(codeLenses)).toBe(true);
 		if (Array.isArray(codeLenses)) {
+			// Should show 1 button for idle state with no errors
 			expect(codeLenses.length).toBe(1);
+			expect(codeLenses[0].command?.title).toContain('Play');
 		}
 	});
 
