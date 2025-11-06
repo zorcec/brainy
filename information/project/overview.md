@@ -105,11 +105,11 @@ Modern LLMs and tools like GitHub Copilot are powerful, but their outputs are of
 
 ## Agent Context Control
 
-Brainy playbooks support advanced control over agent context:
-- **Clear Context:** Use a custom tag (e.g., `@context`) to reset the agent's memory before a step.
-- **Save and reuse the context:** Use a tag (e.g., `@context "name of the context"`) to open a new, isolated context for a specific block or command.
-- **Context Injection:** Outputs from scripts or RAG commands will be injected into the agent's context for subsequent steps.
-- **Combining Contexts:** Optionally, combine multiple contexts or chain them for complex workflows.
+Brainy playbooks support control over agent context:
+- **Clear Context:** Use `@context` to switch to a new or existing context.
+- **Save and reuse the context:** Use `@context --name "context_name"` to switch to a named context.
+- **Context Injection:** Outputs from scripts or commands are injected into the active context for subsequent steps.
+- **Single Context:** Only one context can be active at a time, simplifying context management and preventing unexpected behavior.
 
 ### Example Syntax
 
@@ -117,7 +117,7 @@ Brainy playbooks support advanced control over agent context:
 
 You can control agent context in Brainy playbooks using the following explicit patterns:
 
-**Start a new clean context:**
+**Switch to a named context:**
 ```markdown
 `@prompt "Start fresh and summarize the current directory."`
 ```

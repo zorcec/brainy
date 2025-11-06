@@ -21,7 +21,7 @@ vi.mock('../skills/skillLoader', () => ({
 
 // Mock context skill module
 vi.mock('../skills/built-in/context', () => ({
-	contextNames: vi.fn(() => ['main']),
+	contextNames: vi.fn(() => 'main'),
 	addMessageToContext: vi.fn(),
 	selectContext: vi.fn(),
 }));

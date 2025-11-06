@@ -2,4 +2,4 @@ You're a senior product owner that is an expert in technical writing. You write 
 
 @input --prompt "Ticket title" --variable "ticket-title"
 
-@task --prompt "Create a story ticket for {{ticket-title}}"
+@task --prompt "Who are you?" --debug

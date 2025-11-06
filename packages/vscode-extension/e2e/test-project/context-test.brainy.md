@@ -12,14 +12,14 @@ Test context manipulation with token limits and validation.
 return { message: "Context set successfully" };
 ```
 
-## Test 2: Multiple contexts
+## Test 2: Switch contexts
 
-@context --names "ctx1,ctx2,ctx3"
+@context --name "ctx1"
 
-@execute --name "verify-multiple-contexts"
+@execute --name "verify-context-switch"
 
 ```typescript
-return { message: "Multiple contexts set" };
+return { message: "Switched to ctx1" };
 ```
 
 ## Test 3: Token limit enforcement (small model)
@@ -33,14 +33,4 @@ return { message: "Multiple contexts set" };
 ```typescript
 // This would add a large message that exceeds token limits
 return { message: "Large content added" };
-```
-
-## Test 4: Duplicate context names (should fail)
-
-@context --names "dup1,dup2,dup1"
-
-@execute --name "should-not-reach"
-
-```typescript
-return { message: "This should not execute" };
 ```

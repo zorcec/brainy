@@ -93,7 +93,7 @@ export async function executePlaybook(
 	selectChatModel(DEFAULT_MODEL_ID);
 
 	// Set initial context to main
-	selectContext(['main']);
+	selectContext('main');
 
 	try {
 		// Execute blocks sequentially
@@ -192,9 +192,9 @@ async function executeBlock(
    // Handle plainText blocks: always add to context as agent type
    if (block.name === 'plainText') {
 	   console.log(`Adding plainText block to context`, contextNames());
-	   const activeContexts = contextNames();
-	   for (const contextName of activeContexts) {
-		   addMessageToContext(contextName, 'agent', block.content);
+	   const activeContext = contextNames();
+	   if (activeContext) {
+		   addMessageToContext(activeContext, 'agent', block.content);
 	   }
 	   return;
    }
@@ -206,9 +206,9 @@ async function executeBlock(
 	   
 	   if (!isPreviousExecuteSkill) {
 		   console.log(`Adding plainCodeBlock to context (previous block: ${previousBlock?.name || 'none'})`);
-		   const activeContexts = contextNames();
-		   for (const contextName of activeContexts) {
-			   addMessageToContext(contextName, 'agent', block.content);
+		   const activeContext = contextNames();
+		   if (activeContext) {
+			   addMessageToContext(activeContext, 'agent', block.content);
 		   }
 	   } else {
 		   console.log(`Skipping plainCodeBlock (previous block was execute skill)`);
@@ -260,17 +260,17 @@ async function executeBlock(
 /**
  * Utility function to automatically add skill result messages to context.
  * Centralizes the message handling logic that was previously duplicated across skills.
- * Messages are added to all currently selected contexts.
+ * Messages are added to the currently selected context.
  * 
  * @param result - The skill execution result containing messages
  */
 function addSkillMessagesToContext(result: SkillResult): void {
-	const activeContexts = contextNames();
+	const activeContext = contextNames();
 	
-	// Add each message from the skill result to all active contexts
-	for (const message of result.messages) {
-		for (const contextName of activeContexts) {
-			addMessageToContext(contextName, message.role, message.content);
+	// Add each message from the skill result to the active context
+	if (activeContext) {
+		for (const message of result.messages) {
+			addMessageToContext(activeContext, message.role, message.content);
 		}
 	}
 }

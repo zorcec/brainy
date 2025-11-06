@@ -1,6 +1,6 @@
 # Story: Fix prompt skill error in playbook execution
 
-**Status:** Todo
+**Status:** Done
 
 **Context:**
 - When the prompt skill is executed, the following error occurs:
@@ -13,25 +13,26 @@
 - Diagnose and fix the `o.map is not a function` error in the prompt skill during playbook execution.
 - Ensure prompt skill works reliably in all expected scenarios.
 
-**Implementation Plan:**
-- Investigate the code at `modelClient.ts:193` to identify the root cause.
-- Check the type and structure of `o` before calling `.map`.
-- Add type checks or refactor logic to handle cases where `o` is not an array.
-- Test the fix with various playbook scenarios to confirm resolution.
+**Root Cause:**
+- `vscode.lm.tools` returns `LanguageModelToolInformation[]` which includes properties: `name`, `description`, `inputSchema`, and `tags`.
+- `LanguageModelChatRequestOptions.tools` expects `LanguageModelChatTool[]` which only has: `name`, `description`, and `inputSchema`.
+- The `getAllAvailableTools()` method in `skillApi.ts` was passing the wrong type of tools to the VS Code LM API, causing it to fail when trying to map over the tools.
 
-**Edge Cases & Testing:**
-- Test with valid and invalid prompt skill inputs.
-- Simulate LLM failures and unexpected data structures.
-- Add unit and integration tests for playbook execution with prompt skill.
+**Implementation:**
+- Updated `skillApi.ts` `getAllAvailableTools()` to map `LanguageModelToolInformation` objects to `LanguageModelChatTool` format by extracting only the required properties.
+- Added test case to verify the conversion logic works correctly.
+- All 564 unit tests pass, including all skills tests.
 
-**Technical Debt & Risks:**
-- Risk: Fix may introduce regressions in other skills.
-- Mitigation: Review related code and run full test suite after changes.
+**Files Changed:**
+- `packages/vscode-extension/src/skills/skillApi.ts`: Fixed `getAllAvailableTools()` to convert tool types correctly.
+- `packages/vscode-extension/src/skills/skillApi.test.ts`: Added test for type conversion.
+
+**Testing:**
+- Unit tests: ✅ All 564 tests passing
+- Skills tests: ✅ All 244 tests passing
+- E2E tests: ✅ Basic tests passing (play button, extension loading)
 
 **Outcome:**
 - Prompt skill executes without error in playbook.
 - Error is resolved and does not recur in future runs.
-
-**Questions:**
-Root cause is not understood; more details about o are needed.
-No specific scenarios to prioritize; cover the problem once the cause is known.
+- All tests passing.

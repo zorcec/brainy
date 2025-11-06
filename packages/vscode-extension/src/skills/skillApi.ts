@@ -39,7 +39,7 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 	return {
 		/**
 		 * Sends a request to the model and returns the response.
-		 * Automatically includes conversation context from selected contexts.
+		 * Automatically includes conversation context from the selected context.
 		 * 
 		 * @param role - Message role ('user' or 'assistant')
 		 * @param content - Message content
@@ -53,12 +53,9 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 				throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
 			}
 			
-			// Get context messages from all selected contexts
-			const contexts = await getContextFromStore();
-			const contextMessages: any[] = [];
-			for (const context of contexts) {
-				contextMessages.push(...context.messages);
-			}
+			// Get context messages from the selected context
+			const context = await getContextFromStore();
+			const contextMessages: any[] = context ? context.messages : [];
 			
 			const response = await modelSendRequest({
 				role,
@@ -80,17 +77,21 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			setSelectedModel(model);
 		},
 
-		/**
-		 * Gets all available tools from vscode.lm.tools.
-		 * 
-		 * @returns Promise resolving to an array of all available tools
-		 */
-		async getAllAvailableTools() {
-			// Return all tools registered in VS Code
-			return Array.from(vscode.lm.tools);
-		},
-
-		/**
+	/**
+	 * Gets all available tools from vscode.lm.tools.
+	 * Converts LanguageModelToolInformation to LanguageModelChatTool format.
+	 * 
+	 * @returns Promise resolving to an array of all available tools
+	 */
+	async getAllAvailableTools() {
+		// vscode.lm.tools returns LanguageModelToolInformation[]
+		// We need to convert to LanguageModelChatTool[] by extracting name, description, and inputSchema
+		return Array.from(vscode.lm.tools).map(tool => ({
+			name: tool.name,
+			description: tool.description,
+			inputSchema: tool.inputSchema
+		}));
+	},		/**
 		 * Gets all parsed blocks from the current playbook.
 		 * 
 		 * @returns Array of all parsed blocks
@@ -150,33 +151,28 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		},
 
 		/**
-		 * Adds a message to the currently active contexts.
+		 * Adds a message to the currently selected context.
 		 * 
 		 * @param role - Message role ('user', 'assistant', or 'agent')
 		 * @param content - Message content
 		 */
 	       addToContext(role, content) {
-		       const activeContexts = contextNames();
-		       for (const contextName of activeContexts) {
+		       const contextName = contextNames();
+		       if (contextName) {
 			       addMessageToContext(contextName, role, content);
 		       }
 	       },
 
 	       /**
 		* Gets the current context (conversation history/messages) for the skill execution.
-		* Returns messages from all selected contexts flattened into a single array.
-		* If no contexts are selected, returns an empty array.
+		* Returns messages from the selected context.
+		* If no context is selected, returns an empty array.
 		* 
-		* @returns Promise resolving to array of all messages from selected contexts
+		* @returns Promise resolving to array of messages from the selected context
 		*/
 		async getContext() {
-			const contexts = await getContextFromStore();
-			// Flatten all messages from all selected contexts into a single array
-			const allMessages: SkillMessage[] = [];
-			for (const context of contexts) {
-				allMessages.push(...context.messages);
-			}
-			return allMessages;
+			const context = await getContextFromStore();
+			return context ? context.messages : [];
 		}
 	};
 }

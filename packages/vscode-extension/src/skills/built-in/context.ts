@@ -3,7 +3,8 @@
  *
  * Description:
  *   Built-in context manipulation skill for Brainy.
- *   Allows users to switch to or create named agent contexts within playbooks.
+ *   Allows users to switch to or create a named agent context within playbooks.
+ *   Only one context can be selected at a time.
  *   Contexts are tracked in memory for the session and messages are stored
  *   in chronological order with role and content for LLM API compatibility.
  *   Dynamically retrieves token limits from VS Code LM API and automatically 
@@ -11,11 +12,9 @@
  *
  * Usage in playbooks:
  *   @context --name "research"
- *   @context --names "research,summary"
  *
  * Parameters:
- *   - name: Single context name (string)
- *   - names: Multiple context names (comma-separated string)
+ *   - name: Context name (string, required)
  *
  * Context Structure:
  *   Each context stores an array of message objects:
@@ -78,9 +77,10 @@ export type Context = {
 const contextStore = new Map<string, ContextMessage[]>();
 
 /**
- * Currently selected context names for the session.
+ * Currently selected context name for the session.
+ * Only one context can be selected at a time.
  */
-let selectedContextNames: string[] = [];
+let selectedContextName: string | undefined;
 
 /**
  * Currently selected model ID for token limit enforcement.
@@ -195,78 +195,39 @@ async function truncateMessages(messages: ContextMessage[], contextName: string)
 
 /**
  * Context skill implementation.
- * Selects one or more agent contexts for the session.
+ * Selects a single agent context for the session.
  */
 export const contextSkill: Skill = {
 	name: 'context',
-	description: 'Select one or more agent contexts for the session.',
+	description: 'Select an agent context for the session. Only one context can be selected at a time.',
 	params: [
-		{ name: 'name', description: 'Single context name', required: false },
-		{ name: 'names', description: 'Multiple context names (comma-separated)', required: false }
+		{ name: 'name', description: 'Context name', required: true }
 	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
-		// Extract context names from params
-		// Support both --name "single" and --names "name1,name2,name3"
-		const { name, names } = params;
+		// Extract context name from params
+		const { name } = params;
 		
-		let nameList: string[];
-		
-		if (names !== undefined) {
-			// Multiple names provided as comma-separated string
-			if (!isValidString(names)) {
-				throw new Error('Missing or invalid context name(s)');
-			}
-			nameList = names.split(',').map(n => n.trim()).filter(n => n.length > 0);
-			
-			// Validate that we have at least one valid name after processing
-			if (nameList.length === 0) {
-				throw new Error('Missing or invalid context name(s)');
-			}
-		} else if (name !== undefined) {
-			// Single name provided
-			if (!isValidString(name)) {
-				throw new Error('Invalid context name: empty string');
-			}
-			nameList = [name.trim()];
-		} else {
-			throw new Error('Missing context name(s)');
+		// Validate name parameter
+		if (!isValidString(name)) {
+			throw new Error('Missing or invalid context name');
 		}
 		
-		// Validate each name (defensive check)
-		for (const contextName of nameList) {
-			if (!contextName || contextName.trim() === '') {
-				throw new Error('Invalid context name: empty string');
-			}
+		const contextName = name.trim();
+		
+		// Create context if it doesn't exist
+		if (!contextStore.has(contextName)) {
+			contextStore.set(contextName, []);
 		}
 		
-		// Check for duplicate names
-		const uniqueNames = new Set(nameList);
-		if (uniqueNames.size !== nameList.length) {
-			throw new Error('Duplicate context names are not allowed');
-		}
-		
-		// Create contexts if they don't exist
-		for (const contextName of nameList) {
-			if (!contextStore.has(contextName)) {
-				contextStore.set(contextName, []);
-			}
-		}
-		
-		// Save selected context names
-		selectedContextNames = nameList;
+		// Save selected context name
+		selectedContextName = contextName;
 		
 		// Return confirmation message
-		const message = nameList.length === 1
-			? `Context set to: ${nameList[0]}`
-			: `Contexts selected: ${nameList.join(', ')}`;
+		const message = `Context set to: ${contextName}`;
 		
-		// Add to context automatically as agent
-		// Note: We don't use api.addToContext here because it would add to all selected contexts
-		// Instead, we add directly to each context
-		for (const contextName of nameList) {
-			addMessageToContext(contextName, 'agent', message);
-		}
+		// Add confirmation message to the context
+		addMessageToContext(contextName, 'agent', message);
 		
 		return {
 			messages: [{
@@ -278,67 +239,52 @@ export const contextSkill: Skill = {
 };
 
 /**
- * API: Gets all selected context names.
+ * API: Gets the selected context name.
  * 
- * @returns Array of selected context names
+ * @returns Selected context name or undefined if no context is selected
  */
-export function contextNames(): string[] {
-	return [...selectedContextNames];
+export function contextNames(): string | undefined {
+	return selectedContextName;
 }
 
 /**
- * API: Gets all selected contexts with their messages.
+ * API: Gets the selected context with its messages.
  * Messages are automatically truncated if they exceed the model's token limit.
  * 
- * @returns Promise resolving to array of context objects with name and truncated messages
+ * @returns Promise resolving to context object with name and truncated messages, or undefined if no context is selected
  */
-export async function getContext(): Promise<Context[]> {
-	const contexts: Context[] = [];
-	for (const name of selectedContextNames) {
-		const messages = contextStore.get(name) || [];
-		const truncated = await truncateMessages(messages, name);
-		contexts.push({
-			name,
-			messages: truncated
-		});
+export async function getContext(): Promise<Context | undefined> {
+	if (!selectedContextName) {
+		return undefined;
 	}
-	return contexts;
+	
+	const messages = contextStore.get(selectedContextName) || [];
+	const truncated = await truncateMessages(messages, selectedContextName);
+	
+	return {
+		name: selectedContextName,
+		messages: truncated
+	};
 }
 
 /**
- * API: Sets and saves the selected context names for the session.
- * Creates contexts if they don't exist.
+ * API: Sets and saves the selected context name for the session.
+ * Creates the context if it doesn't exist.
  * 
- * @param names - Array of context names to select
- * @throws Error if names array is empty or invalid
- * @throws Error if context names contain duplicates
+ * @param name - Context name to select
+ * @throws Error if name is invalid
  */
-export function selectContext(names: string[]): void {
-	if (!Array.isArray(names) || names.length === 0) {
-		throw new Error('Missing or invalid context names');
+export function selectContext(name: string): void {
+	if (!isValidString(name)) {
+		throw new Error('Invalid context name: must be non-empty string');
 	}
 	
-	// Validate each name
-	for (const name of names) {
-		if (!isValidString(name)) {
-			throw new Error('Invalid context name: must be non-empty string');
-		}
+	// Create context if it doesn't exist
+	if (!contextStore.has(name)) {
+		contextStore.set(name, []);
 	}
 	
-	// Check for duplicate names
-	const uniqueNames = new Set(names);
-	if (uniqueNames.size !== names.length) {
-		throw new Error('Duplicate context names are not allowed');
-	}
-	
-	// Create contexts if they don't exist
-	for (const name of names) {
-		if (!contextStore.has(name)) {
-			contextStore.set(name, []);
-		}
-	}
-	
-	selectedContextNames = [...names];
+	selectedContextName = name;
 }
 
 /**
@@ -389,7 +335,7 @@ export function setContext(contextName: string, messages: ContextMessage[]): voi
  */
 export function resetState(): void {
 	contextStore.clear();
-	selectedContextNames = [];
+	selectedContextName = undefined;
 	currentModelId = undefined;
 	currentModel = undefined;
 	warningCallback = undefined;

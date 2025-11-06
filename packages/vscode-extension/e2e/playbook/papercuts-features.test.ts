@@ -114,13 +114,13 @@ test.describe('Context and Model Skills', () => {
     expect(content).toContain('@model');
   });
 
-  test('should handle multiple contexts', async ({ vscPage }) => {
+  test('should handle context switching', async ({ vscPage }) => {
     await vscPage.openFile('papercuts-test.brainy.md');
     
     const content = await vscPage.getEditorContent();
     
-    // Verify multiple contexts syntax
-    expect(content).toContain('ctx1,ctx2,ctx3');
+    // Verify context switching syntax
+    expect(content).toContain('ctx1');
   });
 });
 

@@ -20,7 +20,7 @@ vi.mock('./sessionStore', () => ({
 // Mock vscode module
 vi.mock('vscode', () => ({
 	lm: {
-		tools: []
+		tools: [] // Mock as LanguageModelToolInformation[] - empty by default
 	}
 }));
 
@@ -147,48 +147,29 @@ describe('skillApi', () => {
 	});
 
 	describe('getContext', () => {
-		test('returns empty array when no contexts selected', async () => {
+		test('returns empty array when no context selected', async () => {
 			const api = createSkillApi();
 			const context = await api.getContext();
 			expect(context).toEqual([]);
 		});
 
-		test('returns messages from all selected contexts', async () => {
+		test('returns messages from selected context', async () => {
 			// Import context functions
 			const { selectContext, addMessageToContext, resetState } = await import('./built-in/context');
 			
-			// Reset state and setup contexts
+			// Reset state and setup context
 			resetState();
-			selectContext(['ctx1', 'ctx2']);
+			selectContext('ctx1');
 			addMessageToContext('ctx1', 'user', 'Hello from ctx1');
 			addMessageToContext('ctx1', 'assistant', 'Response from ctx1');
-			addMessageToContext('ctx2', 'user', 'Hello from ctx2');
 			
 			const api = createSkillApi();
 			const context = await api.getContext();
 			
-			// Should return all messages from all selected contexts
-			expect(context).toHaveLength(3);
+			// Should return all messages from the selected context
+			expect(context).toHaveLength(2);
 			expect(context[0]).toEqual({ role: 'user', content: 'Hello from ctx1' });
 			expect(context[1]).toEqual({ role: 'assistant', content: 'Response from ctx1' });
-			expect(context[2]).toEqual({ role: 'user', content: 'Hello from ctx2' });
-		});
-
-		test('returns flattened messages in order of selected contexts', async () => {
-			const { selectContext, addMessageToContext, resetState } = await import('./built-in/context');
-			
-			resetState();
-			selectContext(['ctx2', 'ctx1']); // Note order: ctx2 first, then ctx1
-			addMessageToContext('ctx1', 'user', 'Message 1');
-			addMessageToContext('ctx2', 'user', 'Message 2');
-			
-			const api = createSkillApi();
-			const context = await api.getContext();
-			
-			// Should return messages in order of selected contexts (ctx2, then ctx1)
-			expect(context).toHaveLength(2);
-			expect(context[0].content).toBe('Message 2'); // ctx2 first
-			expect(context[1].content).toBe('Message 1'); // ctx1 second
 		});
 	});
 
@@ -207,6 +188,35 @@ describe('skillApi', () => {
 			const tools = await api.getAllAvailableTools();
 			
 			expect(tools).toBeInstanceOf(Array);
+		});
+
+		test('converts LanguageModelToolInformation to LanguageModelChatTool format', async () => {
+			// Mock vscode.lm.tools with LanguageModelToolInformation structure
+			const mockToolInfo = {
+				name: 'test-tool',
+				description: 'A test tool',
+				inputSchema: { type: 'object', properties: {} },
+				tags: ['test', 'example'] // tags should not be in the output
+			};
+			
+			// Temporarily override the mock
+			const vscode = await import('vscode');
+			(vscode.lm.tools as any) = [mockToolInfo];
+			
+			const api = createSkillApi();
+			const tools = await api.getAllAvailableTools();
+			
+			expect(tools).toHaveLength(1);
+			expect(tools[0]).toEqual({
+				name: 'test-tool',
+				description: 'A test tool',
+				inputSchema: { type: 'object', properties: {} }
+			});
+			// Ensure tags are not included (LanguageModelChatTool doesn't have tags)
+			expect(tools[0]).not.toHaveProperty('tags');
+			
+			// Reset mock
+			(vscode.lm.tools as any) = [];
 		});
 	});
 

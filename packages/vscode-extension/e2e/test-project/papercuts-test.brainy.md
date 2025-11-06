@@ -26,9 +26,9 @@ return { message: "Test passed" };
 
 @context --name "model-test"
 
-## Test 3: Multiple context names
+## Test 3: Context switching
 
-@context --names "ctx1,ctx2,ctx3"
+@context --name "ctx1"
 
 ## Test 4: Valid complex annotation
 
