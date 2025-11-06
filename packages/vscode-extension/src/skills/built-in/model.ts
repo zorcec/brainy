@@ -36,8 +36,8 @@ export const modelSkill: Skill = {
 		validateRequiredString(id, 'model id');
 		
 		// Check if the model exists in available models
-		const availableModels = await vscode.lm.selectChatModels({ id });
-		
+		const availableModels = await vscode.lm.selectChatModels({ id: id });
+
 		if (availableModels.length === 0) {
 			throw new Error(`Model "${id}" is not available. Please check the model ID and ensure the required extension is installed.`);
 		}

@@ -35,6 +35,8 @@ import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations 
 import { contextNames, addMessageToContext, selectContext } from '../skills/built-in/context';
 import { selectChatModel } from '../skills/index';
 
+export const DEFAULT_MODEL_ID = 'gpt-4.1';
+
 /**
  * Callback for progress updates during playbook execution
  * 
@@ -88,7 +90,7 @@ export async function executePlaybook(
 	}
 
 	// Set default model to gpt-4.1 at the start of each playbook run
-	selectChatModel('gpt-4.1');
+	selectChatModel(DEFAULT_MODEL_ID);
 
 	// Set initial context to main
 	selectContext(['main']);

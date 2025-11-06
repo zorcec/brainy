@@ -90,12 +90,12 @@ export function highlightFailedSkill(editor: vscode.TextEditor, line: number): v
  * @param editor - The text editor to clear decorations from
  */
 export function clearExecutionDecorations(editor: vscode.TextEditor): void {
-	if (currentSkillDecorationType) {
-		editor.setDecorations(currentSkillDecorationType, []);
-	}
-	if (failedSkillDecorationType) {
-		editor.setDecorations(failedSkillDecorationType, []);
-	}
+	// Always get decoration types to ensure they exist before clearing
+	const currentType = getCurrentSkillDecorationType();
+	const failedType = getFailedSkillDecorationType();
+	
+	editor.setDecorations(currentType, []);
+	editor.setDecorations(failedType, []);
 }
 
 /**

@@ -48,7 +48,7 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		 * @returns Promise with response object containing 'response' field
 		 * @throws Error on validation, timeout, or provider failures
 		 */
-		async sendRequest(role, content, modelId, options) {
+		async sendRequest(role, content, model, options) {
 			if (role === 'agent') {
 				throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
 			}
@@ -63,7 +63,7 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			const response = await modelSendRequest({
 				role,
 				content,
-				modelId,
+					model,
 				context: contextMessages,
 				tools: options?.tools
 			});
@@ -76,8 +76,8 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		 * @param modelId - Model ID to select
 		 * @returns Promise that resolves immediately
 		 */
-		async selectChatModel(modelId) {
-			setSelectedModel(modelId);
+		async selectChatModel(model) {
+			setSelectedModel(model);
 		},
 
 		/**

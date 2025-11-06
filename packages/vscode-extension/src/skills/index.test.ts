@@ -55,8 +55,8 @@ describe('skills API', () => {
 	describe('sendRequest', () => {
 		test('sends request to selected model', async () => {
 			const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
-				reply: `Response from ${params.modelId}`,
-				raw: { model: params.modelId }
+				   reply: `Response from ${params.model}`,
+				   raw: { model: params.model }
 			}));
 
 			configureModelClient({ provider: mockProvider });
@@ -64,20 +64,20 @@ describe('skills API', () => {
 			
 			const response = await sendRequest('user', 'Hello!');
 
-			expect(mockProvider).toHaveBeenCalledWith(
-				expect.objectContaining({
-					modelId: 'gpt-4o',
-					role: 'user',
-					content: 'Hello!'
-				})
-			);
-			expect(response.reply).toBe('Response from gpt-4o');
+	       expect(mockProvider).toHaveBeenCalledWith(
+		       expect.objectContaining({
+			       model: 'gpt-4o',
+			       role: 'user',
+			       content: 'Hello!'
+		       })
+	       );
+	       expect(response.reply).toBe('Response from gpt-4o');
 		});
 
 		test('uses default model when no model is selected', async () => {
 			const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
-				reply: `Response from ${params.modelId}`,
-				raw: {}
+				   reply: `Response from ${params.model}`,
+				   raw: {}
 			}));
 
 			configureModelClient({ provider: mockProvider });
@@ -85,9 +85,9 @@ describe('skills API', () => {
 			// No model selected, should use hardcoded default 'gpt-4.1'
 			await sendRequest('user', 'Hello!');
 
-			expect(mockProvider).toHaveBeenCalledWith(
-				expect.objectContaining({ modelId: 'gpt-4.1' })
-			);
+	       expect(mockProvider).toHaveBeenCalledWith(
+		       expect.objectContaining({ model: 'gpt-4.1' })
+	       );
 		});
 
 		test('throws error when no model is selected and no default', async () => {
@@ -103,9 +103,9 @@ describe('skills API', () => {
 			// Should use hardcoded default 'gpt-4.1'
 			await sendRequest('user', 'Hello!');
 			
-			expect(mockProvider).toHaveBeenCalledWith(
-				expect.objectContaining({ modelId: 'gpt-4.1' })
-			);
+	       expect(mockProvider).toHaveBeenCalledWith(
+		       expect.objectContaining({ model: 'gpt-4.1' })
+	       );
 		});
 
 		test('throws error for invalid role', async () => {
@@ -172,8 +172,8 @@ describe('skills API', () => {
 	});	describe('integration scenarios', () => {
 		test('complete workflow: select model and send request', async () => {
 			const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
-				reply: `Echo: ${params.content}`,
-				raw: { model: params.modelId }
+				   reply: `Echo: ${params.content}`,
+				   raw: { model: params.model }
 			}));
 
 			configureModelClient({ provider: mockProvider });
@@ -190,8 +190,8 @@ describe('skills API', () => {
 
 		test('switch models between requests', async () => {
 			const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
-				reply: `Response from ${params.modelId}`,
-				raw: {}
+				   reply: `Response from ${params.model}`,
+				   raw: {}
 			}));
 
 			configureModelClient({ provider: mockProvider });
@@ -202,14 +202,14 @@ describe('skills API', () => {
 			selectChatModel('claude-3');
 			await sendRequest('user', 'Second message');
 
-			expect(mockProvider).toHaveBeenNthCalledWith(
-				1,
-				expect.objectContaining({ modelId: 'gpt-4o' })
-			);
-			expect(mockProvider).toHaveBeenNthCalledWith(
-				2,
-				expect.objectContaining({ modelId: 'claude-3' })
-			);
+	       expect(mockProvider).toHaveBeenNthCalledWith(
+		       1,
+		       expect.objectContaining({ model: 'gpt-4o' })
+	       );
+	       expect(mockProvider).toHaveBeenNthCalledWith(
+		       2,
+		       expect.objectContaining({ model: 'claude-3' })
+	       );
 		});
 
 		test('multiple requests to same model', async () => {

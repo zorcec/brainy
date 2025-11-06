@@ -133,7 +133,7 @@ export const executeSkill: Skill = {
 			
 			return {
 				messages: [{
-					role: 'agent',
+					role: 'assistant',
 					content: output
 				}]
 			};

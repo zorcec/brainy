@@ -36,7 +36,7 @@ import {
 /**
  * Default model ID (hardcoded).
  */
-const defaultModelId = 'gpt-4.1';
+const defaultModel = 'gpt-4.1';
 
 /**
  * Selects the chat model to use for subsequent requests.
@@ -76,12 +76,12 @@ export async function sendRequest(
 		throw new Error('Content must be a non-empty string');
 	}
 
-	// Get model ID from session or use hardcoded default
-	const modelId = getSelectedModel() ?? defaultModelId;
+	// Get model from session or use hardcoded default
+	const model = getSelectedModel() ?? defaultModel;
 
 	// Send request
 	return await clientSendRequest({
-		modelId,
+		model,
 		role,
 		content,
 		timeoutMs: opts?.timeoutMs

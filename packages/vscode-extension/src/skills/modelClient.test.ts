@@ -40,7 +40,7 @@ describe('modelClient', () => {
 
 	test('sends request with default provider', async () => {
 		const response = await sendRequest({
-			modelId: 'gpt-4o',
+			model: 'gpt-4o',
 			role: 'user',
 			content: 'Hello!'
 		});
@@ -62,22 +62,22 @@ describe('modelClient', () => {
 
 	test('allows skill to override model by passing modelId', async () => {
 		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
-			reply: `Response from ${params.modelId}`,
-			raw: { model: params.modelId }
+			reply: `Response from ${params.model}`,
+			raw: { model: params.model }
 		}));
 
 		configureModelClient({ provider: mockProvider });
 
 		// Skill can specify which model to use
 		const response = await sendRequest({
-			modelId: 'skill-specific-model',
+			model: 'skill-specific-model',
 			role: 'user',
 			content: 'Hello!'
 		});
 
 		expect(mockProvider).toHaveBeenCalledWith(
 			expect.objectContaining({ 
-				modelId: 'skill-specific-model'
+				model: 'skill-specific-model'
 			})
 		);
 		expect(response.reply).toBe('Response from skill-specific-model');
@@ -101,26 +101,26 @@ describe('modelClient', () => {
 		expect(mockProvider).toHaveBeenCalledWith({
 			role: 'user',
 			content: 'Hello!'
-			// modelId is omitted/undefined when not provided
+			// model is omitted/undefined when not provided
 		});
 	});
 
 	test('uses custom provider when configured', async () => {
 		const mockProvider = vi.fn(async (params: SendRequestParams): Promise<ModelResponse> => ({
 			reply: `Mock response to: ${params.content}`,
-			raw: { model: params.modelId, test: true }
+			raw: { model: params.model, test: true }
 		}));
 
 		configureModelClient({ provider: mockProvider });
 
 		const response = await sendRequest({
-			modelId: 'test-model',
+			model: 'test-model',
 			role: 'user',
 			content: 'Test message'
 		});
 
 		expect(mockProvider).toHaveBeenCalledWith({
-			modelId: 'test-model',
+			model: 'test-model',
 			role: 'user',
 			content: 'Test message'
 		});
@@ -140,7 +140,7 @@ describe('modelClient', () => {
 		});
 
 		await sendRequest({
-			modelId: 'gpt-4o',
+			model: 'gpt-4o',
 			role: 'user',
 			content: 'Hello'
 		});
@@ -158,7 +158,7 @@ describe('modelClient', () => {
 		configureModelClient({ provider: mockProvider });
 
 		await sendRequest({
-			modelId: 'gpt-4o',
+			model: 'gpt-4o',
 			role: 'user',
 			content: 'Hello',
 			timeoutMs: 1000
@@ -177,7 +177,7 @@ describe('modelClient', () => {
 
 		await expect(
 			sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello',
 				timeoutMs: 50
@@ -194,7 +194,7 @@ describe('modelClient', () => {
 
 		await expect(
 			sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
 			})
@@ -211,7 +211,7 @@ describe('modelClient', () => {
 
 		await expect(
 			sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
 			})
@@ -227,7 +227,7 @@ describe('modelClient', () => {
 
 		try {
 			await sendRequest({
-				modelId: 'test-model-id',
+				model: 'test-model-id',
 				role: 'user',
 				content: 'Hello'
 			});
@@ -247,7 +247,7 @@ describe('modelClient', () => {
 
 		try {
 			await sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
 			});
@@ -269,7 +269,7 @@ describe('modelClient', () => {
 
 		try {
 			await sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello',
 				timeoutMs: 50
@@ -292,7 +292,7 @@ describe('modelClient', () => {
 		// The system should still return the response, but it might not be valid
 		// In a real implementation, you might want to validate the response shape
 		const response = await sendRequest({
-			modelId: 'gpt-4o',
+			model: 'gpt-4o',
 			role: 'user',
 			content: 'Hello'
 		});
@@ -311,7 +311,7 @@ describe('modelClient', () => {
 
 		try {
 			await sendRequest({
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				role: 'user',
 				content: 'Hello'
 			});

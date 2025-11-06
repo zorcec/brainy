@@ -23,6 +23,7 @@ vi.mock('../skills/skillLoader', () => ({
 vi.mock('../skills/built-in/context', () => ({
 	contextNames: vi.fn(() => ['main']),
 	addMessageToContext: vi.fn(),
+	selectContext: vi.fn(),
 }));
 
 // Mock skills index for selectChatModel

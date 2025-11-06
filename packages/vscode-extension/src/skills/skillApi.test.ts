@@ -54,8 +54,9 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: 'gpt-4o',
-				context: []
+				model: 'gpt-4o',
+				context: [],
+				tools: undefined
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -70,8 +71,9 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: undefined,
-				context: []
+				model: undefined,
+				context: [],
+				tools: undefined
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -220,7 +222,7 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: 'gpt-4o',
+				model: 'gpt-4o',
 				context: [],
 				tools: mockTools
 			});

@@ -24,6 +24,8 @@
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 import { validateRequiredString, isValidString } from '../validation';
 
+import { DEFAULT_MODEL_ID } from '../../markdown/playbookExecutor';
+
 /**
  * Substitutes variables in text using {{variableName}} syntax.
  * Variables are case-sensitive. Undefined variables are replaced with empty string.
@@ -70,16 +72,12 @@ export const taskSkill: Skill = {
 			const currentContext = await api.getContext();
 			const contextDump = {
 				prompt: processedPrompt,
-				model: model || 'default',
+				model: model,
 				context: currentContext
 			};
-			// Store in variable if requested
-			if (isValidString(variable)) {
-				api.setVariable(variable, JSON.stringify(currentContext));
-			}
 			return {
 				messages: [
-					{ role: 'user', content: JSON.stringify(contextDump, null, 2) },
+					{ role: 'user', content: contextDump as any }, // Cast to any to allow object content
 					{ role: 'agent', content: `Debug mode: dumped context with ${currentContext.length} messages` }
 				]
 			};

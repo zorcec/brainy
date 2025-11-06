@@ -17,6 +17,8 @@
  */
 
 import * as vscode from 'vscode';
+import { DEFAULT_MODEL_ID } from '../markdown/playbookExecutor';
+import { getSelectedModel } from './sessionStore';
 
 /**
  * Context message structure for building conversation history.
@@ -31,7 +33,7 @@ export type ContextMessage = {
  */
 export type SendRequestParams = {
 	/** Optional model ID override (e.g., 'gpt-4o', 'claude-3'). If not provided, uses the selected or default model. */
-	modelId?: string;
+	model?: string;
 	/** Role of the message sender */
 	role: 'user' | 'assistant';
 	/** Message content */
@@ -62,7 +64,7 @@ export type ProviderFunction = (params: SendRequestParams) => Promise<ModelRespo
 /**
  * Singleton configuration state.
  */
-let defaultTimeoutMs = 8000;
+let defaultTimeoutMs = 5 * 60 * 1000; // 5 minutes
 let providerFunction: ProviderFunction = defaultProvider;
 
 /**
@@ -88,7 +90,7 @@ export function configureModelClient(config: {
  * Resets the model client configuration. Used for testing.
  */
 export function resetModelClient(): void {
-	defaultTimeoutMs = 8000;
+	defaultTimeoutMs = 5 * 60 * 1000; // 5 minutes
 	providerFunction = defaultProvider;
 }
 
@@ -128,14 +130,14 @@ export async function sendRequest(params: SendRequestParams): Promise<ModelRespo
  * @throws Error if no models are available or request fails
  */
 async function defaultProvider(params: SendRequestParams): Promise<ModelResponse> {
-	// Select chat models matching the requested model ID
+	// Select chat models matching the requested model
 	const models = await vscode.lm.selectChatModels({
 		vendor: 'copilot',
-		family: params.modelId || 'gpt-4o'
+		family: params.model || getSelectedModel()
 	});
 
 	if (models.length === 0) {
-		throw new Error(`No models available for ${params.modelId || 'default'}. Ensure GitHub Copilot is active.`);
+		throw new Error(`No models available for ${params.model || DEFAULT_MODEL_ID}. Ensure GitHub Copilot is active.`);
 	}
 
 	// Use the first available model
