@@ -87,7 +87,7 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 			// Add descriptions for known skills
 			switch (skillName) {
 				case 'context':
-					item.documentation = 'Select one or more agent contexts for the session';
+					item.documentation = 'Select an agent context for the session. Only one context can be active at a time.';
 					break;
 				case 'model':
 					item.documentation = 'Set the active LLM model for subsequent requests';

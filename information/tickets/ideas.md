@@ -1,3 +1,3 @@
 - markitdown python lib that can convert any document or url into markdown
 - all skills are registered as tools (every skill controls that with a flag in the definition)
-- every LLM call should be able to use build in tools (by default none, only those that are listed)
+- every LLM call should be able to use build in tools (by default all?)

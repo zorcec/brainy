@@ -3,6 +3,20 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
+
+// Mock vscode module before imports
+vi.mock('vscode', () => ({
+	lm: {
+		selectChatModels: vi.fn(async () => [{
+			id: 'gpt-4o',
+			vendor: 'copilot',
+			family: 'gpt-4o',
+			maxInputTokens: 128000,
+			countTokens: vi.fn((text: string) => Promise.resolve(Math.ceil(text.length / 4)))
+		}])
+	}
+}));
+
 import { taskSkill } from './task';
 import { createMockSkillApi } from '../testUtils';
 import type { SkillApi } from '../types';
@@ -322,4 +336,95 @@ describe('taskSkill', () => {
 			{ tools: [] }
 		);
 	});
+
+	test('debug mode dumps context without calling LLM', async () => {
+		// Add some messages to context
+		const { selectContext, addMessageToContext, resetState, getContext } = await import('./context');
+		resetState();
+		selectContext('test-context');
+		addMessageToContext('test-context', 'user', 'Previous message 1');
+		addMessageToContext('test-context', 'assistant', 'Previous message 2');
+
+		// Override mockApi.getContext to use real context
+		mockApi.getContext = vi.fn(async () => {
+			const ctx = await getContext();
+			return ctx ? ctx.messages : [];
+		});
+
+		const result = await taskSkill.execute(mockApi, {
+			prompt: 'Test prompt',
+			debug: ''  // Any value enables debug mode
+		});
+
+		// Should not call sendRequest
+		expect(mockApi.sendRequest).not.toHaveBeenCalled();
+
+		// Should return two messages
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].role).toBe('agent');
+		expect(result.messages[1].content).toContain('Debug mode: dumped context');
+
+		// The first message should contain serialized JSON
+		const contextJson = result.messages[0].content;
+		expect(contextJson).toContain('Test prompt');
+		expect(contextJson).toContain('Previous message 1');
+		expect(contextJson).toContain('Previous message 2');
+
+		// Clean up
+		resetState();
+	});
+
+	test('debug mode handles circular references without error', async () => {
+		// Create a context with potential circular reference issues
+		const { selectContext, resetState } = await import('./context');
+		resetState();
+		selectContext('test-context');
+
+		// Try to execute debug mode - should not throw
+		const result = await taskSkill.execute(mockApi, {
+			prompt: 'Test prompt',
+			debug: 'true'
+		});
+
+		expect(result.messages).toHaveLength(2);
+		expect(result.messages[0].role).toBe('user');
+		expect(result.messages[1].role).toBe('agent');
+
+		// Should be valid JSON string
+		expect(() => JSON.parse(result.messages[0].content)).not.toThrow();
+
+		// Clean up
+		resetState();
+	});
+
+	test('debug mode truncates long strings', async () => {
+		const { selectContext, addMessageToContext, resetState, getContext } = await import('./context');
+		resetState();
+		selectContext('test-context');
+		
+		// Add a very long message
+		const longContent = 'x'.repeat(1000);
+		addMessageToContext('test-context', 'user', longContent);
+
+		// Override mockApi.getContext to use real context
+		mockApi.getContext = vi.fn(async () => {
+			const ctx = await getContext();
+			return ctx ? ctx.messages : [];
+		});
+
+		const result = await taskSkill.execute(mockApi, {
+			prompt: 'Test prompt',
+			debug: ''
+		});
+
+		const contextJson = result.messages[0].content;
+		
+		// Should contain truncation marker
+		expect(contextJson).toContain('[truncated]');
+
+		// Clean up
+		resetState();
+	});
 });
+

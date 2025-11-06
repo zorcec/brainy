@@ -70,14 +70,32 @@ export const taskSkill: Skill = {
 		// Debug mode: dump context and return without calling LLM
 		if (typeof debug !== 'undefined') {
 			const currentContext = await api.getContext();
-			const contextDump = {
+			
+			// Safely serialize context to avoid circular reference errors
+			// Use a custom replacer to handle circular references and large content
+			const seen = new WeakSet();
+			const contextJson = JSON.stringify({
 				prompt: processedPrompt,
 				model: model,
 				context: currentContext
-			};
+			}, (key, value) => {
+				// Handle circular references
+				if (typeof value === 'object' && value !== null) {
+					if (seen.has(value)) {
+						return '[Circular Reference]';
+					}
+					seen.add(value);
+				}
+				// Truncate long strings to prevent overwhelming output
+				if (typeof value === 'string' && value.length > 500) {
+					return value.substring(0, 500) + '... [truncated]';
+				}
+				return value;
+			}, 2);
+			
 			return {
 				messages: [
-					{ role: 'user', content: contextDump as any }, // Cast to any to allow object content
+					{ role: 'user', content: contextJson },
 					{ role: 'agent', content: `Debug mode: dumped context with ${currentContext.length} messages` }
 				]
 			};
