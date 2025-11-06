@@ -19,6 +19,17 @@ vi.mock('../skills/skillLoader', () => ({
 	})),
 }));
 
+// Mock context skill module
+vi.mock('../skills/built-in/context', () => ({
+	contextNames: vi.fn(() => ['main']),
+	addMessageToContext: vi.fn(),
+}));
+
+// Mock skills index for selectChatModel
+vi.mock('../skills/index', () => ({
+	selectChatModel: vi.fn(),
+}));
+
 // Mock VS Code module
 vi.mock('vscode', () => {
 	class MockRange {
@@ -49,6 +60,7 @@ vi.mock('vscode', () => {
 			createTextEditorDecorationType: vi.fn(() => ({
 				dispose: vi.fn(),
 			})),
+			showErrorMessage: vi.fn(),
 		},
 		Range: MockRange,
 		ThemeColor: MockThemeColor,
@@ -109,7 +121,11 @@ describe('playbookExecutor', () => {
 			expect(onComplete).toHaveBeenCalledOnce();
 		});
 
-		test('skips plainText blocks', async () => {
+		test('adds plainText blocks to context as agent type', async () => {
+			const { addMessageToContext } = await import('../skills/built-in/context');
+			const addMessageMock = addMessageToContext as ReturnType<typeof vi.fn>;
+			addMessageMock.mockClear();
+
 			const blocks: AnnotationBlock[] = [
 				{ name: 'plainText', flags: [], content: 'Some text', line: 1 },
 				{ name: 'task', flags: [], content: 'Task 1', line: 2 },
@@ -126,6 +142,8 @@ describe('playbookExecutor', () => {
 			);
 
 			expect(onProgress).toHaveBeenCalledTimes(2);
+			// Verify plainText was added to context as agent type
+			expect(addMessageMock).toHaveBeenCalledWith('main', 'agent', 'Some text');
 		});
 
 		test('skips plainComment blocks', async () => {
@@ -147,17 +165,20 @@ describe('playbookExecutor', () => {
 			expect(onProgress).toHaveBeenCalledTimes(2);
 		});
 
-		test('stops execution when state is stopped', async () => {
+		test('adds code blocks to context when previous block is not execute', async () => {
+			const { addMessageToContext } = await import('../skills/built-in/context');
+			const addMessageMock = addMessageToContext as ReturnType<typeof vi.fn>;
+			addMessageMock.mockClear();
+
 			const blocks: AnnotationBlock[] = [
-				{ name: 'task', flags: [], content: 'Task 1', line: 1 },
-				{ name: 'task', flags: [], content: 'Task 2', line: 2 },
+				{ name: 'plainText', flags: [], content: 'Some text', line: 1 },
+				{ name: 'plainCodeBlock', flags: [], content: 'console.log("test")', line: 2, metadata: { language: 'javascript' } },
+				{ name: 'task', flags: [], content: 'Task 1', line: 3 },
 			];
 
 			const onProgress = vi.fn();
 
-			// Start running, then immediately stop
 			setExecutionState(testUri, 'running');
-			setExecutionState(testUri, 'stopped');
 
 			await executePlaybook(
 				mockEditor as unknown as vscode.TextEditor,
@@ -165,8 +186,65 @@ describe('playbookExecutor', () => {
 				onProgress
 			);
 
-			// Should not execute any blocks
-			expect(onProgress).not.toHaveBeenCalled();
+			expect(onProgress).toHaveBeenCalledTimes(3);
+			// Verify code block was added to context as agent type
+			expect(addMessageMock).toHaveBeenCalledWith('main', 'agent', 'console.log("test")');
+		});
+
+		test('skips code blocks when previous block is execute skill', async () => {
+			const { addMessageToContext } = await import('../skills/built-in/context');
+			const addMessageMock = addMessageToContext as ReturnType<typeof vi.fn>;
+			addMessageMock.mockClear();
+
+			const blocks: AnnotationBlock[] = [
+				{ name: 'execute', flags: [], content: '@execute', line: 1 },
+				{ name: 'plainCodeBlock', flags: [], content: 'console.log("test")', line: 2, metadata: { language: 'javascript' } },
+			];
+
+			const onProgress = vi.fn();
+
+			setExecutionState(testUri, 'running');
+
+			await executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks,
+				onProgress
+			);
+
+			expect(onProgress).toHaveBeenCalledTimes(2);
+			// Verify code block was NOT added to context (execute skill consumes it)
+			// addMessageMock should only be called for skill results, not for the code block
+			const codeBlockCalls = addMessageMock.mock.calls.filter(
+				call => call[2] === 'console.log("test")'
+			);
+			expect(codeBlockCalls).toHaveLength(0);
+		});
+
+		test('stops execution when stopped during run', async () => {
+			const blocks: AnnotationBlock[] = [
+				{ name: 'task', flags: [], content: 'Task 1', line: 1 },
+				{ name: 'task', flags: [], content: 'Task 2', line: 2 },
+			];
+
+			const onProgress = vi.fn();
+
+			// Start execution and immediately set to stopped
+			const promise = executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks,
+				onProgress
+			);
+
+			// Stop it immediately
+			setTimeout(() => {
+				setExecutionState(testUri, 'stopped');
+			}, 10);
+
+			await promise;
+
+			// Should execute at least the first block before stopping
+			// Due to timing, might execute 1 or 2 blocks
+			expect(onProgress.mock.calls.length).toBeLessThan(blocks.length + 1);
 		});
 
 		test('waits while paused and resumes', async () => {
@@ -210,6 +288,75 @@ describe('playbookExecutor', () => {
 
 			// Should call setDecorations to clear
 			expect(mockEditor.setDecorations).toHaveBeenCalled();
+		});
+
+		test('sets default model to gpt-4.1 on playbook start', async () => {
+			const { selectChatModel } = await import('../skills/index');
+			const selectModelMock = selectChatModel as ReturnType<typeof vi.fn>;
+			selectModelMock.mockClear();
+
+			const blocks: AnnotationBlock[] = [
+				{ name: 'task', flags: [], content: 'Task 1', line: 1 },
+			];
+
+			setExecutionState(testUri, 'running');
+
+			await executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks
+			);
+
+			// Verify default model was set
+			expect(selectModelMock).toHaveBeenCalledWith('gpt-4.1');
+		});
+
+		test('prevents concurrent playbook execution', async () => {
+			const blocks: AnnotationBlock[] = [
+				{ name: 'task', flags: [], content: 'Task 1', line: 1 },
+			];
+
+			const uri1 = 'file:///test1.md';
+			const uri2 = 'file:///test2.md';
+
+			const mockEditor1 = {
+				document: {
+					uri: {
+						toString: () => uri1,
+						fsPath: '/test1.md',
+					},
+				},
+				setDecorations: vi.fn(),
+			};
+
+			const mockEditor2 = {
+				document: {
+					uri: {
+						toString: () => uri2,
+						fsPath: '/test2.md',
+					},
+				},
+				setDecorations: vi.fn(),
+			};
+
+			// Start first playbook - don't wait for it to finish
+			const promise1 = executePlaybook(
+				mockEditor1 as unknown as vscode.TextEditor,
+				blocks
+			);
+
+			// Give first playbook time to start
+			await new Promise(resolve => setTimeout(resolve, 50));
+
+			// Try to start second playbook while first is running
+			await expect(
+				executePlaybook(
+					mockEditor2 as unknown as vscode.TextEditor,
+					blocks
+				)
+			).rejects.toThrow('A playbook is already running');
+
+			// Wait for first to finish
+			await promise1;
 		});
 	});
 

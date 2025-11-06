@@ -3,6 +3,27 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+
+// Mock vscode module before imports
+vi.mock('vscode', () => ({
+	lm: {
+		selectChatModels: vi.fn(async () => [{
+			id: 'gpt-4o',
+			vendor: 'copilot',
+			family: 'gpt-4o',
+			sendRequest: vi.fn(async () => ({
+				text: (async function* () {
+					yield 'Mock response';
+				})()
+			}))
+		}])
+	},
+	LanguageModelChatMessage: {
+		User: vi.fn((content: string) => ({ role: 'user', content })),
+		Assistant: vi.fn((content: string) => ({ role: 'assistant', content }))
+	}
+}));
+
 import {
 	sendRequest,
 	configureModelClient,

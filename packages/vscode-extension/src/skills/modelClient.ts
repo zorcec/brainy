@@ -3,6 +3,7 @@
  *
  * Description:
  *   Singleton model client for LLM provider calls with timeout and error handling.
+ *   Uses VS Code's Language Model API (vscode.lm) to send requests to GitHub Copilot.
  *   Provides sendRequest function and configuration for timeout and custom providers.
  *
  * Usage:
@@ -15,7 +16,7 @@
  *   });
  */
 
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 
 /**
  * Request parameters for sending a message to the model.
@@ -108,19 +109,61 @@ export async function sendRequest(params: SendRequestParams): Promise<ModelRespo
 }
 
 /**
- * Default provider implementation (placeholder).
- * In production, this would call the actual LLM provider API.
+ * Default provider implementation using VS Code's Language Model API.
+ * Sends messages to GitHub Copilot using vscode.lm.selectChatModels().
  *
  * @param params - Request parameters
  * @returns Model response
+ * @throws Error if no models are available or request fails
  */
 async function defaultProvider(params: SendRequestParams): Promise<ModelResponse> {
-	// Placeholder implementation
-	// In production, this would make actual API calls to LLM providers
-	return {
-		reply: `Echo: ${params.content}`,
-		raw: { model: params.modelId, role: params.role }
+	// Select chat models matching the requested model ID
+	const models = await vscode.lm.selectChatModels({
+		vendor: 'copilot',
+		family: params.modelId || 'gpt-4o'
+	});
+
+	if (models.length === 0) {
+		throw new Error(`No models available for ${params.modelId || 'default'}. Ensure GitHub Copilot is active.`);
+	}
+
+	// Use the first available model
+	const model = models[0];
+
+	// Build message array - VS Code LM API expects LanguageModelChatMessage objects
+	const messages: vscode.LanguageModelChatMessage[] = [
+		vscode.LanguageModelChatMessage.User(params.content)
+	];
+
+	// Send request and collect streamed response
+	const requestOptions: vscode.LanguageModelChatRequestOptions = {
+		justification: 'Brainy playbook execution'
 	};
+
+	// Add tools if provided
+	if (params.tools && params.tools.length > 0) {
+		requestOptions.tools = params.tools;
+	}
+
+	try {
+		const response = await model.sendRequest(messages, requestOptions);
+		
+		// Collect streamed text
+		let fullText = '';
+		for await (const fragment of response.text) {
+			fullText += fragment;
+		}
+
+		return {
+			reply: fullText,
+			raw: { model: model.id, vendor: model.vendor, family: model.family }
+		};
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new Error(`LLM request failed: ${error.message}`);
+		}
+		throw new Error(`LLM request failed: ${String(error)}`);
+	}
 }
 
 /**

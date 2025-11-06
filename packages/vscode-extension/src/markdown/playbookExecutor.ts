@@ -24,9 +24,16 @@ import * as vscode from 'vscode';
 import type { AnnotationBlock } from '../parser';
 import { loadSkill, executeSkill } from '../skills/skillLoader';
 import type { SkillResult } from '../skills/types';
-import { getExecutionState, setExecutionState, resetExecutionState } from './executionState';
+import { 
+	getExecutionState, 
+	setExecutionState, 
+	resetExecutionState,
+	markPlaybookStarted,
+	markPlaybookFinished
+} from './executionState';
 import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations } from './executionDecorations';
 import { contextNames, addMessageToContext } from '../skills/built-in/context';
+import { selectChatModel } from '../skills/index';
 
 /**
  * Callback for progress updates during playbook execution
@@ -69,75 +76,96 @@ export async function executePlaybook(
 ): Promise<void> {
 	const editorUri = editor.document.uri.toString();
 
-	// Execute blocks sequentially
-	   for (let i = 0; i < blocks.length; i++) {
-		   const block = blocks[i];
-		   const state = getExecutionState(editorUri);
+	try {
+		// Check if another playbook is already running and prevent concurrent execution
+		markPlaybookStarted(editorUri);
+	} catch (error) {
+		// Show error to user if another playbook is running
+		if (error instanceof Error) {
+			vscode.window.showErrorMessage(`Cannot start playbook: ${error.message}`);
+		}
+		throw error;
+	}
 
-		   // Check if stopped
-		   if (state === 'stopped' || state === 'idle') {
-			   console.log('Playbook execution stopped');
-			   clearExecutionDecorations(editor);
-			   return;
-		   }
+	// Set default model to gpt-4.1 at the start of each playbook run
+	selectChatModel('gpt-4.1');
 
-		   // Wait while paused
-		   while (getExecutionState(editorUri) === 'paused') {
-			   await new Promise(resolve => setTimeout(resolve, 100));
-		   }
+	try {
+		// Execute blocks sequentially
+		   for (let i = 0; i < blocks.length; i++) {
+			   const block = blocks[i];
+			   const state = getExecutionState(editorUri);
 
-		   // Check state again after pause
-		   const stateAfterPause = getExecutionState(editorUri);
-		   if (stateAfterPause === 'stopped' || stateAfterPause === 'idle') {
-			   console.log('Playbook execution stopped after pause');
-			   clearExecutionDecorations(editor);
-			   return;
-		   }
-
-		   try {
-			   // Highlight current step
-			   if (block.line !== undefined) {
-				   highlightCurrentSkill(editor, block.line - 1);  // Convert to 0-based
+			   // Check if stopped
+			   if (state === 'stopped' || state === 'idle') {
+				   console.log('Playbook execution stopped');
+				   clearExecutionDecorations(editor);
+				   return;
 			   }
 
-			   // Execute the block and get result
-			   const result = await executeBlock(block, editor.document.uri);
-
-			   // Notify progress with result
-			   if (onProgress) {
-				   onProgress(i, block, result);
+			   // Wait while paused
+			   while (getExecutionState(editorUri) === 'paused') {
+				   await new Promise(resolve => setTimeout(resolve, 100));
 			   }
 
-			   // Small delay between steps for UI feedback
-			   await new Promise(resolve => setTimeout(resolve, 100));
-
-		   } catch (error) {
-			   console.error('Error executing block:', error);
-
-			   // Highlight failed block
-			   if (block.line !== undefined) {
-				   highlightFailedSkill(editor, block.line - 1);  // Convert to 0-based
+			   // Check state again after pause
+			   const stateAfterPause = getExecutionState(editorUri);
+			   if (stateAfterPause === 'stopped' || stateAfterPause === 'idle') {
+				   console.log('Playbook execution stopped after pause');
+				   clearExecutionDecorations(editor);
+				   return;
 			   }
 
-			   // Set error state
-			   setExecutionState(editorUri, 'error');
+			   try {
+				   // Highlight current step
+				   if (block.line !== undefined) {
+					   highlightCurrentSkill(editor, block.line - 1);  // Convert to 0-based
+				   }
 
-			   // Notify error
-			   if (onError && error instanceof Error) {
-				   onError(i, block, error);
+				   // Execute the block and get result
+				   // Pass current index and blocks array to handle context for text/code blocks
+				   const result = await executeBlock(block, i, blocks, editor.document.uri);
+
+				   // Notify progress with result
+				   if (onProgress) {
+					   onProgress(i, block, result);
+				   }
+
+				   // Small delay between steps for UI feedback
+				   await new Promise(resolve => setTimeout(resolve, 100));
+
+			   } catch (error) {
+				   console.error('Error executing block:', error);
+
+				   // Highlight failed block
+				   if (block.line !== undefined) {
+					   highlightFailedSkill(editor, block.line - 1);  // Convert to 0-based
+				   }
+
+				   // Set error state
+				   setExecutionState(editorUri, 'error');
+
+				   // Notify error
+				   if (onError && error instanceof Error) {
+					   onError(i, block, error);
+				   }
+
+				   throw error; // Re-throw to be caught by outer try-catch
 			   }
-
-			   return;
 		   }
-	   }
 
-	// Clear decorations and reset state on successful completion
-	clearExecutionDecorations(editor);
-	resetExecutionState(editorUri);
+		// Clear decorations and mark playbook as finished on successful completion
+		clearExecutionDecorations(editor);
+		markPlaybookFinished(editorUri);
 
-	// Notify completion
-	if (onComplete) {
-		onComplete();
+		// Notify completion
+		if (onComplete) {
+			onComplete();
+		}
+	} catch (error) {
+		// Ensure playbook is marked as finished even on error
+		markPlaybookFinished(editorUri);
+		throw error;
 	}
 }
 
@@ -145,12 +173,46 @@ export async function executePlaybook(
  * Executes a single block based on its type and returns the skill result if applicable
  * 
  * @param block - The block to execute
+ * @param blockIndex - The index of the current block in the blocks array
+ * @param blocks - All blocks in the playbook
  * @param workspaceUri - The workspace URI for skill loading
  * @returns SkillResult if annotation block, otherwise undefined
  */
-async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): Promise<SkillResult | undefined> {
-   // Skip non-annotation blocks (plainText, plainComment, code blocks)
-   if (block.name === 'plainText' || block.name === 'plainComment' || block.name === 'plainCodeBlock') {
+async function executeBlock(
+	block: AnnotationBlock, 
+	blockIndex: number, 
+	blocks: AnnotationBlock[], 
+	workspaceUri?: vscode.Uri
+): Promise<SkillResult | undefined> {
+   // Handle plainText blocks: always add to context as agent type
+   if (block.name === 'plainText') {
+	   console.log(`Adding plainText block to context`);
+	   const activeContexts = contextNames();
+	   for (const contextName of activeContexts) {
+		   addMessageToContext(contextName, 'agent', block.content);
+	   }
+	   return;
+   }
+
+   // Handle plainCodeBlock: add to context only if previous block is NOT execute skill
+   if (block.name === 'plainCodeBlock') {
+	   const previousBlock = blockIndex > 0 ? blocks[blockIndex - 1] : undefined;
+	   const isPreviousExecuteSkill = previousBlock?.name === 'execute';
+	   
+	   if (!isPreviousExecuteSkill) {
+		   console.log(`Adding plainCodeBlock to context (previous block: ${previousBlock?.name || 'none'})`);
+		   const activeContexts = contextNames();
+		   for (const contextName of activeContexts) {
+			   addMessageToContext(contextName, 'agent', block.content);
+		   }
+	   } else {
+		   console.log(`Skipping plainCodeBlock (previous block was execute skill)`);
+	   }
+	   return;
+   }
+
+   // Skip plainComment blocks
+   if (block.name === 'plainComment') {
 	   console.log(`Skipping ${block.name} block`);
 	   return;
    }
@@ -215,6 +277,6 @@ function addSkillMessagesToContext(result: SkillResult): void {
  */
 export function stopPlaybookExecution(editor: vscode.TextEditor): void {
 	const editorUri = editor.document.uri.toString();
-	resetExecutionState(editorUri);
+	markPlaybookFinished(editorUri);
 	clearExecutionDecorations(editor);
 }
