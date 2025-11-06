@@ -1,0 +1,1 @@
+- Change context limit to use the VS Code lm API at runtime to obtain maxInputTokens and to call countTokens (this will require async changes across truncation and getContext paths and test updates).

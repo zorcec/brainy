@@ -135,6 +135,17 @@ describe('playbookExecutor', () => {
 
 			setExecutionState(testUri, 'running');
 
+			// Make executeSkill return distinct output per skill name to make assertions deterministic
+			const { executeSkill } = await import('../skills/skillLoader');
+			const executeSkillMock = executeSkill as ReturnType<typeof vi.fn>;
+			executeSkillMock.mockImplementation(async (skill: any) => {
+				return {
+					messages: [
+						{ role: 'assistant', content: `Output:${skill.name}` }
+					]
+				};
+			});
+
 			await executePlaybook(
 				mockEditor as unknown as vscode.TextEditor,
 				blocks,
@@ -189,6 +200,56 @@ describe('playbookExecutor', () => {
 			expect(onProgress).toHaveBeenCalledTimes(3);
 			// Verify code block was added to context as agent type
 			expect(addMessageMock).toHaveBeenCalledWith('main', 'agent', 'console.log("test")');
+		});
+
+		test('handles larger annotation arrays with multiple code blocks and validates context additions', async () => {
+			const { addMessageToContext } = await import('../skills/built-in/context');
+			const addMessageMock = addMessageToContext as ReturnType<typeof vi.fn>;
+			addMessageMock.mockClear();
+
+			// Build a larger sequence of blocks with mixed types
+			const blocks: AnnotationBlock[] = [
+				{ name: 'plainText', flags: [], content: 'Intro text', line: 1 },
+				{ name: 'plainCodeBlock', flags: [], content: 'echo "A"', line: 2, metadata: { language: 'bash' } },
+				{ name: 'execute', flags: [], content: '@execute', line: 3 },
+				{ name: 'plainCodeBlock', flags: [], content: 'echo "B"', line: 4, metadata: { language: 'bash' } },
+				{ name: 'plainCodeBlock', flags: [], content: 'echo "C"', line: 5, metadata: { language: 'bash' } },
+				{ name: 'task', flags: [], content: 'Do something', line: 6 },
+				{ name: 'plainCodeBlock', flags: [], content: 'console.log("D")', line: 7, metadata: { language: 'javascript' } },
+				{ name: 'plainText', flags: [], content: 'Outro', line: 8 }
+			];
+
+			const onProgress = vi.fn();
+
+			setExecutionState(testUri, 'running');
+
+			await executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks,
+				onProgress
+			);
+
+			// Build the flattened sequence of added contents (3rd argument to addMessageToContext)
+			const calls = addMessageMock.mock.calls.map(c => c[2]);
+
+			// Expected sequence after full playbook execution:
+			// 1. Intro text (plainText)
+			// 2. echo "A" (plainCodeBlock, previous plainText)
+			// 3. echo "B" should be skipped because previous block is execute
+			// 3. echo "C" (plainCodeBlock, previous plainCodeBlock not execute)
+			// 4. Output from the task skill (we mock executeSkill to return 'Output:task')
+			// 5. console.log("D") (plainCodeBlock after task)
+			// 6. Outro (plainText)
+
+			expect(calls).toEqual([
+				'Intro text',
+				'echo "A"',
+				'Output:execute',
+				'echo "C"',
+				'Output:task',
+				'console.log("D")',
+				'Outro'
+			]);
 		});
 
 		test('skips code blocks when previous block is execute skill', async () => {
