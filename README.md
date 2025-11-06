@@ -65,6 +65,8 @@ Brainy includes built-in skills that are always available:
 - **model**: Select LLM model
 - **task**: Send prompts to LLM
 - **input**: Get user input via dialog
+- **file-picker**: Select files or folders using a file picker dialog
+- **specification**: Open a text document for editing large content (specifications, documentation)
 
 All skills execute in-process and are bundled with the extension.
 
@@ -86,7 +88,7 @@ npm run build
 
 ## Test
 
-Run unit tests (326 tests passing):
+Run unit tests (574 tests passing):
 
 ```bash
 npm test
@@ -94,7 +96,7 @@ npm test
 
 **Test Breakdown:**
 - **Parser Tests:** 111 tests for markdown annotation and code block parsing
-- **Skills Tests:** 60 tests for skill system (API, model client, session store, skill runner)
+- **Skills Tests:** 101 tests for skill system (API, model client, session store, skill runner, built-in skills)
 - **Extension Tests:** 4 tests for VS Code extension (2 failing due to pre-existing issues)
 - **Server Tests:** 12 tests for API and database
 - **Markdown Tests:** 40 tests for annotation highlighting and play button

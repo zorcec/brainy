@@ -1,0 +1,1 @@
+- when specification virtual document is opened, there should be no dialog. If virtual document is saved, the content is passed to variable/context.

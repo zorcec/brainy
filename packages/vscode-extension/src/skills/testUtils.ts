@@ -133,6 +133,25 @@ export function createMockSkillApi(): SkillApi {
 		 */
 		getContext: vi.fn(async () => {
 			return [];
+		}),
+
+		/**
+		 * Mock implementation of openFileDialog.
+		 * By default, returns undefined (user cancelled).
+		 * Override with mockResolvedValue() or mockImplementation() as needed.
+		 */
+		openFileDialog: vi.fn(async (options) => {
+			return undefined;
+		}),
+
+		/**
+		 * Mock implementation of openTextDocument.
+		 * By default, returns 'mock document content'.
+		 * Override with mockResolvedValue() or mockRejectedValue() as needed.
+		 */
+		openTextDocument: vi.fn(async (content, language) => {
+			return content || 'mock document content';
 		})
 	};
 }
+

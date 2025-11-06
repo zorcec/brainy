@@ -19,6 +19,8 @@ import { taskSkill } from './task';
 import { executeSkill } from './execute';
 import { fileSkill } from './file';
 import { inputSkill } from './input';
+import { filePickerSkill } from './file-picker';
+import { specificationSkill } from './specification';
 
 /**
  * Map of built-in skill instances.
@@ -29,7 +31,9 @@ const builtInSkills = new Map<string, Skill>([
 	['task', taskSkill],
 	['execute', executeSkill],
 	['file', fileSkill],
-	['input', inputSkill]
+	['input', inputSkill],
+	['file-picker', filePickerSkill],
+	['specification', specificationSkill]
 ]);
 
 /**

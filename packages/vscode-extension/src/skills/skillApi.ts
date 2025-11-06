@@ -173,6 +173,64 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		async getContext() {
 			const context = await getContextFromStore();
 			return context ? context.messages : [];
+		},
+
+		/**
+		 * Opens a file picker dialog for selecting files or folders.
+		 * 
+		 * @param options - File picker options
+		 * @returns Promise resolving to array of selected URIs, or undefined if cancelled
+		 */
+		async openFileDialog(options) {
+			const result = await vscode.window.showOpenDialog({
+				canSelectFiles: options?.canSelectFiles ?? true,
+				canSelectFolders: options?.canSelectFolders ?? false,
+				canSelectMany: options?.canSelectMany ?? true,
+				filters: options?.filters
+			});
+			
+			return result;
+		},
+
+		/**
+		 * Opens an untitled text document for editing with optional initial content.
+		 * 
+		 * @param content - Optional initial content
+		 * @param language - Optional language ID (default: 'markdown')
+		 * @returns Promise resolving to final document content
+		 * @throws Error if user cancels
+		 */
+		async openTextDocument(content, language) {
+			// Create untitled document with content
+			const doc = await vscode.workspace.openTextDocument({
+				content: content || '',
+				language: language || 'markdown'
+			});
+			
+			// Show the document to user
+			await vscode.window.showTextDocument(doc);
+			
+			// Wait for user confirmation
+			const choice = await vscode.window.showInformationMessage(
+				'Edit the document and click OK when done, or Cancel to abort.',
+				{ modal: true },
+				'OK',
+				'Cancel'
+			);
+			
+			if (choice !== 'OK') {
+				throw new Error('User cancelled document editing');
+			}
+			
+			// Get the final content
+			const finalContent = doc.getText();
+			
+			// Close the document without saving
+			await vscode.window.showTextDocument(doc);
+			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+			
+			return finalContent;
 		}
 	};
 }
+

@@ -180,6 +180,30 @@ export interface SkillApi {
 	 * @returns Promise resolving to array of SkillMessage objects representing the context
 	 */
 	getContext(): Promise<SkillMessage[]>;
+
+	/**
+	 * Opens a file picker dialog for selecting files or folders.
+	 * 
+	 * @param options - File picker options (canSelectFiles, canSelectFolders, canSelectMany, filters)
+	 * @returns Promise resolving to array of selected file URIs, or undefined if cancelled
+	 */
+	openFileDialog(options?: {
+		canSelectFiles?: boolean;
+		canSelectFolders?: boolean;
+		canSelectMany?: boolean;
+		filters?: Record<string, string[]>;
+	}): Promise<vscode.Uri[] | undefined>;
+
+	/**
+	 * Opens an untitled text document for editing with optional initial content.
+	 * Shows the document to the user and waits for them to finish editing.
+	 * 
+	 * @param content - Optional initial content for the document
+	 * @param language - Optional language ID for syntax highlighting (default: 'markdown')
+	 * @returns Promise resolving to the final document content
+	 * @throws Error if the user cancels
+	 */
+	openTextDocument(content?: string, language?: string): Promise<string>;
 }
 
 /**

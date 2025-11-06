@@ -132,6 +132,42 @@ Built-in skills are shipped with the extension and always available. All skills 
 @file --action "delete" --path "./temp.log"
 ```
 
+### File Picker Skill
+
+**Name:** `file-picker`
+
+**Description:** Select files or folders using a file picker dialog. Stores selected paths in a variable.
+
+**Parameters:**
+- `variable`: Variable name to store selected paths (newline-separated) (required)
+- `files`: Allow file selection (true/false, default: true) (optional)
+- `folders`: Allow folder selection (true/false, default: false) (optional)
+- `multiple`: Allow multiple selection (true/false, default: true) (optional)
+
+**Examples:**
+```markdown
+@file-picker --variable selectedFiles
+@file-picker --variable folders --folders "true"
+@file-picker --variable singleFile --multiple "false"
+```
+
+### Specification Skill
+
+**Name:** `specification`
+
+**Description:** Open a text document for editing large content (specifications, documentation). Always adds content to context, and if `variable` is specified, also stores it in the variable.
+
+**Parameters:**
+- `variable`: Variable name to store the content (optional)
+- `content`: Initial content to prefill the document (optional)
+
+**Examples:**
+```markdown
+@specification --variable mySpec
+@specification --variable spec --content "# Initial content\n\nEdit this..."
+@specification
+```
+
 ## API Functions
 
 ```typescript

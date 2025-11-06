@@ -98,8 +98,10 @@ describe('taskSkill', () => {
 			setVariable() {},
 			getVariable() { return undefined; },
 			async openInputDialog() { return 'test'; },
-				addToContext() {},
-				async getContext() { return []; }
+			addToContext() {},
+			async getContext() { return []; },
+			async openFileDialog() { return undefined; },
+			async openTextDocument() { return ''; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test' })).rejects.toThrow('LLM timeout');
@@ -119,8 +121,10 @@ describe('taskSkill', () => {
 			setVariable() {},
 			getVariable() { return undefined; },
 			async openInputDialog() { return 'test'; },
-				addToContext() {},
-				async getContext() { return []; }
+			addToContext() {},
+			async getContext() { return []; },
+			async openFileDialog() { return undefined; },
+			async openTextDocument() { return ''; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test', model: 'invalid' })).rejects.toThrow('Invalid model ID');
