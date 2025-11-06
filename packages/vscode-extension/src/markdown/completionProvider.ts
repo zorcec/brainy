@@ -20,22 +20,6 @@ import { getAvailableSkills } from '../skills/skillScanner';
 import { getSkillParams } from '../skills/skillParamsRegistry';
 
 /**
- * Known model IDs for autocomplete.
- */
-const KNOWN_MODELS = [
-	'gpt-4',
-	'gpt-4-32k',
-	'gpt-4o',
-	'gpt-4o-mini',
-	'claude-3',
-	'claude-3-opus',
-	'claude-3-sonnet',
-	'claude-3-haiku',
-	'claude-3.5',
-	'claude-3.5-sonnet'
-];
-
-/**
  * Common skill parameters.
  */
 const COMMON_PARAMETERS = [
@@ -58,12 +42,12 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 	 *
 	 * @param document - The document to provide completions for
 	 * @param position - The position where completions were requested
-	 * @returns Array of completion items or undefined
+	 * @returns Array of completion items, Promise of completion items, or undefined
 	 */
 	provideCompletionItems(
 		document: vscode.TextDocument,
 		position: vscode.Position
-	): vscode.CompletionItem[] | undefined {
+	): vscode.CompletionItem[] | Promise<vscode.CompletionItem[]> | undefined {
 		const line = document.lineAt(position).text;
 		const linePrefix = line.substring(0, position.character);
 
@@ -124,24 +108,48 @@ export class BrainyCompletionProvider implements vscode.CompletionItemProvider {
 
 	/**
 	 * Gets completion items for available models.
+	 * Fetches models dynamically from VS Code LM API.
+	 * Falls back to empty array if API is unavailable.
 	 *
-	 * @returns Array of completion items for models
+	 * @returns Promise of completion items for models
 	 */
-	private getModelCompletions(): vscode.CompletionItem[] {
-		return KNOWN_MODELS.map(modelId => {
-			const item = new vscode.CompletionItem(modelId, vscode.CompletionItemKind.Value);
-			item.insertText = `"${modelId}"`;
-			item.detail = 'LLM Model';
+	private async getModelCompletions(): Promise<vscode.CompletionItem[]> {
+		try {
+			// Fetch all available language models from VS Code API
+			const models = await vscode.lm.selectChatModels();
 			
-			// Add descriptions for models
-			if (modelId.startsWith('gpt-4')) {
-				item.documentation = `OpenAI ${modelId}`;
-			} else if (modelId.startsWith('claude')) {
-				item.documentation = `Anthropic ${modelId}`;
+			if (models.length === 0) {
+				// If no models available, return empty array (graceful failure)
+				return [];
 			}
 			
-			return item;
-		});
+			// Create completion items from available models
+			return models.map(model => {
+				const item = new vscode.CompletionItem(model.id, vscode.CompletionItemKind.Value);
+				item.insertText = `"${model.id}"`;
+				item.detail = 'LLM Model';
+				
+				// Add vendor information if available
+				if (model.vendor) {
+					item.documentation = `${model.vendor} ${model.id}`;
+				} else {
+					// Infer vendor from model ID
+					if (model.id.startsWith('gpt')) {
+						item.documentation = `OpenAI ${model.id}`;
+					} else if (model.id.startsWith('claude')) {
+						item.documentation = `Anthropic ${model.id}`;
+					} else {
+						item.documentation = model.id;
+					}
+				}
+				
+				return item;
+			});
+		} catch (error) {
+			// Gracefully fail if VS Code LM API is not available
+			console.warn('Failed to fetch available models from VS Code LM API:', error);
+			return [];
+		}
 	}
 
 	/**

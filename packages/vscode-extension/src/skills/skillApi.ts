@@ -13,7 +13,7 @@
  */
 
 import * as vscode from 'vscode';
-import { SkillApi, SendRequestOptions } from './types';
+import { SkillApi, SendRequestOptions, SkillMessage } from './types';
 import type { AnnotationBlock } from '../parser';
 import { sendRequest as modelSendRequest } from './modelClient';
 import { setSelectedModel } from './sessionStore';
@@ -23,7 +23,8 @@ import {
 } from './variableStore';
 import {
 	contextNames,
-	addMessageToContext
+	addMessageToContext,
+	getContext as getContextFromStore
 } from './built-in/context';
 
 /**
@@ -153,22 +154,19 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 
 	       /**
 		* Gets the current context (conversation history/messages) for the skill execution.
-		* Returns the messages from the first active context, or an empty array if none.
+		* Returns messages from all selected contexts flattened into a single array.
+		* If no contexts are selected, returns an empty array.
+		* 
+		* @returns Array of all messages from selected contexts
 		*/
 	       getContext() {
-		       // Import getContextMessages from context skill if available
-		       try {
-			       // Dynamically require to avoid circular deps if needed
-			       // eslint-disable-next-line @typescript-eslint/no-var-requires
-			       const { getContextMessages } = require('./built-in/context');
-			       const activeContexts = contextNames();
-			       if (activeContexts.length > 0) {
-				       return getContextMessages(activeContexts[0]);
-			       }
-		       } catch (e) {
-			       // Fallback: return empty array
+		       const contexts = getContextFromStore();
+		       // Flatten all messages from all selected contexts into a single array
+		       const allMessages: SkillMessage[] = [];
+		       for (const context of contexts) {
+			       allMessages.push(...context.messages);
 		       }
-		       return [];
+		       return allMessages;
 	       }
 	};
 }

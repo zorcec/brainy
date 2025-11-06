@@ -26,6 +26,7 @@ import { loadSkill, executeSkill } from '../skills/skillLoader';
 import type { SkillResult } from '../skills/types';
 import { getExecutionState, setExecutionState, resetExecutionState } from './executionState';
 import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations } from './executionDecorations';
+import { contextNames, addMessageToContext } from '../skills/built-in/context';
 
 /**
  * Callback for progress updates during playbook execution
@@ -160,12 +161,13 @@ async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): 
 	   
 	   // Convert flags to params (string values only)
 	   // Flag values are arrays, so we join them or take the first value
+	   // Flags without values default to empty string (not undefined)
 	   const params: Record<string, string | undefined> = {};
 	   if (block.flags) {
 		   for (const f of block.flags) {
 			   if (Array.isArray(f.value)) {
-				   // Join multiple values with space, or take first value if single
-				   params[f.name] = f.value.length > 0 ? f.value.join(' ') : undefined;
+				   // Join multiple values with space, or empty string if no values
+				   params[f.name] = f.value.length > 0 ? f.value.join(' ') : '';
 			   } else if (typeof f.value === 'string') {
 				   params[f.name] = f.value;
 			   }
@@ -174,11 +176,36 @@ async function executeBlock(block: AnnotationBlock, workspaceUri?: vscode.Uri): 
 	   
 	   const result = await executeSkill(skill, params);
 	   console.log(`Executed skill: ${block.name}`, result);
+	   
+	   // Automatically add skill result messages to context
+	   // This centralizes message handling that was previously duplicated across skills
+	   if (result && result.messages && result.messages.length > 0) {
+		   addSkillMessagesToContext(result);
+	   }
+	   
 	   return result;
    } catch (err) {
 	   console.error(`Failed to execute skill: ${block.name}`, err);
 	   throw err;
    }
+}
+
+/**
+ * Utility function to automatically add skill result messages to context.
+ * Centralizes the message handling logic that was previously duplicated across skills.
+ * Messages are added to all currently selected contexts.
+ * 
+ * @param result - The skill execution result containing messages
+ */
+function addSkillMessagesToContext(result: SkillResult): void {
+	const activeContexts = contextNames();
+	
+	// Add each message from the skill result to all active contexts
+	for (const message of result.messages) {
+		for (const contextName of activeContexts) {
+			addMessageToContext(contextName, message.role, message.content);
+		}
+	}
 }
 
 /**

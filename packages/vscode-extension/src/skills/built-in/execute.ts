@@ -34,11 +34,27 @@
  *   - Throws error if next block is not a code block or execution fails
  */
 
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
 import type { Skill, SkillApi, SkillParams } from '../types';
+
+// Conditional imports for Node.js-only environments
+let execSync: typeof import('child_process').execSync;
+let writeFileSync: typeof import('fs').writeFileSync;
+let unlinkSync: typeof import('fs').unlinkSync;
+let join: typeof import('path').join;
+let tmpdir: typeof import('os').tmpdir;
+try {
+	const childProcess = require('child_process');
+	const fs = require('fs');
+	const path = require('path');
+	const os = require('os');
+	execSync = childProcess.execSync;
+	writeFileSync = fs.writeFileSync;
+	unlinkSync = fs.unlinkSync;
+	join = path.join;
+	tmpdir = os.tmpdir;
+} catch {
+	// Node.js modules not available in browser/web environments
+}
 
 /**
  * Maps language identifiers to execution commands.
@@ -65,6 +81,11 @@ export const executeSkill: Skill = {
 	],
 	
 	async execute(api: SkillApi, params: SkillParams) {
+		// Check if execSync is available (Node.js environment)
+		if (!execSync) {
+			throw new Error('Execute skill is not available in web/browser environments. This skill requires Node.js.');
+		}
+		
 		// Get current state from API
 		const blocks = api.getParsedBlocks();
 		const currentIndex = api.getCurrentBlockIndex();

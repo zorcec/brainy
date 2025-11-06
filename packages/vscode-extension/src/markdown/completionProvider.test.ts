@@ -37,6 +37,13 @@ vi.mock('vscode', () => ({
 			this.line = line;
 			this.character = character;
 		}
+	},
+	lm: {
+		selectChatModels: vi.fn(async () => [
+			{ id: 'gpt-4o', vendor: 'OpenAI' },
+			{ id: 'claude-3', vendor: 'Anthropic' },
+			{ id: 'gpt-4o-mini' }
+		])
 	}
 }));
 
@@ -57,7 +64,7 @@ describe('BrainyCompletionProvider', () => {
 	});
 
 	describe('skill completions', () => {
-		it('should provide skill completions after @ at line start', () => {
+		it('should provide skill completions after @ at line start', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@'
@@ -65,15 +72,15 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 1);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
-			expect(items!.some(item => item.label === 'context')).toBe(true);
-			expect(items!.some(item => item.label === 'model')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'context')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'model')).toBe(true);
 		});
 
-		it('should provide skill completions after @ with partial text', () => {
+		it('should provide skill completions after @ with partial text', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@con'
@@ -81,13 +88,13 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 4);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 		});
 
-		it('should not provide completions if @ is not at line start', () => {
+		it('should not provide completions if @ is not at line start', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: 'some text @'
@@ -95,14 +102,14 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeUndefined();
 		});
 	});
 
 	describe('model completions', () => {
-		it('should provide model completions after @model --id', () => {
+		it('should provide model completions after @model --id', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@model --id '
@@ -110,15 +117,15 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 12);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
-			expect(items!.some(item => item.label === 'gpt-4')).toBe(true);
-			expect(items!.some(item => item.label === 'claude-3')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'gpt-4o')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'claude-3')).toBe(true);
 		});
 
-		it('should provide model completions after @model --id with quote', () => {
+		it('should provide model completions after @model --id with quote', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@model --id "'
@@ -126,13 +133,13 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 13);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 		});
 
-		it('should provide model completions with partial model name', () => {
+		it('should provide model completions with partial model name', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@model --id "gpt'
@@ -140,7 +147,7 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 16);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
@@ -148,7 +155,7 @@ describe('BrainyCompletionProvider', () => {
 	});
 
 	describe('parameter completions', () => {
-		it('should provide parameter completions after single dash', () => {
+		it('should provide parameter completions after single dash', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@context -'
@@ -156,15 +163,15 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 10);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
-			expect(items!.some(item => item.label === 'name')).toBe(true);
-			expect(items!.some(item => item.label === 'prompt')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'name')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'prompt')).toBe(true);
 		});
 
-		it('should provide parameter completions after --', () => {
+		it('should provide parameter completions after --', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@context --'
@@ -172,15 +179,15 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
-			expect(items!.some(item => item.label === 'name')).toBe(true);
-			expect(items!.some(item => item.label === 'prompt')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'name')).toBe(true);
+			expect(items!.some((item: any) => item.label === 'prompt')).toBe(true);
 		});
 
-		it('should provide parameter completions after -- with partial text', () => {
+		it('should provide parameter completions after -- with partial text', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@task --pro'
@@ -188,7 +195,7 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
@@ -196,7 +203,7 @@ describe('BrainyCompletionProvider', () => {
 	});
 
 	describe('no completions', () => {
-		it('should return undefined for plain text', () => {
+		it('should return undefined for plain text', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: 'some plain text'
@@ -204,12 +211,12 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 10);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeUndefined();
 		});
 
-		it('should return undefined for text after completed annotation', () => {
+		it('should return undefined for text after completed annotation', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@model --id "gpt-4" '
@@ -217,7 +224,7 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 20);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeUndefined();
 		});
@@ -250,7 +257,7 @@ describe('BrainyCompletionProvider', () => {
 			});
 		});
 
-		it('should only show task-specific parameters for @task skill', () => {
+		it('should only show task-specific parameters for @task skill', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@task --'
@@ -258,12 +265,12 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 8);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBe(3);
 			
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('prompt');
 			expect(paramNames).toContain('model');
 			expect(paramNames).toContain('variable');
@@ -274,7 +281,7 @@ describe('BrainyCompletionProvider', () => {
 			expect(paramNames).not.toContain('content');
 		});
 
-		it('should only show file-specific parameters for @file skill', () => {
+		it('should only show file-specific parameters for @file skill', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@file --'
@@ -282,12 +289,12 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 8);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBe(3);
 			
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('action');
 			expect(paramNames).toContain('path');
 			expect(paramNames).toContain('content');
@@ -297,7 +304,7 @@ describe('BrainyCompletionProvider', () => {
 			expect(paramNames).not.toContain('variable');
 		});
 
-		it('should only show context-specific parameters for @context skill', () => {
+		it('should only show context-specific parameters for @context skill', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@context --'
@@ -305,12 +312,12 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBe(2);
 			
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('name');
 			expect(paramNames).toContain('names');
 			
@@ -319,7 +326,7 @@ describe('BrainyCompletionProvider', () => {
 			expect(paramNames).not.toContain('action');
 		});
 
-		it('should mark required parameters in detail text', () => {
+		it('should mark required parameters in detail text', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@file --'
@@ -327,22 +334,22 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 8);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			
 			// Find action param (required)
-			const actionItem = items!.find(item => item.label === 'action');
+			const actionItem = items!.find((item: any) => item.label === 'action');
 			expect(actionItem).toBeDefined();
 			expect(actionItem!.detail).toContain('required');
 			
 			// Find content param (optional)
-			const contentItem = items!.find(item => item.label === 'content');
+			const contentItem = items!.find((item: any) => item.label === 'content');
 			expect(contentItem).toBeDefined();
 			expect(contentItem!.detail).not.toContain('required');
 		});
 
-		it('should fall back to common parameters for unknown skill', () => {
+		it('should fall back to common parameters for unknown skill', async () => {
 			// Mock getSkillParams to return undefined for unknown skill
 			vi.spyOn(skillParamsRegistry, 'getSkillParams').mockReturnValue(undefined);
 			
@@ -353,19 +360,19 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 			
 			// Should show common parameters
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('prompt');
 			expect(paramNames).toContain('name');
 			expect(paramNames).toContain('action');
 		});
 
-		it('should fall back to common parameters for skill with no params defined', () => {
+		it('should fall back to common parameters for skill with no params defined', async () => {
 			// Mock getSkillParams to return empty array
 			vi.spyOn(skillParamsRegistry, 'getSkillParams').mockReturnValue([]);
 			
@@ -376,18 +383,18 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 10);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 			
 			// Should show common parameters as fallback
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('prompt');
 			expect(paramNames).toContain('variable');
 		});
 
-		it('should work with partial parameter text', () => {
+		it('should work with partial parameter text', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@task --pro'
@@ -395,19 +402,19 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 11);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			
 			// Should still filter by skill, not by partial text
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: any) => item.label);
 			expect(paramNames).toContain('prompt');
 			expect(paramNames).toContain('model');
 			expect(paramNames).toContain('variable');
 			expect(paramNames).not.toContain('action');
 		});
 
-		it('should provide completions after flag with value (generic test 1)', () => {
+		it('should provide completions after flag with value (generic test 1)', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@input --prompt "your name" --'
@@ -415,14 +422,14 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 30);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 			// Should show completions for next parameter
 		});
 
-		it('should provide completions after flag with value (generic test 2)', () => {
+		it('should provide completions after flag with value (generic test 2)', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@task --prompt "do something" --'
@@ -430,17 +437,17 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 32);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 			// Should show task-specific completions
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: vscode.CompletionItem) => item.label);
 			expect(paramNames).toContain('model');
 			expect(paramNames).toContain('variable');
 		});
 
-		it('should provide completions after multiple flags with values', () => {
+		it('should provide completions after multiple flags with values', async () => {
 			mockDocument = {
 				lineAt: () => ({
 					text: '@file --action "read" --path "/tmp/test.txt" --'
@@ -448,12 +455,12 @@ describe('BrainyCompletionProvider', () => {
 			};
 
 			const position = new vscode.Position(0, 47);
-			const items = provider.provideCompletionItems(mockDocument, position);
+			const items = await provider.provideCompletionItems(mockDocument, position);
 
 			expect(items).toBeDefined();
 			expect(items!.length).toBeGreaterThan(0);
 			// Should show file-specific completions
-			const paramNames = items!.map(item => item.label);
+			const paramNames = items!.map((item: vscode.CompletionItem) => item.label);
 			expect(paramNames).toContain('content');
 		});
 	});

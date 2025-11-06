@@ -18,9 +18,17 @@
  *   - content: File content (required for write action)
  */
 
-import { promises as fs } from 'fs';
-import * as path from 'path';
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+
+// Conditional imports for Node.js-only environments
+let fs: typeof import('fs').promises;
+let path: typeof import('path');
+try {
+	fs = require('fs').promises;
+	path = require('path');
+} catch {
+	// Node.js modules not available in browser/web environments
+}
 
 /**
  * File skill implementation.
@@ -35,6 +43,11 @@ export const fileSkill: Skill = {
 	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
+		// Check if fs is available (Node.js environment)
+		if (!fs) {
+			throw new Error('File skill is not available in web/browser environments. This skill requires Node.js.');
+		}
+		
 		// Defensive: params must be an object
 		if (!params || typeof params !== 'object') {
 			throw new Error('Invalid params: must be an object');

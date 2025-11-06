@@ -126,21 +126,62 @@ describe('skillApi', () => {
 	});
 
 	describe('API isolation', () => {
-		test('multiple API instances work independently', async () => {
-			const mockResponse1 = { reply: 'Response 1', raw: {} };
-			const mockResponse2 = { reply: 'Response 2', raw: {} };
-			vi.mocked(modelClient.sendRequest)
-				.mockResolvedValueOnce(mockResponse1)
-				.mockResolvedValueOnce(mockResponse2);
-
+		test('each API instance is independent', async () => {
 			const api1 = createSkillApi();
 			const api2 = createSkillApi();
 
-			const result1 = await api1.sendRequest('user', 'Content 1');
-			const result2 = await api2.sendRequest('user', 'Content 2');
+			await api1.selectChatModel('gpt-4o');
+			await api2.selectChatModel('claude-3');
 
-			expect(result1).toEqual({ response: 'Response 1' });
-			expect(result2).toEqual({ response: 'Response 2' });
+			// Both should set the same singleton state (last wins)
+			expect(sessionStore.setSelectedModel).toHaveBeenCalledWith('gpt-4o');
+			expect(sessionStore.setSelectedModel).toHaveBeenCalledWith('claude-3');
+		});
+	});
+
+	describe('getContext', () => {
+		test('returns empty array when no contexts selected', () => {
+			const api = createSkillApi();
+			const context = api.getContext();
+			expect(context).toEqual([]);
+		});
+
+		test('returns messages from all selected contexts', async () => {
+			// Import context functions
+			const { selectContext, addMessageToContext, resetState } = await import('./built-in/context');
+			
+			// Reset state and setup contexts
+			resetState();
+			selectContext(['ctx1', 'ctx2']);
+			addMessageToContext('ctx1', 'user', 'Hello from ctx1');
+			addMessageToContext('ctx1', 'assistant', 'Response from ctx1');
+			addMessageToContext('ctx2', 'user', 'Hello from ctx2');
+			
+			const api = createSkillApi();
+			const context = api.getContext();
+			
+			// Should return all messages from all selected contexts
+			expect(context).toHaveLength(3);
+			expect(context[0]).toEqual({ role: 'user', content: 'Hello from ctx1' });
+			expect(context[1]).toEqual({ role: 'assistant', content: 'Response from ctx1' });
+			expect(context[2]).toEqual({ role: 'user', content: 'Hello from ctx2' });
+		});
+
+		test('returns flattened messages in order of selected contexts', async () => {
+			const { selectContext, addMessageToContext, resetState } = await import('./built-in/context');
+			
+			resetState();
+			selectContext(['ctx2', 'ctx1']); // Note order: ctx2 first, then ctx1
+			addMessageToContext('ctx1', 'user', 'Message 1');
+			addMessageToContext('ctx2', 'user', 'Message 2');
+			
+			const api = createSkillApi();
+			const context = api.getContext();
+			
+			// Should return messages in order of selected contexts (ctx2, then ctx1)
+			expect(context).toHaveLength(2);
+			expect(context[0].content).toBe('Message 2'); // ctx2 first
+			expect(context[1].content).toBe('Message 1'); // ctx1 second
 		});
 	});
 

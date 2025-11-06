@@ -4,6 +4,6 @@ You're a senior product owner that is an expert in technical writing. You write 
 
 @model --id "gpt-4.1"
 
-@task --prompt "Greet me in a nice way! I'm {{test}}" --debug "true"
+@task --prompt "Greet me in a nice way! I'm {{test}}" --debug
 
 # Title

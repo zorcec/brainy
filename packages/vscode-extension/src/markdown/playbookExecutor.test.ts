@@ -223,4 +223,66 @@ describe('playbookExecutor', () => {
 			expect(mockEditor.setDecorations).toHaveBeenCalled();
 		});
 	});
+
+	describe('flag to params conversion', () => {
+		test('converts flags without values to empty string', async () => {
+			// Import the executeSkill mock to capture params
+			const { executeSkill } = await import('../skills/skillLoader');
+			const executeSkillMock = executeSkill as ReturnType<typeof vi.fn>;
+			executeSkillMock.mockClear();
+
+			const blocks: AnnotationBlock[] = [
+				{ 
+					name: 'task', 
+					flags: [
+						{ name: 'variable', value: [] }, // Flag without value
+						{ name: 'prompt', value: ['test prompt'] } // Flag with value
+					], 
+					content: 'Task 1', 
+					line: 1 
+				},
+			];
+
+			setExecutionState(testUri, 'running');
+
+			await executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks
+			);
+
+			// Check that executeSkill was called with correct params
+			expect(executeSkillMock).toHaveBeenCalledOnce();
+			const [, params] = executeSkillMock.mock.calls[0];
+			expect(params.variable).toBe(''); // Empty string, not undefined
+			expect(params.prompt).toBe('test prompt');
+		});
+
+		test('converts flags with multiple values to space-joined string', async () => {
+			const { executeSkill } = await import('../skills/skillLoader');
+			const executeSkillMock = executeSkill as ReturnType<typeof vi.fn>;
+			executeSkillMock.mockClear();
+
+			const blocks: AnnotationBlock[] = [
+				{ 
+					name: 'task', 
+					flags: [
+						{ name: 'prompt', value: ['first', 'second', 'third'] }
+					], 
+					content: 'Task 1', 
+					line: 1 
+				},
+			];
+
+			setExecutionState(testUri, 'running');
+
+			await executePlaybook(
+				mockEditor as unknown as vscode.TextEditor,
+				blocks
+			);
+
+			expect(executeSkillMock).toHaveBeenCalledOnce();
+			const [, params] = executeSkillMock.mock.calls[0];
+			expect(params.prompt).toBe('first second third');
+		});
+	});
 });

@@ -66,7 +66,7 @@ export const taskSkill: Skill = {
 		const processedPrompt = substituteVariables(prompt, api);
 		
 		// Debug mode: dump context and return without calling LLM
-		if (debug === 'true' || debug === '1') {
+		if (typeof debug !== 'undefined') {
 			const contextDump = {
 				prompt: processedPrompt,
 				model: model || 'default',

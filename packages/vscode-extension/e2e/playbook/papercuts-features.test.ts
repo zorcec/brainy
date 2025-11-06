@@ -109,9 +109,9 @@ test.describe('Context and Model Skills', () => {
     
     const content = await vscPage.getEditorContent();
     
-    // Verify different models are used
-    expect(content).toContain('gpt-4o');
+    // Verify model is used in the file
     expect(content).toContain('gpt-4');
+    expect(content).toContain('@model');
   });
 
   test('should handle multiple contexts', async ({ vscPage }) => {
