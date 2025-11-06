@@ -1,1 +1,1 @@
-- Change context limit to use the VS Code lm API at runtime to obtain maxInputTokens and to call countTokens (this will require async changes across truncation and getContext paths and test updates).
+- If multiple contexts are selected, all new messaes will be added to all selected contexts. This results in multiple messages sent to LLM. This needs to be handled differently in the future. Proposal, allow to select only one context at a time.

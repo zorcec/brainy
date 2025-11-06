@@ -6,6 +6,7 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { createSkillApi } from './skillApi';
 import * as modelClient from './modelClient';
 import * as sessionStore from './sessionStore';
+import { resetState as resetContextState } from './built-in/context';
 
 // Mock the dependencies
 vi.mock('./modelClient', () => ({
@@ -26,6 +27,7 @@ vi.mock('vscode', () => ({
 describe('skillApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resetContextState(); // Reset context state before each test
 	});
 
 	describe('createSkillApi', () => {
@@ -52,7 +54,8 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: 'gpt-4o'
+				modelId: 'gpt-4o',
+				context: []
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -67,7 +70,8 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: undefined
+				modelId: undefined,
+				context: []
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -93,7 +97,8 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'assistant',
 				content: 'Assistant content',
-				modelId: undefined
+				modelId: undefined,
+				context: []
 			});
 			expect(result).toEqual({ response: 'Assistant response' });
 		});
@@ -140,9 +145,9 @@ describe('skillApi', () => {
 	});
 
 	describe('getContext', () => {
-		test('returns empty array when no contexts selected', () => {
+		test('returns empty array when no contexts selected', async () => {
 			const api = createSkillApi();
-			const context = api.getContext();
+			const context = await api.getContext();
 			expect(context).toEqual([]);
 		});
 
@@ -158,7 +163,7 @@ describe('skillApi', () => {
 			addMessageToContext('ctx2', 'user', 'Hello from ctx2');
 			
 			const api = createSkillApi();
-			const context = api.getContext();
+			const context = await api.getContext();
 			
 			// Should return all messages from all selected contexts
 			expect(context).toHaveLength(3);
@@ -176,7 +181,7 @@ describe('skillApi', () => {
 			addMessageToContext('ctx2', 'user', 'Message 2');
 			
 			const api = createSkillApi();
-			const context = api.getContext();
+			const context = await api.getContext();
 			
 			// Should return messages in order of selected contexts (ctx2, then ctx1)
 			expect(context).toHaveLength(2);
@@ -216,6 +221,7 @@ describe('skillApi', () => {
 				role: 'user',
 				content: 'Test content',
 				modelId: 'gpt-4o',
+				context: [],
 				tools: mockTools
 			});
 			expect(result).toEqual({ response: 'Test response' });
@@ -232,6 +238,7 @@ describe('skillApi', () => {
 				role: 'user',
 				content: 'Test content',
 				modelId: undefined,
+				context: [],
 				tools: undefined
 			});
 			expect(result).toEqual({ response: 'Test response' });

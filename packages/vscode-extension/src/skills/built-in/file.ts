@@ -115,9 +115,6 @@ export const fileSkill: Skill = {
 			content: agentMessage
 		});
 		
-		// Add to context automatically
-		api.addToContext('agent', agentMessage);
-		
 		return { messages };
 	}
 };

@@ -39,6 +39,7 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 	return {
 		/**
 		 * Sends a request to the model and returns the response.
+		 * Automatically includes conversation context from selected contexts.
 		 * 
 		 * @param role - Message role ('user' or 'assistant')
 		 * @param content - Message content
@@ -51,10 +52,19 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			if (role === 'agent') {
 				throw new Error("'agent' role is not valid for LLM requests. Only 'user' or 'assistant' are allowed.");
 			}
+			
+			// Get context messages from all selected contexts
+			const contexts = await getContextFromStore();
+			const contextMessages: any[] = [];
+			for (const context of contexts) {
+				contextMessages.push(...context.messages);
+			}
+			
 			const response = await modelSendRequest({
 				role,
 				content,
 				modelId,
+				context: contextMessages,
 				tools: options?.tools
 			});
 			return { response: response.reply };
@@ -157,16 +167,16 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		* Returns messages from all selected contexts flattened into a single array.
 		* If no contexts are selected, returns an empty array.
 		* 
-		* @returns Array of all messages from selected contexts
+		* @returns Promise resolving to array of all messages from selected contexts
 		*/
-	       getContext() {
-		       const contexts = getContextFromStore();
-		       // Flatten all messages from all selected contexts into a single array
-		       const allMessages: SkillMessage[] = [];
-		       for (const context of contexts) {
-			       allMessages.push(...context.messages);
-		       }
-		       return allMessages;
-	       }
+		async getContext() {
+			const contexts = await getContextFromStore();
+			// Flatten all messages from all selected contexts into a single array
+			const allMessages: SkillMessage[] = [];
+			for (const context of contexts) {
+				allMessages.push(...context.messages);
+			}
+			return allMessages;
+		}
 	};
 }

@@ -6,8 +6,8 @@
  *   Allows users to switch to or create named agent contexts within playbooks.
  *   Contexts are tracked in memory for the session and messages are stored
  *   in chronological order with role and content for LLM API compatibility.
- *   Enforces model-specific token limits and automatically truncates contexts
- *   by removing oldest messages first (FIFO) when limits are exceeded.
+ *   Dynamically retrieves token limits from VS Code LM API and automatically 
+ *   truncates contexts by removing oldest messages first (FIFO) when limits are exceeded.
  *
  * Usage in playbooks:
  *   @context --name "research"
@@ -22,16 +22,19 @@
  *   [{ role: 'user' | 'assistant', content: string }, ...]
  *
  * Token Limits:
- *   Each model has a hardcoded input token limit. When a context exceeds the limit,
- *   the oldest messages are removed until the context is under the limit.
+ *   Token limits are dynamically retrieved from the VS Code LM API at runtime.
+ *   When a context exceeds the limit, the oldest messages are removed until 
+ *   the context is under the limit.
  */
 
+import * as vscode from 'vscode';
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 import { isValidString } from '../validation';
 
 /**
  * Model-specific input token limits.
- * These are hardcoded based on known model specifications.
+ * These are fallback values used when VS Code LM API is not available.
+ * The actual limits are retrieved dynamically from the model at runtime.
  */
 const MODEL_TOKEN_LIMITS: Record<string, number> = {
 	'gpt-4': 8192,
@@ -85,27 +88,50 @@ let selectedContextNames: string[] = [];
 let currentModelId: string | undefined;
 
 /**
+ * Current model instance from VS Code LM API for dynamic token counting.
+ */
+let currentModel: vscode.LanguageModelChat | undefined;
+
+/**
  * Callback function to show warnings to the user.
  */
 let warningCallback: ((message: string) => void) | undefined;
 
 /**
- * Estimates the number of tokens in a text string.
- * Uses a simple heuristic: ~4 characters per token for English text.
+ * Estimates the number of tokens in a text string using VS Code LM API if available.
+ * Falls back to a simple heuristic: ~4 characters per token for English text.
  * 
  * @param text - Text to count tokens for
  * @returns Estimated token count
  */
-function estimateTokens(text: string): number {
+async function estimateTokens(text: string): Promise<number> {
+	// If we have a current model, use its countTokens method
+	if (currentModel) {
+		try {
+			return await currentModel.countTokens(text);
+		} catch (error) {
+			// Fall back to heuristic if countTokens fails
+			console.warn('Failed to count tokens via VS Code LM API, using fallback estimation:', error);
+		}
+	}
+	
+	// Fallback heuristic: ~4 characters per token
 	return Math.ceil(text.length / 4);
 }
 
 /**
  * Gets the token limit for the current model.
+ * Tries to use VS Code LM API first, falls back to hardcoded limits.
  * 
  * @returns Token limit for current model or default limit
  */
-function getModelTokenLimit(): number {
+async function getModelTokenLimit(): Promise<number> {
+	// If we have a current model with maxInputTokens, use it
+	if (currentModel && currentModel.maxInputTokens) {
+		return currentModel.maxInputTokens;
+	}
+	
+	// Fall back to hardcoded limits based on model ID
 	if (!currentModelId) {
 		return DEFAULT_TOKEN_LIMIT;
 	}
@@ -118,8 +144,12 @@ function getModelTokenLimit(): number {
  * @param messages - Array of messages
  * @returns Total estimated token count
  */
-function countMessagesTokens(messages: ContextMessage[]): number {
-	return messages.reduce((total, msg) => total + estimateTokens(msg.content), 0);
+async function countMessagesTokens(messages: ContextMessage[]): Promise<number> {
+	let total = 0;
+	for (const msg of messages) {
+		total += await estimateTokens(msg.content);
+	}
+	return total;
 }
 
 /**
@@ -130,9 +160,9 @@ function countMessagesTokens(messages: ContextMessage[]): number {
  * @param contextName - Name of the context (for warning message)
  * @returns Truncated array of messages
  */
-function truncateMessages(messages: ContextMessage[], contextName: string): ContextMessage[] {
-	const limit = getModelTokenLimit();
-	let totalTokens = countMessagesTokens(messages);
+async function truncateMessages(messages: ContextMessage[], contextName: string): Promise<ContextMessage[]> {
+	const limit = await getModelTokenLimit();
+	let totalTokens = await countMessagesTokens(messages);
 	
 	if (totalTokens <= limit) {
 		return messages;
@@ -146,7 +176,7 @@ function truncateMessages(messages: ContextMessage[], contextName: string): Cont
 	while (totalTokens > limit && truncated.length > 0) {
 		const removed = truncated.shift();
 		if (removed) {
-			totalTokens -= estimateTokens(removed.content);
+			totalTokens -= await estimateTokens(removed.content);
 			removedCount++;
 		}
 	}
@@ -260,17 +290,19 @@ export function contextNames(): string[] {
  * API: Gets all selected contexts with their messages.
  * Messages are automatically truncated if they exceed the model's token limit.
  * 
- * @returns Array of context objects with name and truncated messages
+ * @returns Promise resolving to array of context objects with name and truncated messages
  */
-export function getContext(): Context[] {
-	return selectedContextNames.map(name => {
+export async function getContext(): Promise<Context[]> {
+	const contexts: Context[] = [];
+	for (const name of selectedContextNames) {
 		const messages = contextStore.get(name) || [];
-		const truncated = truncateMessages(messages, name);
-		return {
+		const truncated = await truncateMessages(messages, name);
+		contexts.push({
 			name,
 			messages: truncated
-		};
-	});
+		});
+	}
+	return contexts;
 }
 
 /**
@@ -323,6 +355,7 @@ export function addMessageToContext(contextName: string, role: 'user' | 'assista
 	}
 	
 	contextStore.get(contextName)!.push({ role, content });
+	console.log(`Added message to context "${contextName}": [${role}] ${content}`);
 }
 
 /**
@@ -358,16 +391,35 @@ export function resetState(): void {
 	contextStore.clear();
 	selectedContextNames = [];
 	currentModelId = undefined;
+	currentModel = undefined;
 	warningCallback = undefined;
 }
 
 /**
  * API: Sets the current model ID for token limit enforcement.
+ * Also attempts to retrieve the model instance from VS Code LM API.
  * 
  * @param modelId - Model ID to set (e.g., 'gpt-4o', 'claude-3')
  */
-export function setModelId(modelId: string | undefined): void {
+export async function setModelId(modelId: string | undefined): Promise<void> {
 	currentModelId = modelId;
+	currentModel = undefined;
+	
+	// Try to get the model instance from VS Code LM API
+	if (modelId) {
+		try {
+			const models = await vscode.lm.selectChatModels({
+				vendor: 'copilot',
+				family: modelId
+			});
+			if (models.length > 0) {
+				currentModel = models[0];
+			}
+		} catch (error) {
+			// Silently fail - we'll use fallback token limits
+			console.warn('Failed to retrieve model from VS Code LM API:', error);
+		}
+	}
 }
 
 /**
@@ -392,11 +444,30 @@ export function setWarningCallback(callback: (message: string) => void): void {
  * API: Gets the token limit for a specific model.
  * 
  * @param modelId - Model ID to check (optional, uses current model if not provided)
- * @returns Token limit for the model
+ * @returns Promise resolving to token limit for the model
  */
-export function getTokenLimit(modelId?: string): number {
+export async function getTokenLimit(modelId?: string): Promise<number> {
 	if (modelId) {
-		return MODEL_TOKEN_LIMITS[modelId] || DEFAULT_TOKEN_LIMIT;
+		// Check hardcoded limits first for known models
+		if (MODEL_TOKEN_LIMITS[modelId]) {
+			return MODEL_TOKEN_LIMITS[modelId];
+		}
+		
+		// For unknown models, try to get limit from VS Code LM API
+		try {
+			const models = await vscode.lm.selectChatModels({
+				vendor: 'copilot',
+				family: modelId
+			});
+			if (models.length > 0 && models[0].maxInputTokens) {
+				return models[0].maxInputTokens;
+			}
+		} catch (error) {
+			// Fall through to default
+		}
+		
+		// If model is unknown and API doesn't have it, use default
+		return DEFAULT_TOKEN_LIMIT;
 	}
-	return getModelTokenLimit();
+	return await getModelTokenLimit();
 }

@@ -177,9 +177,9 @@ export interface SkillApi {
 	 * Gets the current context (conversation history/messages) for the skill execution.
 	 * Typically includes all user/assistant/agent messages so far.
 	 *
-	 * @returns Array of SkillMessage objects representing the context
+	 * @returns Promise resolving to array of SkillMessage objects representing the context
 	 */
-	getContext(): SkillMessage[];
+	getContext(): Promise<SkillMessage[]>;
 }
 
 /**

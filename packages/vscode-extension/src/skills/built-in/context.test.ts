@@ -6,7 +6,7 @@
  *   Tests context selection, message tracking, and API functions.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { 
 	contextSkill, 
 	contextNames, 
@@ -23,6 +23,37 @@ import {
 } from './context';
 import { createMockSkillApi } from '../testUtils';
 
+// Mock vscode module
+vi.mock('vscode', () => ({
+	lm: {
+		selectChatModels: vi.fn(async (criteria: any) => {
+			// Only return models for known families
+			const knownFamilies = ['gpt-4o', 'gpt-4', 'gpt-4-32k', 'claude-3', 'claude-3-opus', 
+				'claude-3-sonnet', 'claude-3-haiku', 'claude-3.5', 'claude-3.5-sonnet', 'gpt-4o-mini'];
+			
+			if (criteria?.family && knownFamilies.includes(criteria.family)) {
+				return [
+					{
+						id: `copilot-${criteria.family}`,
+						vendor: 'copilot',
+						family: criteria.family,
+						version: '1.0',
+						maxInputTokens: 128000,
+						countTokens: vi.fn((text: string) => Promise.resolve(Math.ceil(text.length / 4)))
+					}
+				];
+			}
+			
+			// Return empty array for unknown models
+			return [];
+		})
+	},
+	LanguageModelChatMessage: {
+		User: vi.fn((content) => ({ role: 1, content })),
+		Assistant: vi.fn((content) => ({ role: 2, content }))
+	}
+}));
+
 describe('contextSkill', () => {
 	let mockApi: ReturnType<typeof createMockSkillApi>;
 
@@ -34,16 +65,16 @@ describe('contextSkill', () => {
 	});
 
 	describe('metadata', () => {
-		it('should have correct name', () => {
+		it('should have correct name', async () => {
 			expect(contextSkill.name).toBe('context');
 		});
 
-		it('should have description', () => {
+		it('should have description', async () => {
 			expect(contextSkill.description).toBeTruthy();
 			expect(typeof contextSkill.description).toBe('string');
 		});
 
-		it('should have execute function', () => {
+		it('should have execute function', async () => {
 			expect(typeof contextSkill.execute).toBe('function');
 		});
 	});
@@ -61,7 +92,7 @@ describe('contextSkill', () => {
 		it('should create context if it does not exist', async () => {
 			await contextSkill.execute(mockApi, { name: 'new-context' });
 			
-			const contexts = getContext();
+			const contexts = await getContext();
 			expect(contexts).toHaveLength(1);
 			expect(contexts[0].name).toBe('new-context');
 			// Context now has the confirmation message
@@ -84,7 +115,7 @@ describe('contextSkill', () => {
 			expect(contextNames()).toEqual(['context1']);
 			
 			// Verify context1 still has its messages
-			const contexts = getContext();
+			const contexts = await getContext();
 			// context1 has: first confirmation + user message + second confirmation
 			expect(contexts[0].messages).toHaveLength(3);
 			expect(contexts[0].messages[0].content).toBe('Context set to: context1');
@@ -113,7 +144,7 @@ describe('contextSkill', () => {
 		it('should create all contexts if they do not exist', async () => {
 			await contextSkill.execute(mockApi, { names: 'ctx1,ctx2,ctx3' });
 			
-			const contexts = getContext();
+			const contexts = await getContext();
 			expect(contexts).toHaveLength(3);
 			expect(contexts[0].name).toBe('ctx1');
 			expect(contexts[1].name).toBe('ctx2');
@@ -134,7 +165,7 @@ describe('contextSkill', () => {
 			// Select multiple including the existing one
 			await contextSkill.execute(mockApi, { names: 'existing,new1,new2' });
 			
-			const contexts = getContext();
+			const contexts = await getContext();
 			expect(contexts).toHaveLength(3);
 			// existing context: confirmation from first execute + test message + confirmation from second execute
 			expect(contexts[0].messages).toHaveLength(3);
@@ -184,7 +215,7 @@ describe('contextNames API', () => {
 		resetState();
 	});
 
-	it('should return empty array initially', () => {
+	it('should return empty array initially', async () => {
 		expect(contextNames()).toEqual([]);
 	});
 
@@ -212,8 +243,8 @@ describe('getContext API', () => {
 		resetState();
 	});
 
-	it('should return empty array initially', () => {
-		expect(getContext()).toEqual([]);
+	it('should return empty array initially', async () => {
+		expect(await getContext()).toEqual([]);
 	});
 
 	it('should return all selected contexts with messages', async () => {
@@ -223,7 +254,7 @@ describe('getContext API', () => {
 		addMessageToContext('ctx1', 'user', 'Hello');
 		addMessageToContext('ctx2', 'assistant', 'Hi there');
 		
-		const contexts = getContext();
+		const contexts = await getContext();
 		expect(contexts).toHaveLength(2);
 		expect(contexts[0]).toEqual({
 			name: 'ctx1',
@@ -245,7 +276,7 @@ describe('getContext API', () => {
 		const mockApi = createMockSkillApi();
 		await contextSkill.execute(mockApi, { names: 'third,first,second' });
 		
-		const contexts = getContext();
+		const contexts = await getContext();
 		expect(contexts.map(c => c.name)).toEqual(['third', 'first', 'second']);
 	});
 });
@@ -255,40 +286,40 @@ describe('selectContext API', () => {
 		resetState();
 	});
 
-	it('should select contexts programmatically', () => {
+	it('should select contexts programmatically', async () => {
 		selectContext(['api-ctx1', 'api-ctx2']);
 		
 		expect(contextNames()).toEqual(['api-ctx1', 'api-ctx2']);
 	});
 
-	it('should create contexts if they do not exist', () => {
+	it('should create contexts if they do not exist', async () => {
 		selectContext(['new1', 'new2']);
 		
-		const contexts = getContext();
+		const contexts = await getContext();
 		expect(contexts).toHaveLength(2);
 		expect(contexts[0].name).toBe('new1');
 		expect(contexts[1].name).toBe('new2');
 	});
 
-	it('should throw error if names array is empty', () => {
+	it('should throw error if names array is empty', async () => {
 		expect(() => selectContext([])).toThrow('Missing or invalid context names');
 	});
 
-	it('should throw error if names is not an array', () => {
+	it('should throw error if names is not an array', async () => {
 		// @ts-expect-error Testing invalid input
 		expect(() => selectContext('not-array')).toThrow('Missing or invalid context names');
 	});
 
-	it('should throw error if names contains non-string', () => {
+	it('should throw error if names contains non-string', async () => {
 		// @ts-expect-error Testing invalid input
 		expect(() => selectContext(['valid', 123, 'another'])).toThrow('Invalid context name: must be non-empty string');
 	});
 
-	it('should throw error if names contains empty string', () => {
+	it('should throw error if names contains empty string', async () => {
 		expect(() => selectContext(['valid', '', 'another'])).toThrow('Invalid context name: must be non-empty string');
 	});
 
-	it('should throw error if names contains whitespace-only string', () => {
+	it('should throw error if names contains whitespace-only string', async () => {
 		expect(() => selectContext(['valid', '   ', 'another'])).toThrow('Invalid context name: must be non-empty string');
 	});
 });
@@ -305,32 +336,32 @@ describe('addMessageToContext API', () => {
 		addMessageToContext('test', 'user', 'Hello');
 		addMessageToContext('test', 'assistant', 'Hi there');
 		
-		const contexts = getContext();
+		const contexts = await getContext();
 		expect(contexts[0].messages).toHaveLength(3); // confirmation + 2 added messages
 		expect(contexts[0].messages[0]).toEqual({ role: 'agent', content: 'Context set to: test' });
 		expect(contexts[0].messages[1]).toEqual({ role: 'user', content: 'Hello' });
 		expect(contexts[0].messages[2]).toEqual({ role: 'assistant', content: 'Hi there' });
 	});
 
-	it('should create context if it does not exist', () => {
+	it('should create context if it does not exist', async () => {
 		addMessageToContext('new-context', 'user', 'First message');
 		
 		// Select the context to retrieve it
 		selectContext(['new-context']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(1);
 		expect(contexts[0].messages[0]).toEqual({ role: 'user', content: 'First message' });
 	});
 
-	it('should preserve message order (chronological)', () => {
+	it('should preserve message order (chronological)', async () => {
 		addMessageToContext('chat', 'user', 'Message 1');
 		addMessageToContext('chat', 'assistant', 'Message 2');
 		addMessageToContext('chat', 'user', 'Message 3');
 		addMessageToContext('chat', 'assistant', 'Message 4');
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(4);
 		expect(contexts[0].messages[0].content).toBe('Message 1');
@@ -358,7 +389,7 @@ describe('context isolation', () => {
 		
 		// Select both contexts
 		selectContext(['ctx1', 'ctx2']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts).toHaveLength(2);
 		// ctx1 has: confirmation from execute + user message
@@ -375,7 +406,7 @@ describe('appendContext API', () => {
 		resetState();
 	});
 
-	it('should append messages to existing context', () => {
+	it('should append messages to existing context', async () => {
 		addMessageToContext('chat', 'user', 'Message 1');
 		
 		const newMessages = [
@@ -385,7 +416,7 @@ describe('appendContext API', () => {
 		appendContext('chat', newMessages);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(3);
 		expect(contexts[0].messages[0].content).toBe('Message 1');
@@ -393,7 +424,7 @@ describe('appendContext API', () => {
 		expect(contexts[0].messages[2].content).toBe('Message 3');
 	});
 
-	it('should append to empty context', () => {
+	it('should append to empty context', async () => {
 		const messages = [
 			{ role: 'user' as const, content: 'First' },
 			{ role: 'assistant' as const, content: 'Second' }
@@ -401,25 +432,25 @@ describe('appendContext API', () => {
 		appendContext('new-context', messages);
 		
 		selectContext(['new-context']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(2);
 		expect(contexts[0].messages).toEqual(messages);
 	});
 
-	it('should create context if it does not exist', () => {
+	it('should create context if it does not exist', async () => {
 		const messages = [
 			{ role: 'user' as const, content: 'Test message' }
 		];
 		appendContext('nonexistent', messages);
 		
 		selectContext(['nonexistent']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toEqual(messages);
 	});
 
-	it('should preserve existing messages when appending', () => {
+	it('should preserve existing messages when appending', async () => {
 		addMessageToContext('chat', 'user', 'Existing 1');
 		addMessageToContext('chat', 'assistant', 'Existing 2');
 		
@@ -429,7 +460,7 @@ describe('appendContext API', () => {
 		]);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(4);
 		expect(contexts[0].messages.map(m => m.content)).toEqual([
@@ -440,17 +471,17 @@ describe('appendContext API', () => {
 		]);
 	});
 
-	it('should append empty message array without error', () => {
+	it('should append empty message array without error', async () => {
 		addMessageToContext('chat', 'user', 'Message');
 		appendContext('chat', []);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(1);
 	});
 
-	it('should maintain message order when appending', () => {
+	it('should maintain message order when appending', async () => {
 		const batch1 = [
 			{ role: 'user' as const, content: '1' },
 			{ role: 'assistant' as const, content: '2' }
@@ -464,7 +495,7 @@ describe('appendContext API', () => {
 		appendContext('chat', batch2);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages.map(m => m.content)).toEqual(['1', '2', '3', '4']);
 	});
@@ -475,7 +506,7 @@ describe('setContext API', () => {
 		resetState();
 	});
 
-	it('should replace all messages in existing context', () => {
+	it('should replace all messages in existing context', async () => {
 		addMessageToContext('chat', 'user', 'Old message 1');
 		addMessageToContext('chat', 'assistant', 'Old message 2');
 		
@@ -486,13 +517,13 @@ describe('setContext API', () => {
 		setContext('chat', newMessages);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(2);
 		expect(contexts[0].messages).toEqual(newMessages);
 	});
 
-	it('should clear context when setting empty array', () => {
+	it('should clear context when setting empty array', async () => {
 		addMessageToContext('chat', 'user', 'Message 1');
 		addMessageToContext('chat', 'assistant', 'Message 2');
 		addMessageToContext('chat', 'user', 'Message 3');
@@ -500,12 +531,12 @@ describe('setContext API', () => {
 		setContext('chat', []);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(0);
 	});
 
-	it('should set messages in new context', () => {
+	it('should set messages in new context', async () => {
 		const messages = [
 			{ role: 'user' as const, content: 'Hello' },
 			{ role: 'assistant' as const, content: 'Hi there' }
@@ -513,12 +544,12 @@ describe('setContext API', () => {
 		setContext('new-context', messages);
 		
 		selectContext(['new-context']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toEqual(messages);
 	});
 
-	it('should replace messages entirely (not append)', () => {
+	it('should replace messages entirely (not append)', async () => {
 		addMessageToContext('chat', 'user', 'Old 1');
 		addMessageToContext('chat', 'assistant', 'Old 2');
 		addMessageToContext('chat', 'user', 'Old 3');
@@ -528,25 +559,25 @@ describe('setContext API', () => {
 		]);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toHaveLength(1);
 		expect(contexts[0].messages[0].content).toBe('Brand new');
 	});
 
-	it('should create context if it does not exist', () => {
+	it('should create context if it does not exist', async () => {
 		const messages = [
 			{ role: 'user' as const, content: 'Test' }
 		];
 		setContext('nonexistent', messages);
 		
 		selectContext(['nonexistent']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		expect(contexts[0].messages).toEqual(messages);
 	});
 
-	it('should create independent copy of messages', () => {
+	it('should create independent copy of messages', async () => {
 		const originalMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
 			{ role: 'user', content: 'Original' }
 		];
@@ -556,14 +587,14 @@ describe('setContext API', () => {
 		originalMessages.push({ role: 'assistant', content: 'Appended' });
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// The context should not be affected by changes to the original array
 		expect(contexts[0].messages).toHaveLength(1);
 		expect(contexts[0].messages[0].content).toBe('Original');
 	});
 
-	it('should handle multiple set operations on same context', () => {
+	it('should handle multiple set operations on same context', async () => {
 		const msg1 = [{ role: 'user' as const, content: 'First set' }];
 		const msg2 = [
 			{ role: 'user' as const, content: 'Second set 1' },
@@ -573,16 +604,19 @@ describe('setContext API', () => {
 		
 		setContext('chat', msg1);
 		selectContext(['chat']);
-		expect(getContext()[0].messages).toHaveLength(1);
+		let contexts = await getContext();
+		expect(contexts[0].messages).toHaveLength(1);
 		
 		setContext('chat', msg2);
 		selectContext(['chat']);
-		expect(getContext()[0].messages).toHaveLength(2);
+		contexts = await getContext();
+		expect(contexts[0].messages).toHaveLength(2);
 		
 		setContext('chat', msg3);
 		selectContext(['chat']);
-		expect(getContext()[0].messages).toHaveLength(1);
-		expect(getContext()[0].messages[0].content).toBe('Third set');
+		contexts = await getContext();
+		expect(contexts[0].messages).toHaveLength(1);
+		expect(contexts[0].messages[0].content).toBe('Third set');
 	});
 });
 
@@ -598,7 +632,7 @@ describe('duplicate context names validation', () => {
 		).rejects.toThrow('Duplicate context names are not allowed');
 	});
 
-	it('should throw error on duplicate context names in selectContext API', () => {
+	it('should throw error on duplicate context names in selectContext API', async () => {
 		expect(() => selectContext(['ctx1', 'ctx2', 'ctx1'])).toThrow('Duplicate context names are not allowed');
 	});
 
@@ -616,33 +650,33 @@ describe('token limits and truncation', () => {
 		resetState();
 	});
 
-	it('should return correct token limits for known models', () => {
-		expect(getTokenLimit('gpt-4')).toBe(8192);
-		expect(getTokenLimit('gpt-4-32k')).toBe(32768);
-		expect(getTokenLimit('gpt-4o')).toBe(128000);
-		expect(getTokenLimit('gpt-4o-mini')).toBe(128000);
-		expect(getTokenLimit('claude-3')).toBe(200000);
-		expect(getTokenLimit('claude-3-opus')).toBe(200000);
-		expect(getTokenLimit('claude-3-sonnet')).toBe(200000);
-		expect(getTokenLimit('claude-3-haiku')).toBe(200000);
-		expect(getTokenLimit('claude-3.5')).toBe(200000);
-		expect(getTokenLimit('claude-3.5-sonnet')).toBe(200000);
+	it('should return correct token limits for known models', async () => {
+		expect(await getTokenLimit('gpt-4')).toBe(8192);
+		expect(await getTokenLimit('gpt-4-32k')).toBe(32768);
+		expect(await getTokenLimit('gpt-4o')).toBe(128000);
+		expect(await getTokenLimit('gpt-4o-mini')).toBe(128000);
+		expect(await getTokenLimit('claude-3')).toBe(200000);
+		expect(await getTokenLimit('claude-3-opus')).toBe(200000);
+		expect(await getTokenLimit('claude-3-sonnet')).toBe(200000);
+		expect(await getTokenLimit('claude-3-haiku')).toBe(200000);
+		expect(await getTokenLimit('claude-3.5')).toBe(200000);
+		expect(await getTokenLimit('claude-3.5-sonnet')).toBe(200000);
 	});
 
-	it('should return default token limit for unknown model', () => {
-		expect(getTokenLimit('unknown-model')).toBe(8192);
+	it('should return default token limit for unknown model', async () => {
+		expect(await getTokenLimit('unknown-model')).toBe(8192);
 	});
 
-	it('should return current model token limit when no model specified', () => {
+	it('should return current model token limit when no model specified', async () => {
 		setModelId('gpt-4o');
-		expect(getTokenLimit()).toBe(128000);
+		expect(await getTokenLimit()).toBe(128000);
 	});
 
-	it('should return default limit when no model is set', () => {
-		expect(getTokenLimit()).toBe(8192);
+	it('should return default limit when no model is set', async () => {
+		expect(await getTokenLimit()).toBe(8192);
 	});
 
-	it('should truncate context when exceeding token limit', () => {
+	it('should truncate context when exceeding token limit', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		// Add messages that exceed the limit
@@ -652,14 +686,14 @@ describe('token limits and truncation', () => {
 		addMessageToContext('chat', 'assistant', 'Short response');
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// First message should be truncated
 		expect(contexts[0].messages).toHaveLength(1);
 		expect(contexts[0].messages[0].content).toBe('Short response');
 	});
 
-	it('should keep messages under token limit intact', () => {
+	it('should keep messages under token limit intact', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		// Add messages well under the limit
@@ -668,7 +702,7 @@ describe('token limits and truncation', () => {
 		addMessageToContext('chat', 'user', 'How are you?');
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// All messages should be preserved
 		expect(contexts[0].messages).toHaveLength(3);
@@ -677,7 +711,7 @@ describe('token limits and truncation', () => {
 		expect(contexts[0].messages[2].content).toBe('How are you?');
 	});
 
-	it('should truncate oldest messages first (FIFO)', () => {
+	it('should truncate oldest messages first (FIFO)', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		// Add 5 messages, each ~3000 tokens (12000 chars)
@@ -689,7 +723,7 @@ describe('token limits and truncation', () => {
 		addMessageToContext('chat', 'user', msg + '5');
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// Should keep only the last 2-3 messages to stay under 8192 tokens
 		// First messages (1, 2, 3) should be removed, keeping newer ones
@@ -697,7 +731,7 @@ describe('token limits and truncation', () => {
 		expect(contents.every(c => c.endsWith('4') || c.endsWith('5'))).toBe(true);
 	});
 
-	it('should call warning callback when truncation occurs', () => {
+	it('should call warning callback when truncation occurs', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		const warnings: string[] = [];
@@ -709,7 +743,7 @@ describe('token limits and truncation', () => {
 		addMessageToContext('chat', 'assistant', 'Short response');
 		
 		selectContext(['chat']);
-		getContext(); // Trigger truncation
+		await getContext(); // Trigger truncation
 		
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0]).toContain('Context "chat" exceeded token limit');
@@ -718,7 +752,7 @@ describe('token limits and truncation', () => {
 		expect(warnings[0]).toContain('Removed 1 oldest message');
 	});
 
-	it('should handle warning callback for multiple messages removed', () => {
+	it('should handle warning callback for multiple messages removed', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		const warnings: string[] = [];
@@ -731,14 +765,14 @@ describe('token limits and truncation', () => {
 		}
 		
 		selectContext(['chat']);
-		getContext(); // Trigger truncation
+		await getContext(); // Trigger truncation
 		
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0]).toContain('Removed');
 		expect(warnings[0]).toContain('oldest messages'); // plural
 	});
 
-	it('should not call warning callback when no truncation occurs', () => {
+	it('should not call warning callback when no truncation occurs', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		const warnings: string[] = [];
@@ -754,7 +788,7 @@ describe('token limits and truncation', () => {
 		expect(warnings).toHaveLength(0);
 	});
 
-	it('should allow empty context after complete truncation', () => {
+	it('should allow empty context after complete truncation', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		// Add single massive message that exceeds limit
@@ -762,13 +796,13 @@ describe('token limits and truncation', () => {
 		addMessageToContext('chat', 'user', hugeMessage);
 		
 		selectContext(['chat']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// Should truncate completely, leaving empty context
 		expect(contexts[0].messages).toHaveLength(0);
 	});
 
-	it('should handle multiple contexts independently for truncation', () => {
+	it('should handle multiple contexts independently for truncation', async () => {
 		setModelId('gpt-4'); // 8192 token limit
 		
 		// Context 1: exceeds limit
@@ -781,7 +815,7 @@ describe('token limits and truncation', () => {
 		addMessageToContext('ctx2', 'assistant', 'Hi');
 		
 		selectContext(['ctx1', 'ctx2']);
-		const contexts = getContext();
+		const contexts = await getContext();
 		
 		// ctx1 should be truncated, ctx2 should not
 		expect(contexts[0].messages).toHaveLength(1); // Truncated
@@ -794,7 +828,7 @@ describe('model ID management', () => {
 		resetState();
 	});
 
-	it('should set and get model ID', () => {
+	it('should set and get model ID', async () => {
 		expect(getModelId()).toBeUndefined();
 		
 		setModelId('gpt-4o');
@@ -804,7 +838,7 @@ describe('model ID management', () => {
 		expect(getModelId()).toBe('claude-3');
 	});
 
-	it('should allow setting model ID to undefined', () => {
+	it('should allow setting model ID to undefined', async () => {
 		setModelId('gpt-4o');
 		expect(getModelId()).toBe('gpt-4o');
 		
@@ -812,7 +846,7 @@ describe('model ID management', () => {
 		expect(getModelId()).toBeUndefined();
 	});
 
-	it('should reset model ID on resetState', () => {
+	it('should reset model ID on resetState', async () => {
 		setModelId('gpt-4o');
 		resetState();
 		expect(getModelId()).toBeUndefined();
@@ -824,7 +858,7 @@ describe('warning callback management', () => {
 		resetState();
 	});
 
-	it('should set and use warning callback', () => {
+	it('should set and use warning callback', async () => {
 		const warnings: string[] = [];
 		setWarningCallback((msg) => warnings.push(msg));
 		
@@ -834,12 +868,12 @@ describe('warning callback management', () => {
 		addMessageToContext('chat', 'assistant', 'Response');
 		
 		selectContext(['chat']);
-		getContext();
+		await getContext();
 		
 		expect(warnings.length).toBeGreaterThan(0);
 	});
 
-	it('should reset warning callback on resetState', () => {
+	it('should reset warning callback on resetState', async () => {
 		const warnings: string[] = [];
 		setWarningCallback((msg) => warnings.push(msg));
 		
@@ -850,7 +884,7 @@ describe('warning callback management', () => {
 		const longMessage = 'x'.repeat(40000);
 		addMessageToContext('chat', 'user', longMessage);
 		selectContext(['chat']);
-		getContext();
+		await getContext();
 		
 		// Callback should not be called after reset
 		expect(warnings).toHaveLength(0);

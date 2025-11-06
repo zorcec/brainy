@@ -76,7 +76,9 @@ describe('modelClient', () => {
 		});
 
 		expect(mockProvider).toHaveBeenCalledWith(
-			expect.objectContaining({ modelId: 'skill-specific-model' })
+			expect.objectContaining({ 
+				modelId: 'skill-specific-model'
+			})
 		);
 		expect(response.reply).toBe('Response from skill-specific-model');
 	});
@@ -120,8 +122,7 @@ describe('modelClient', () => {
 		expect(mockProvider).toHaveBeenCalledWith({
 			modelId: 'test-model',
 			role: 'user',
-			content: 'Test message',
-			timeoutMs: undefined
+			content: 'Test message'
 		});
 		expect(response.reply).toBe('Mock response to: Test message');
 		expect(response.raw).toEqual({ model: 'test-model', test: true });

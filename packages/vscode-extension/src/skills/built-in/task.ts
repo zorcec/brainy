@@ -67,19 +67,20 @@ export const taskSkill: Skill = {
 		
 		// Debug mode: dump context and return without calling LLM
 		if (typeof debug !== 'undefined') {
+			const currentContext = await api.getContext();
 			const contextDump = {
 				prompt: processedPrompt,
 				model: model || 'default',
-				context: api.getContext()
+				context: currentContext
 			};
 			// Store in variable if requested
 			if (isValidString(variable)) {
-				api.setVariable(variable, 'dummy response in debug mode');
+				api.setVariable(variable, JSON.stringify(currentContext));
 			}
 			return {
 				messages: [
-					{ role: 'user', content: contextDump as any },
-					{ role: 'agent', content: `dummy LLM response` }
+					{ role: 'user', content: JSON.stringify(contextDump, null, 2) },
+					{ role: 'agent', content: `Debug mode: dumped context with ${currentContext.length} messages` }
 				]
 			};
 		}
@@ -95,10 +96,6 @@ export const taskSkill: Skill = {
 		if (isValidString(variable)) {
 			api.setVariable(variable, result.response);
 		}
-		
-		// Add both user prompt and assistant response to context
-		api.addToContext('user', processedPrompt);
-		api.addToContext('assistant', result.response);
 		
 		// Return both user prompt and assistant response
 		return {

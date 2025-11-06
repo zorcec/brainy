@@ -32,7 +32,7 @@ import {
 	markPlaybookFinished
 } from './executionState';
 import { highlightCurrentSkill, highlightFailedSkill, clearExecutionDecorations } from './executionDecorations';
-import { contextNames, addMessageToContext } from '../skills/built-in/context';
+import { contextNames, addMessageToContext, selectContext } from '../skills/built-in/context';
 import { selectChatModel } from '../skills/index';
 
 /**
@@ -89,6 +89,9 @@ export async function executePlaybook(
 
 	// Set default model to gpt-4.1 at the start of each playbook run
 	selectChatModel('gpt-4.1');
+
+	// Set initial context to main
+	selectContext(['main']);
 
 	try {
 		// Execute blocks sequentially
@@ -186,7 +189,7 @@ async function executeBlock(
 ): Promise<SkillResult | undefined> {
    // Handle plainText blocks: always add to context as agent type
    if (block.name === 'plainText') {
-	   console.log(`Adding plainText block to context`);
+	   console.log(`Adding plainText block to context`, contextNames());
 	   const activeContexts = contextNames();
 	   for (const contextName of activeContexts) {
 		   addMessageToContext(contextName, 'agent', block.content);

@@ -129,9 +129,9 @@ export function createMockSkillApi(): SkillApi {
 		/**
 		 * Mock implementation of getContext.
 		 * By default, returns an empty array.
-		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 * Override with mockResolvedValue() or mockImplementation() as needed.
 		 */
-		getContext: vi.fn(() => {
+		getContext: vi.fn(async () => {
 			return [];
 		})
 	};

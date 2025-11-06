@@ -48,9 +48,6 @@ export const modelSkill: Skill = {
 		// Return confirmation message
 		const message = `Model set to: ${id}`;
 		
-		// Add to context automatically as agent
-		api.addToContext('agent', message);
-		
 		return {
 			messages: [{
 				role: 'agent',

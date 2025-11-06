@@ -85,7 +85,7 @@ describe('taskSkill', () => {
 			getVariable() { return undefined; },
 			async openInputDialog() { return 'test'; },
 				addToContext() {},
-				getContext() { return []; }
+				async getContext() { return []; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test' })).rejects.toThrow('LLM timeout');
@@ -106,7 +106,7 @@ describe('taskSkill', () => {
 			getVariable() { return undefined; },
 			async openInputDialog() { return 'test'; },
 				addToContext() {},
-				getContext() { return []; }
+				async getContext() { return []; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test', model: 'invalid' })).rejects.toThrow('Invalid model ID');

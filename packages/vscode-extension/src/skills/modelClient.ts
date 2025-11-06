@@ -19,6 +19,14 @@
 import * as vscode from 'vscode';
 
 /**
+ * Context message structure for building conversation history.
+ */
+export type ContextMessage = {
+	role: 'user' | 'assistant' | 'agent';
+	content: string;
+};
+
+/**
  * Request parameters for sending a message to the model.
  */
 export type SendRequestParams = {
@@ -28,6 +36,8 @@ export type SendRequestParams = {
 	role: 'user' | 'assistant';
 	/** Message content */
 	content: string;
+	/** Optional context messages (conversation history) */
+	context?: ContextMessage[];
 	/** Optional timeout in milliseconds (overrides default) */
 	timeoutMs?: number;
 	/** Optional list of tools available to the LLM */
@@ -111,6 +121,7 @@ export async function sendRequest(params: SendRequestParams): Promise<ModelRespo
 /**
  * Default provider implementation using VS Code's Language Model API.
  * Sends messages to GitHub Copilot using vscode.lm.selectChatModels().
+ * Builds full conversation history from context messages.
  *
  * @param params - Request parameters
  * @returns Model response
@@ -131,9 +142,26 @@ async function defaultProvider(params: SendRequestParams): Promise<ModelResponse
 	const model = models[0];
 
 	// Build message array - VS Code LM API expects LanguageModelChatMessage objects
-	const messages: vscode.LanguageModelChatMessage[] = [
-		vscode.LanguageModelChatMessage.User(params.content)
-	];
+	const messages: vscode.LanguageModelChatMessage[] = [];
+	
+	// Add context messages (conversation history) first
+	if (params.context && params.context.length > 0) {
+		for (const contextMsg of params.context) {
+			// Skip 'agent' role messages as VS Code LM API doesn't support them
+			if (contextMsg.role === 'user') {
+				messages.push(vscode.LanguageModelChatMessage.User(contextMsg.content));
+			} else if (contextMsg.role === 'assistant') {
+				messages.push(vscode.LanguageModelChatMessage.Assistant(contextMsg.content));
+			}
+		}
+	}
+	
+	// Add the current message
+	if (params.role === 'user') {
+		messages.push(vscode.LanguageModelChatMessage.User(params.content));
+	} else {
+		messages.push(vscode.LanguageModelChatMessage.Assistant(params.content));
+	}
 
 	// Send request and collect streamed response
 	const requestOptions: vscode.LanguageModelChatRequestOptions = {

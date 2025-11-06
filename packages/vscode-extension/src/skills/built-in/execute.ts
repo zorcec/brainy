@@ -131,12 +131,9 @@ export const executeSkill: Skill = {
 				api.setVariable(variableName, output);
 			}
 			
-			// Add output to context automatically as assistant
-			api.addToContext('assistant', output);
-			
 			return {
 				messages: [{
-					role: 'assistant',
+					role: 'agent',
 					content: output
 				}]
 			};
