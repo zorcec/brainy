@@ -6,7 +6,7 @@ export default defineConfig({
   retries: 1,
   fullyParallel: true,
   workers: 8,
-  reporter: 'json',
+  reporter: 'line',
   use: {
     headless: true,
     trace: 'retain-on-failure',  // Only capture trace on failure, not on first retry

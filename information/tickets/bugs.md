@@ -1,6 +1,0 @@
-- When context is retrieved by the skill api, it is empty. Please make sure context is saved and returned correctly. Add names[] to the function that specifies which context to return, or if not specified, return the currently selected context.
-- Every skill returns the messages, so we can automatically add them to the current context, no need to do this manually in each skill. Centralize this logic.
-- The autocompleted values of available models are wrong, if possible get them from the vscode API.
-- Some unit tests are slow, try to speed them up.
-- when variable is specified in the task skill, the last quote " is not colored properly.
-- If variable is specified without the value, it should still be defined, so in skill we can check for undefined. Then we do not need to check if string is set to "true" or "1"
