@@ -16,8 +16,8 @@ test.describe('Visual Feedback During Execution', () => {
     // Take screenshot to verify clean UI
     await vscPage.page.screenshot({ path: 'test-results/ui-clean-state.png' });
     
-    // Verify editor is responsive
-    const editor = vscPage.page.locator('.monaco-editor');
+    // Verify editor is responsive - use more specific selector for main editor
+    const editor = vscPage.page.locator('.monaco-editor[data-uri*="sample-playbook.brainy.md"]').first();
     const isVisible = await editor.isVisible();
     expect(isVisible).toBe(true);
   });

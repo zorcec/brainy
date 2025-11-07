@@ -35,12 +35,35 @@ async function safePageOp<T>(
 }
 
 /**
- * Waits for VS Code workbench to be fully loaded
+ * Waits for VS Code workbench to be fully loaded and dismisses trust dialog
  */
 export async function waitForWorkbench(page: Page): Promise<void> {
 	await safePageOp(page, async () => {
 		await page.waitForSelector('.monaco-workbench', { timeout: 30000 });
 		await page.waitForTimeout(2000);
+		
+		// Dismiss trust dialog if it appears
+		await dismissTrustDialog(page);
+	}, undefined);
+}
+
+/**
+ * Dismisses the "Do you trust the authors?" dialog
+ */
+async function dismissTrustDialog(page: Page): Promise<void> {
+	await safePageOp(page, async () => {
+		// Wait a bit for the dialog to appear
+		await page.waitForTimeout(1000);
+		
+		// Look for trust dialog buttons
+		const trustButton = page.locator('button:has-text("Yes, I trust"), button:has-text("Trust"), .monaco-button.monaco-text-button:has-text("Yes")').first();
+		const isVisible = await trustButton.isVisible({ timeout: 2000 }).catch(() => false);
+		
+		if (isVisible) {
+			console.log('Dismissing trust dialog...');
+			await trustButton.click();
+			await page.waitForTimeout(1000);
+		}
 	}, undefined);
 }
 
@@ -49,13 +72,23 @@ export async function waitForWorkbench(page: Page): Promise<void> {
  */
 export async function openFile(page: Page, filename: string): Promise<void> {
 	await safePageOp(page, async () => {
-		// Dismiss any modal dialogs first
+		// Dismiss any modal dialogs first (including trust dialog)
 		const modalDialog = page.locator('.monaco-dialog-modal-block');
 		const isModalVisible = await modalDialog.isVisible().catch(() => false);
 		if (isModalVisible) {
-			// Try to dismiss via Escape
-			await page.keyboard.press('Escape').catch(() => {});
-			await page.waitForTimeout(500);
+			// Try clicking "Yes, I trust" or similar trust button
+			const trustButton = page.locator('button:has-text("Yes, I trust"), button:has-text("Trust"), .monaco-button.monaco-text-button:has-text("Yes")').first();
+			const hasTrustButton = await trustButton.isVisible({ timeout: 1000 }).catch(() => false);
+			
+			if (hasTrustButton) {
+				console.log('Clicking trust button...');
+				await trustButton.click();
+				await page.waitForTimeout(1000);
+			} else {
+				// Try to dismiss via Escape
+				await page.keyboard.press('Escape').catch(() => {});
+				await page.waitForTimeout(500);
+			}
 		}
 
 		// Make sure explorer is visible
@@ -63,15 +96,22 @@ export async function openFile(page: Page, filename: string): Promise<void> {
 		const isVisible = await explorerView.isVisible().catch(() => false);
 		
 		if (!isVisible) {
-			await page.click('[aria-label="Explorer (Ctrl+Shift+E)"]').catch(() => {});
-			await page.waitForTimeout(500);
+			await page.keyboard.press('Control+Shift+E').catch(() => {});
+			await page.waitForTimeout(1000);
 		}
+		
+		// Wait for file tree to be ready
+		await page.waitForTimeout(1000);
 		
 		// Click the file in the tree with force option to handle overlays
 		const fileItem = page.locator(`.monaco-list-row:has-text("${filename}")`);
 		await fileItem.click({ force: true });
+		
+		// Wait longer for file to open and extension to process it
+		await page.waitForTimeout(3000);
+		
+		// Additional wait for CodeLens to appear
 		await page.waitForTimeout(2000);
-		await page.waitForTimeout(1000); // Wait for CodeLens
 	}, undefined);
 }
 

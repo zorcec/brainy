@@ -8,7 +8,7 @@
     "build": "npm run build --workspaces",
     "test": "vitest run --exclude '**/e2e/**'",
     "test:watch": "vitest --exclude '**/e2e/**'",
-    "e2e": "npm run build && npx playwright test",
+    "e2e": "npm run build && xvfb-run -a npx playwright test",
     "e2e:headed": "npm run build && npx playwright test --headed"
   },
   "dependencies": {

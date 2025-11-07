@@ -97,8 +97,8 @@ test.describe('Playbook Execution Controls', () => {
     await vscPage.openFile('sample-playbook.brainy.md');
     await vscPage.page.waitForTimeout(1500);
     
-    // Get file content to verify it's valid
-    const editor = vscPage.page.locator('.monaco-editor');
+    // Get file content to verify it's valid - use more specific selector for main editor
+    const editor = vscPage.page.locator('.monaco-editor[data-uri*="sample-playbook.brainy.md"]').first();
     const isVisible = await editor.isVisible();
     
     expect(isVisible).toBe(true);

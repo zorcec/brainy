@@ -2,7 +2,7 @@
  * Module: e2e/fixtures/vscode-suite-fixtures.ts
  *
  * Description:
- *   Suite-level Playwright fixtures for VS Code Web E2E testing.
+ *   Suite-level Playwright fixtures for VS Code Desktop E2E testing.
  *   Provides a shared browser context and page for all tests in a suite.
  *   This is useful for tests that don't need complete isolation between each test.
  *
@@ -18,17 +18,19 @@
  *   });
  */
 
-import { test as base, expect, Page } from '@playwright/test';
-import { VSCodeWebServer } from '../vscode-web-server';
+import { test as base, expect, Page, Browser, chromium } from '@playwright/test';
+import { VSCodeDesktopServer } from '../vscode-desktop-server';
 import * as helpers from '../helpers/vscode-page-helpers';
-import { VSCodePage } from './vscode-fixtures';
+import { VSCodePage } from './vscode-desktop-fixtures';
 
 /**
  * Worker-scoped fixtures (shared across tests in same worker)
  */
 type VSCodeWorkerFixtures = {
-	/** VS Code Web server instance (one per worker) */
-	vscodeServer: VSCodeWebServer;
+	/** VS Code Desktop server instance (one per worker) */
+	vscodeServer: VSCodeDesktopServer;
+	/** Playwright browser connected to VS Code Desktop via CDP (one per worker) */
+	vscodeBrowser: Browser;
 	/** VS Code page shared across all tests in the worker */
 	vscPage: VSCodePage;
 };
@@ -54,15 +56,15 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 	},
 
 	/**
-	 * VS Code server fixture (worker-scoped)
+	 * VS Code Desktop server fixture (worker-scoped)
 	 */
 	vscodeServer: [async ({}, use, workerInfo) => {
 		const startTime = Date.now();
-		const server = new VSCodeWebServer();
+		const server = new VSCodeDesktopServer();
 		await server.start();
 		
 		const setupTime = Date.now() - startTime;
-		console.log(`[Worker ${workerInfo.workerIndex}] VS Code server setup completed in ${setupTime}ms`);
+		console.log(`[Worker ${workerInfo.workerIndex}] VS Code Desktop server setup completed in ${setupTime}ms`);
 		
 		await use(server);
 		
@@ -74,18 +76,46 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 	}, { scope: 'worker' }],
 
 	/**
+	 * Playwright browser connected to VS Code Desktop via CDP (worker-scoped)
+	 */
+	vscodeBrowser: [async ({ vscodeServer }, use, workerInfo) => {
+		const cdpUrl = vscodeServer.getCdpUrl();
+		if (!cdpUrl) {
+			throw new Error('VS Code Desktop CDP URL not available');
+		}
+
+		console.log(`[Worker ${workerInfo.workerIndex}] Connecting to VS Code Desktop via CDP: ${cdpUrl}`);
+		const browser = await chromium.connectOverCDP(cdpUrl);
+		
+		await use(browser);
+		
+		await browser.close();
+		console.log(`[Worker ${workerInfo.workerIndex}] Browser connection closed`);
+	}, { scope: 'worker' }],
+
+	/**
 	 * VS Code page fixture (worker-scoped for suite-level sharing)
 	 * Reuses the same page across all tests in the suite
 	 */
-	vscPage: [async ({ browser, vscodeServer }, use, workerInfo) => {
-		const vscodeUrl = vscodeServer.getUrl();
-		if (!vscodeUrl) {
-			throw new Error('VS Code server URL not available');
+	vscPage: [async ({ vscodeBrowser }, use, workerInfo) => {
+		// Get the first context (VS Code Desktop creates a default context)
+		const contexts = vscodeBrowser.contexts();
+		if (contexts.length === 0) {
+			throw new Error('No browser contexts available in VS Code Desktop');
 		}
+		const context = contexts[0];
 
-		const page = await browser.newPage();
+		// Get or create a page
+		let page: Page;
+		const pages = context.pages();
+		if (pages.length > 0) {
+			page = pages[0];
+			console.log(`[Worker ${workerInfo.workerIndex}] Reusing existing page for suite`);
+		} else {
+			page = await context.newPage();
+			console.log(`[Worker ${workerInfo.workerIndex}] Created new page for suite`);
+		}
 		
-		await page.goto(vscodeUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 		await helpers.waitForWorkbench(page);
 		
 		console.log(`[Worker ${workerInfo.workerIndex}] Shared VS Code page created for suite`);
@@ -106,8 +136,8 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 
 		await use(vscPage);
 		
-		await page.close();
-		console.log(`[Worker ${workerInfo.workerIndex}] Shared VS Code page closed`);
+		// Page is reused, not closed
+		console.log(`[Worker ${workerInfo.workerIndex}] Shared VS Code page still active for other tests`);
 	}, { scope: 'worker' }],
 });
 

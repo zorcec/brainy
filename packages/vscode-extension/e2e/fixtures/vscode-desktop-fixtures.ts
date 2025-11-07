@@ -1,21 +1,21 @@
 /**
- * Module: e2e/fixtures/vscode-fixtures.ts
+ * Module: e2e/fixtures/vscode-desktop-fixtures.ts
  *
  * Description:
- *   Modular Playwright fixtures for VS Code Web E2E testing.
- *   Provides reusable setup/teardown for VS Code server, browser context, and page.
- *   Enables parallel test execution with isolated VS Code instances.
+ *   Modular Playwright fixtures for VS Code Desktop E2E testing.
+ *   Provides reusable setup/teardown for VS Code Desktop, CDP connection, and page.
+ *   Enables parallel test execution with isolated VS Code Desktop instances.
  *   Reduces code duplication and improves test maintainability.
  *
  * Usage:
- *   import { test, expect } from './fixtures/vscode-fixtures';
+ *   import { test, expect } from './fixtures/vscode-desktop-fixtures';
  *   test('my test', async ({ vscodeServer, vscPage }) => {
  *     await vscPage.openFile('sample.md');
  *   });
  */
 
-import { test as base, expect, Page, Browser, BrowserContext } from '@playwright/test';
-import { VSCodeWebServer } from '../vscode-web-server';
+import { test as base, expect, Page, Browser, chromium } from '@playwright/test';
+import { VSCodeDesktopServer } from '../vscode-desktop-server';
 import * as helpers from '../helpers/vscode-page-helpers';
 
 /**
@@ -50,8 +50,10 @@ export interface VSCodePage {
  * Worker-scoped fixtures (shared across tests in same worker)
  */
 type VSCodeWorkerFixtures = {
-	/** VS Code Web server instance (one per worker) */
-	vscodeServer: VSCodeWebServer;
+	/** VS Code Desktop server instance (one per worker) */
+	vscodeServer: VSCodeDesktopServer;
+	/** Playwright browser connected to VS Code Desktop via CDP (one per worker) */
+	vscodeBrowser: Browser;
 };
 
 /**
@@ -77,17 +79,17 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 	},
 
 	/**
-	 * VS Code server fixture (worker-scoped)
-	 * Starts one VS Code server per worker and reuses it across all tests
+	 * VS Code Desktop server fixture (worker-scoped)
+	 * Starts one VS Code Desktop instance per worker and reuses it across all tests
 	 * This dramatically improves performance by avoiding redundant server startups
 	 */
 	vscodeServer: [async ({}, use, workerInfo) => {
 		const startTime = Date.now();
-		const server = new VSCodeWebServer();
+		const server = new VSCodeDesktopServer();
 		await server.start();
 		
 		const setupTime = Date.now() - startTime;
-		console.log(`[Worker ${workerInfo.workerIndex}] VS Code server setup completed in ${setupTime}ms`);
+		console.log(`[Worker ${workerInfo.workerIndex}] VS Code Desktop server setup completed in ${setupTime}ms`);
 		
 		await use(server);
 		
@@ -100,23 +102,51 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 	}, { scope: 'worker' }],
 
 	/**
-	 * VS Code page fixture with helper methods (test-scoped)
-	 * Reuses the shared VS Code server from the worker
-	 * Navigates to a clean starting page before each test
+	 * Playwright browser connected to VS Code Desktop via CDP (worker-scoped)
+	 * Connects once per worker and reuses the connection across all tests
 	 */
-	vscPage: async ({ browser, vscodeServer, testStartTime }, use, testInfo) => {
-		// Get VS Code URL from server
-		const vscodeUrl = vscodeServer.getUrl();
-		if (!vscodeUrl) {
-			throw new Error('VS Code server URL not available');
+	vscodeBrowser: [async ({ vscodeServer }, use, workerInfo) => {
+		const cdpUrl = vscodeServer.getCdpUrl();
+		if (!cdpUrl) {
+			throw new Error('VS Code Desktop CDP URL not available');
 		}
 
-		// Create a new page within the browser context
-		// Using browser.newPage() creates an isolated context automatically
-		const page = await browser.newPage();
+		console.log(`[Worker ${workerInfo.workerIndex}] Connecting Playwright to VS Code Desktop via CDP: ${cdpUrl}`);
 		
-		// Navigate to VS Code Web starting page
-		await page.goto(vscodeUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+		// Connect to VS Code Desktop via Chrome DevTools Protocol
+		const browser = await chromium.connectOverCDP(cdpUrl);
+		console.log(`[Worker ${workerInfo.workerIndex}] Connected to VS Code Desktop`);
+		
+		await use(browser);
+		
+		// Cleanup: close browser connection after all tests in this worker complete
+		console.log(`[Worker ${workerInfo.workerIndex}] Closing browser connection`);
+		await browser.close();
+	}, { scope: 'worker' }],
+
+	/**
+	 * VS Code page fixture with helper methods (test-scoped)
+	 * Reuses the shared VS Code Desktop and browser connection from the worker
+	 * Creates a new page for each test for isolation
+	 */
+	vscPage: async ({ vscodeBrowser, testStartTime }, use, testInfo) => {
+		// Get the first context (VS Code Desktop creates a default context)
+		const contexts = vscodeBrowser.contexts();
+		if (contexts.length === 0) {
+			throw new Error('No browser contexts available in VS Code Desktop');
+		}
+		const context = contexts[0];
+
+		// Get or create a page
+		let page: Page;
+		const pages = context.pages();
+		if (pages.length > 0) {
+			page = pages[0];
+			console.log(`[${testInfo.title}] Reusing existing page`);
+		} else {
+			page = await context.newPage();
+			console.log(`[${testInfo.title}] Created new page`);
+		}
 		
 		// Wait for workbench to load
 		await helpers.waitForWorkbench(page);
@@ -141,14 +171,10 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 
 		await use(vscPage);
 		
-		// Cleanup: close page and log test duration
+		// Cleanup: log test duration (page is reused, not closed)
 		const testDuration = Date.now() - testStartTime;
 		console.log(`[${testInfo.title}] Test total duration: ${testDuration}ms`);
-		await page.close();
 	},
 });
 
-/**
- * Re-export expect for convenience
- */
 export { expect };
