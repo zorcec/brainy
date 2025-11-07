@@ -68,6 +68,7 @@ This file indexes all information and instruction files in the `brainy/informati
 | tickets/005-e2e-tests-optimization/TEST-OPTIMIZATION.md | Test optimization notes for E2E tests. |
 | tickets/papercuts/epic.md | Epic: Papercuts and minor improvements. |
 | tickets/008-skills-system-expansion/epic.md | Epic: Skills system expansion. |
+| tickets/epics/enable-full-e2e-testing-for-skills.md | Epic: Enable full E2E testing for skills in VS Code extension. |
 | tickets/008-skills-system-expansion/001-define-skill-api.md | Define skill API for expansion. |
 | tickets/006-playbook-execution-engine/epic.md | Epic: Playbook execution engine. |
 | tickets/006-playbook-execution-engine/001-add-skill-execute.md | Add skill execute functionality. |
