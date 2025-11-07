@@ -126,4 +126,140 @@ describe('Document Skill', () => {
 		expect(vscode.workspace.onDidCloseTextDocument).toHaveBeenCalled();
 		expect(vscode.window.onDidChangeVisibleTextEditors).toHaveBeenCalled();
 	});
+
+	it('should replace a single placeholder in content', async () => {
+		const mockDoc = {
+			uri: { fsPath: '/test/workspace/.brainy/temp/document.md' },
+			getText: vi.fn()
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue(mockDoc as any);
+		vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any);
+		vi.mocked(vscode.workspace.onDidCloseTextDocument).mockReturnValue({ dispose: vi.fn() } as any);
+		vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() } as any);
+
+		mockApi.getVariable = vi.fn().mockImplementation((name) => {
+			if (name === 'poem') return 'Roses are red.';
+			return undefined;
+		});
+
+		documentSkill.execute(mockApi, { content: 'Here is a poem: {{poem}}' });
+
+		// Wait for next tick to let initial write happen
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(fs.writeFileSync).toHaveBeenCalledWith(
+			'/test/workspace/.brainy/temp/document.md',
+			'Here is a poem: Roses are red.',
+			'utf-8'
+		);
+	});
+
+	it('should replace multiple placeholders in content', async () => {
+		const mockDoc = {
+			uri: { fsPath: '/test/workspace/.brainy/temp/document.md' },
+			getText: vi.fn()
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue(mockDoc as any);
+		vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any);
+		vi.mocked(vscode.workspace.onDidCloseTextDocument).mockReturnValue({ dispose: vi.fn() } as any);
+		vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() } as any);
+
+		mockApi.getVariable = vi.fn().mockImplementation((name) => {
+			if (name === 'name') return 'Alice';
+			if (name === 'city') return 'Wonderland';
+			return undefined;
+		});
+
+		documentSkill.execute(mockApi, { content: 'Hello {{name}}, welcome to {{city}}.' });
+
+		// Wait for next tick to let initial write happen
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(fs.writeFileSync).toHaveBeenCalledWith(
+			'/test/workspace/.brainy/temp/document.md',
+			'Hello Alice, welcome to Wonderland.',
+			'utf-8'
+		);
+	});
+
+	it('should leave unknown placeholders unchanged', async () => {
+		const mockDoc = {
+			uri: { fsPath: '/test/workspace/.brainy/temp/document.md' },
+			getText: vi.fn()
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue(mockDoc as any);
+		vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any);
+		vi.mocked(vscode.workspace.onDidCloseTextDocument).mockReturnValue({ dispose: vi.fn() } as any);
+		vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() } as any);
+
+		mockApi.getVariable = vi.fn().mockReturnValue(undefined);
+
+		documentSkill.execute(mockApi, { content: 'Hello {{unknown}}.' });
+
+		// Wait for next tick to let initial write happen
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(fs.writeFileSync).toHaveBeenCalledWith(
+			'/test/workspace/.brainy/temp/document.md',
+			'Hello {{unknown}}.',
+			'utf-8'
+		);
+	});
+
+	it('should handle content with no placeholders', async () => {
+		const mockDoc = {
+			uri: { fsPath: '/test/workspace/.brainy/temp/document.md' },
+			getText: vi.fn()
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue(mockDoc as any);
+		vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any);
+		vi.mocked(vscode.workspace.onDidCloseTextDocument).mockReturnValue({ dispose: vi.fn() } as any);
+		vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() } as any);
+
+		mockApi.getVariable = vi.fn();
+
+		documentSkill.execute(mockApi, { content: 'No placeholders here.' });
+
+		// Wait for next tick to let initial write happen
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(fs.writeFileSync).toHaveBeenCalledWith(
+			'/test/workspace/.brainy/temp/document.md',
+			'No placeholders here.',
+			'utf-8'
+		);
+	});
+
+	it('should handle adjacent placeholders', async () => {
+		const mockDoc = {
+			uri: { fsPath: '/test/workspace/.brainy/temp/document.md' },
+			getText: vi.fn()
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue(mockDoc as any);
+		vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any);
+		vi.mocked(vscode.workspace.onDidCloseTextDocument).mockReturnValue({ dispose: vi.fn() } as any);
+		vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() } as any);
+
+		mockApi.getVariable = vi.fn().mockImplementation((name) => {
+			if (name === 'a') return 'A';
+			if (name === 'b') return 'B';
+			return undefined;
+		});
+
+		documentSkill.execute(mockApi, { content: '{{a}}{{b}}' });
+
+		// Wait for next tick to let initial write happen
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		expect(fs.writeFileSync).toHaveBeenCalledWith(
+			'/test/workspace/.brainy/temp/document.md',
+			'AB',
+			'utf-8'
+		);
+	});
 });

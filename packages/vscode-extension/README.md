@@ -26,36 +26,64 @@ This extension integrates the Brainy knowledge assistant into Visual Studio Code
 - Unit tests: `src/extension.test.ts`
 - E2E tests: `e2e/`
 
-## Skill Development: Using SkillApi
 
-Brainy skills use the `SkillApi` interface for interacting with LLMs and managing models. Here are basic usage patterns:
+## Built-in Skills
 
-### Basic Skill Structure
+Brainy comes with the following built-in skills for use in playbooks and automation:
 
-```typescript
-import { Skill, SkillParams, SkillApi } from '../types';
+### context
+Switch to or create a named agent context. Stores messages in chronological order and manages token limits.
+**Parameters:**
+- `name` (string, required): Context name
 
-export const mySkill: Skill = {
-  name: 'my-skill',
-  description: 'Brief description of what the skill does',
-  async execute(api: SkillApi, params: SkillParams): Promise<string> {
-    // Skill implementation
-    return 'result string';
-  }
-};
-```
+### model
+Set the active LLM model for subsequent requests.
+**Parameters:**
+- `id` (string, required): Model ID (e.g., 'gpt-4o', 'claude-3')
 
-### Sending Requests to LLMs
+### task
+Send a prompt to the LLM and return the response. Supports variable substitution and storing responses.
+**Parameters:**
+- `prompt` (string, required): Prompt text
+- `model` (string, optional): Model ID
+- `variable` (string, optional): Variable name to store response
 
-```typescript
-const response = await api.sendRequest('user', 'Summarize: ...', 'gpt-4o'); // if model is omited it will use the preselected or default one (that is prefered)
-```
+### execute
+Run the next code block in the playbook and capture its output.
+**Parameters:**
+- `variable` (string, optional): Variable name to store output
 
-### Selecting a Model
+### file
+Read, write, or delete files using Node.js fs API.
+**Parameters:**
+- `action` (string, required): 'read', 'write', or 'delete'
+- `path` (string, required): File path
+- `content` (string, required for write): File content
 
-```typescript
-await api.selectChatModel('gpt-4o');
-```
+### input
+Prompt the user for input and store it in a variable. Pauses execution until input is provided.
+**Parameters:**
+- `prompt` (string, required): Prompt text
+- `variable` (string, required): Variable name to store input
+
+### file-picker
+Open a file/folder picker dialog and store selected paths in a variable.
+**Parameters:**
+- `variable` (string, optional): Variable name to store selected paths
+- `prompt` (string, optional): Prompt text to show to the user
+
+### document
+Open a markdown document for user editing and capture content on close.
+**Parameters:**
+- `variable` (string, optional): Variable name to store document content
+- `content` (string, optional): Initial content for the document
+
+### dummy
+Dummy skill for testing. Supports success, error, and slow modes.
+**Parameters:**
+- `mode` (string, optional): 'success', 'error', or 'slow'
+- `message` (string, optional): Custom message
+- `delay` (number, optional): Delay in ms for slow mode
 
 For more advanced examples and testing patterns, see:
 - [`information/tickets/008-skills-system-expansion/skillapi-usage-examples.md`](../../information/tickets/008-skills-system-expansion/skillapi-usage-examples.md)

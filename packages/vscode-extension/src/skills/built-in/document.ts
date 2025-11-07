@@ -26,6 +26,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
+import { substituteVariables } from './task';
 
 /**
  * Document skill implementation.
@@ -58,12 +59,14 @@ export const documentSkill: Skill = {
 				fs.mkdirSync(tempDir, { recursive: true });
 			}
 
-			 // Write initial content if provided, otherwise clear document
-			 if (typeof content === 'string') {
-				 fs.writeFileSync(documentPath, content, 'utf-8');
-			 } else {
-				 fs.writeFileSync(documentPath, '', 'utf-8');
-			 }
+			// Write initial content if provided, otherwise clear document
+			if (typeof content === 'string') {
+				// Preserve unknown placeholders in documents so users can see them
+				const processedContent = substituteVariables(content, api, true);
+				fs.writeFileSync(documentPath, processedContent, 'utf-8');
+			} else {
+				fs.writeFileSync(documentPath, '', 'utf-8');
+			}
 
 			// Open the document
 			const doc = await vscode.workspace.openTextDocument(documentPath);

@@ -117,16 +117,15 @@ Built-in skills are shipped with the extension and always available. All skills 
 ### File Skill
 
 **Name:** `file`
-
-**Description:** Read, write and delete files.
-
-**Parameters:**
+- `variable`: Variable name to store selected paths (newline-separated). Optional; if omitted, no variable is set.
+- `prompt`: Prompt text to show to the user and include in the result. Optional.
 - `action`: "read" | "write" | "delete" (required)
 - `path`: File path, relative to workspace or absolute (required)
 - `content`: File content (required for write action)
-
-**Examples:**
-```markdown
+@file-picker --variable selectedFiles
+@file-picker --prompt "Choose files for upload"
+@file-picker --variable myFiles --prompt "Select your files and folders"
+@file-picker
 @file --action "read" --path "./config.json"
 @file --action "write" --path "./output.txt" --content "Hello, World!"
 @file --action "delete" --path "./temp.log"
@@ -136,19 +135,35 @@ Built-in skills are shipped with the extension and always available. All skills 
 
 **Name:** `file-picker`
 
-**Description:** Select files or folders using a file picker dialog. Stores selected paths in a variable.
+**Description:** Select files or folders using a file picker dialog. Stores selected paths in a variable. Always allows files, folders, and multiple selection.
 
 **Parameters:**
-- `variable`: Variable name to store selected paths (newline-separated) (required)
-- `files`: Allow file selection (true/false, default: true) (optional)
-- `folders`: Allow folder selection (true/false, default: false) (optional)
-- `multiple`: Allow multiple selection (true/false, default: true) (optional)
+- `variable`: Variable name to store selected paths (newline-separated). Optional; if omitted, no variable is set.
+- `prompt`: Prompt text to show to the user and include in the result. Optional.
 
 **Examples:**
 ```markdown
 @file-picker --variable selectedFiles
-@file-picker --variable folders --folders "true"
-@file-picker --variable singleFile --multiple "false"
+@file-picker --prompt "Choose files for upload"
+@file-picker --variable myFiles --prompt "Select your files and folders"
+@file-picker
+```
+
+**Output format:**
+If a prompt is provided, it is included as a header:
+
+```text
+Choose files for upload:
+- ./file1.txt
+- ./file2.txt
+- ./directory/ (directory)
+```
+If no prompt is provided:
+
+```text
+- ./file1.txt
+- ./file2.txt
+- ./directory/ (directory)
 ```
 
 ### Specification Skill

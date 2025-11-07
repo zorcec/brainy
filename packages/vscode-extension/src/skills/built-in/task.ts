@@ -34,10 +34,14 @@ import { DEFAULT_MODEL_ID } from '../../markdown/playbookExecutor';
  * @param api - SkillApi for accessing variables
  * @returns Text with variables substituted
  */
-function substituteVariables(text: string, api: SkillApi): string {
+export function substituteVariables(text: string, api: SkillApi, preserveUnknown = false): string {
 	return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
 		const value = api.getVariable(varName);
-		return value ?? '';
+		// If variable is undefined or null, either leave placeholder unchanged or replace with empty string
+		if (typeof value === 'undefined' || value === null) {
+			return preserveUnknown ? match : '';
+		}
+		return String(value);
 	});
 }
 

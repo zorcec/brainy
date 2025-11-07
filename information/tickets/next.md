@@ -1,0 +1,4 @@
+- @file skill autocomplete of actions (cover with tests)
+- @file working directory should be set to workspace root (cover with tests)
+- @file-picker skill color is only changed until "-"; make sure skills that have dashes in the name are fully colored
+- @file-picker skill doesnt have autocomplete of available flags, fix that (cover with tests)

@@ -30,21 +30,6 @@ import type { Skill, SkillApi, SkillParams, SkillResult } from '../types';
 import { validateRequiredString } from '../validation';
 
 /**
- * Parses a string boolean parameter.
- * 
- * @param value - Parameter value (string or undefined)
- * @param defaultValue - Default value if undefined
- * @returns Boolean value
- */
-function parseBooleanParam(value: string | undefined, defaultValue: boolean): boolean {
-	if (value === undefined) {
-		return defaultValue;
-	}
-	const normalized = value.trim().toLowerCase();
-	return normalized === 'true' || normalized === '1' || normalized === 'yes';
-}
-
-/**
  * File picker skill implementation.
  * Opens a file picker dialog and stores selected paths in a variable.
  */
@@ -52,28 +37,23 @@ export const filePickerSkill: Skill = {
 	name: 'file-picker',
 	description: 'Select files or folders using a file picker dialog. Stores selected paths in a variable.',
 	params: [
-		{ name: 'variable', description: 'Variable name to store selected paths (newline-separated)', required: true },
-		{ name: 'files', description: 'Allow file selection (true/false, default: true)', required: false },
-		{ name: 'folders', description: 'Allow folder selection (true/false, default: false)', required: false },
-		{ name: 'multiple', description: 'Allow multiple selection (true/false, default: true)', required: false }
+		{ name: 'variable', description: 'Variable name to store selected paths (newline-separated). If omitted, no variable is set', required: false },
+		{ name: 'prompt', description: 'Prompt text to show to the user and include in the result', required: false }
 	],
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
-		const { variable, files, folders, multiple } = params;
-		
-		// Validate variable parameter
-		validateRequiredString(variable, 'variable name');
-		
-		// Parse boolean parameters
-		const canSelectFiles = parseBooleanParam(files, true);
-		const canSelectFolders = parseBooleanParam(folders, false);
-		const canSelectMany = parseBooleanParam(multiple, true);
-		
-		// Open file picker dialog
+		const { variable, prompt } = params;
+
+		// variable is optional; only validate if provided and non-empty
+		if (variable !== undefined) {
+			validateRequiredString(variable, 'variable name');
+		}
+
+		// Always allow files, folders and multiple selection per new requirements
 		const selectedUris = await api.openFileDialog({
-			canSelectFiles,
-			canSelectFolders,
-			canSelectMany
+			canSelectFiles: true,
+			canSelectFolders: true,
+			canSelectMany: true
 		});
 		
 		// Handle cancellation (user closed dialog without selecting)
@@ -87,59 +67,54 @@ export const filePickerSkill: Skill = {
 		}
 		
 		// Check Node.js fs availability for directory detection
-		let fs: typeof import('fs');
+		let fs: typeof import('fs') | undefined;
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			fs = require('fs');
 		} catch {
-			// In web environment, fall back to simple path formatting without directory detection
-			const paths = selectedUris.map(uri => uri.fsPath).join('\n');
-			api.setVariable(variable, paths);
-			
-			const count = selectedUris.length;
-			const itemType = canSelectFolders && !canSelectFiles ? 'folder' : 
-			                 canSelectFiles && !canSelectFolders ? 'file' : 'item';
-			const message = `Selected ${count} ${itemType}${count !== 1 ? 's' : ''}`;
-			
-			return {
-				messages: [{
-					role: 'agent',
-					content: message
-				}]
-			};
+			fs = undefined;
 		}
-		
-		// Format paths with directory indicator
+
+		// Format paths with directory indicator (use fs if available)
 		const formattedPaths = selectedUris.map(uri => {
 			let isDirectory = false;
-			try {
-				// Try to check if it's a directory (may fail if path doesn't exist)
-				isDirectory = fs.lstatSync(uri.fsPath).isDirectory();
-			} catch {
-				// If lstat fails, assume it's a file
-				isDirectory = false;
+			if (fs) {
+				try {
+					isDirectory = fs.lstatSync(uri.fsPath).isDirectory();
+				} catch {
+					isDirectory = false;
+				}
 			}
-			
-			const relativePath = uri.fsPath.startsWith(process.cwd()) 
+
+			const relativePath = uri.fsPath.startsWith(process.cwd())
 				? './' + uri.fsPath.slice(process.cwd().length + 1)
 				: uri.fsPath;
-			return `- ${relativePath}${isDirectory ? ' (directory)' : ''}`;
+
+			// Directories should be shown with trailing slash and labelled as directory in parentheses
+			const displayPath = isDirectory ? `${relativePath}/` : relativePath;
+			return `- ${displayPath}${isDirectory ? ' (directory)' : ''}`;
 		});
-		
-		const output = `Files selected\n${formattedPaths.join('\n')}`;
-		
-		// Store formatted output in variable
-		api.setVariable(variable, output);
-		
-		// Return confirmation message
-		const count = selectedUris.length;
-		const itemType = canSelectFolders && !canSelectFiles ? 'folder' : 
-		                 canSelectFiles && !canSelectFolders ? 'file' : 'item';
-		const message = `Selected ${count} ${itemType}${count !== 1 ? 's' : ''}`;
-		
+
+		// Build output including prompt if provided
+		const promptHeader = prompt ? `${prompt}:\n` : '';
+		const output = `${promptHeader}${formattedPaths.join('\n')}`;
+
+		// Store formatted output in variable only if variable was provided
+		if (variable !== undefined) {
+			api.setVariable(variable, output);
+		}
+
+		// Return confirmation message including prompt and selection list
+		const messageLines = [] as string[];
+		if (prompt) {
+			messageLines.push(`${prompt}:`);
+		}
+		messageLines.push(...formattedPaths);
+
 		return {
 			messages: [{
 				role: 'agent',
-				content: message
+				content: messageLines.join('\n')
 			}]
 		};
 	}
