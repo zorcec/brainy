@@ -127,6 +127,7 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 			clickPlayButton: () => helpers.clickPlayButton(page),
 			captureConsoleLogs: (action: () => Promise<void>) => helpers.captureConsoleLogs(page, action),
 			getNotifications: () => helpers.getNotifications(page),
+			waitForNotification: (text: string, timeout?: number) => helpers.waitForNotification(page, text, timeout),
 			isFileOpen: (filename: string) => helpers.isFileOpen(page, filename),
 			getEditorContent: () => helpers.getEditorContent(page),
 			hasErrorDecorations: () => helpers.hasErrorDecorations(page),

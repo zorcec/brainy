@@ -34,6 +34,8 @@ export interface VSCodePage {
 	captureConsoleLogs: (action: () => Promise<void>) => Promise<string[]>;
 	/** Gets notification messages */
 	getNotifications: () => Promise<string[]>;
+	/** Waits for a notification containing specific text */
+	waitForNotification: (text: string, timeout?: number) => Promise<boolean>;
 	/** Checks if file is open */
 	isFileOpen: (filename: string) => Promise<boolean>;
 	/** Gets editor content */
@@ -162,6 +164,7 @@ export const test = base.extend<VSCodeTestFixtures, VSCodeWorkerFixtures>({
 			clickPlayButton: () => helpers.clickPlayButton(page),
 			captureConsoleLogs: (action: () => Promise<void>) => helpers.captureConsoleLogs(page, action),
 			getNotifications: () => helpers.getNotifications(page),
+			waitForNotification: (text: string, timeout?: number) => helpers.waitForNotification(page, text, timeout),
 			isFileOpen: (filename: string) => helpers.isFileOpen(page, filename),
 			getEditorContent: () => helpers.getEditorContent(page),
 			hasErrorDecorations: () => helpers.hasErrorDecorations(page),

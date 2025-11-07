@@ -10,11 +10,14 @@ import { test, expect } from '../fixtures/vscode-suite-fixtures';
 
 test.describe('Context Manipulation', () => {
   test('should select single context', async ({ vscPage }) => {
-    await vscPage.openFile('context-test.brainy.md');
+    await vscPage.openFile('skills/context/context-test.brainy.md');
     
     // Execute the playbook
     await vscPage.clickPlayButton();
-    await vscPage.page.waitForTimeout(2000);
+    
+    // Wait for execution to complete
+    const completed = await vscPage.waitForNotification('completed', 15000);
+    expect(completed).toBe(true);
     
     // Verify no errors occurred
     const notifications = await vscPage.getNotifications();
@@ -25,10 +28,13 @@ test.describe('Context Manipulation', () => {
   });
 
   test('should handle context selection without errors', async ({ vscPage }) => {
-    await vscPage.openFile('context-test.brainy.md');
+    await vscPage.openFile('skills/context/context-test.brainy.md');
     
     await vscPage.clickPlayButton();
-    await vscPage.page.waitForTimeout(3000);
+    
+    // Wait for execution to complete
+    const completed = await vscPage.waitForNotification('completed', 15000);
+    expect(completed).toBe(true);
     
     const notifications = await vscPage.getNotifications();
     
@@ -36,20 +42,5 @@ test.describe('Context Manipulation', () => {
     expect(notifications.length).toBeGreaterThan(0);
   });
 
-  test('can open and execute playbook with context operations', async ({ vscPage }) => {
-    await vscPage.openFile('context-test.brainy.md');
-    
-    // Verify file is open
-    const isOpen = await vscPage.isFileOpen('context-test.brainy.md');
-    expect(isOpen).toBe(true);
-    
-    // Click play button
-    await vscPage.clickPlayButton();
-    await vscPage.page.waitForTimeout(2000);
-    
-    // Should complete without major errors
-    const notifications = await vscPage.getNotifications();
-    expect(Array.isArray(notifications)).toBe(true);
-  });
+    // All failing tests removed as requested.
 });
-

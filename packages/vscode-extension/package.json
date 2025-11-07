@@ -61,8 +61,8 @@
         "title": "Brainy: Configure Workspace"
       },
       {
-        "command": "brainy.playbook.parse",
-        "title": "Brainy: Parse Playbook"
+        "command": "brainy.runCurrentPlaybook",
+        "title": "Brainy: Run Current Playbook"
       }
     ],
     "semanticTokenTypes": [

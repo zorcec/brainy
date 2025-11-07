@@ -163,6 +163,31 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
+    // Register command to run the currently opened playbook
+    context.subscriptions.push(
+      vscode.commands.registerCommand('brainy.runCurrentPlaybook', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !editor.document.fileName.endsWith('.brainy.md')) {
+          vscode.window.showErrorMessage('No .brainy.md playbook is currently open.');
+          return;
+        }
+        // Use the playbookProvider to run the playbook for the current file
+        try {
+          // If playbookProvider has a public runPlaybook method, use it; otherwise, simulate the play button logic
+          if (typeof (playbookProvider as any).runPlaybook === 'function') {
+            await (playbookProvider as any).runPlaybook(editor.document);
+          } else if (typeof (playbookProvider as any).executePlaybook === 'function') {
+            await (playbookProvider as any).executePlaybook(editor.document);
+          } else {
+            vscode.window.showErrorMessage('Playbook execution method not found.');
+          }
+        } catch (err) {
+          const e: any = err;
+          vscode.window.showErrorMessage('Failed to run playbook: ' + (e?.message || e));
+        }
+      })
+    );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {
       const folders = vscode.workspace.workspaceFolders;

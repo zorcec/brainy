@@ -14,9 +14,9 @@
 - After every story all tests have to pass.
 - Before implementation read the existing code and structure and reflect the same patterns.
 - Consistency is key.
-- e2e tests take time, run only those you need. Use playwright MCP server tools.
-- Keep files sizes bellow 500 lines, otherwise split
-- Use Playwright MCP server tools for e2e tests.
+- e2e tests take time, **run only tests you're truly working on**.
+- Keep files sizes bellow 500 lines, otherwise split them into smaller modules.
+- Before task is considered done, all unit and e2e tests must pass.
 
 ## Module Patterns
 

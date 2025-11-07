@@ -84,6 +84,87 @@ function clearErrorDecorations(editor: vscode.TextEditor): void {
  */
 export class PlaybookCodeLensProvider implements vscode.CodeLensProvider {
 	/**
+	 * Public method to run the playbook for a given document
+	 */
+	public async runPlaybook(document: vscode.TextDocument): Promise<void> {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor || editor.document.uri.toString() !== document.uri.toString()) {
+			vscode.window.showErrorMessage('No active editor found for the playbook');
+			return;
+		}
+
+		const editorUri = document.uri.toString();
+		// Check current state
+		const currentState = getExecutionState(editorUri);
+		if (currentState !== 'idle' && currentState !== 'error') {
+			vscode.window.showWarningMessage('Playbook is already running or paused');
+			return;
+		}
+
+		// Clear previous error decorations
+		clearErrorDecorations(editor);
+
+		// Parse the playbook
+		const content = document.getText();
+		const result = parsePlaybook(content);
+
+		// Check for errors
+		if (result.errors.length > 0) {
+			highlightErrors(editor, result.errors);
+			vscode.window.showErrorMessage(
+				`Cannot play: Playbook has ${result.errors.length} error(s). Please fix them first.`
+			);
+			return;
+		}
+
+		// Set state to running
+		setExecutionState(editorUri, 'running');
+		this.refresh();
+
+		// Show result in output channel
+		const outputChannel = vscode.window.createOutputChannel('Brainy Playbook');
+		outputChannel.clear();
+		outputChannel.appendLine('=== Brainy Playbook Execution Started ===\n');
+		outputChannel.appendLine(`Blocks to execute: ${result.blocks.length}`);
+		outputChannel.show(true);
+
+		vscode.window.showInformationMessage(
+			`Playbook execution started with ${result.blocks.length} block(s).`
+		);
+
+		// Execute playbook
+		try {
+			await executePlaybook(
+				editor,
+				result.blocks,
+				// onProgress
+				(stepIndex, block, skillResult) => {
+					outputChannel.appendLine(`Step ${stepIndex + 1}/${result.blocks.length}: ${block.name}`);
+					if (skillResult) {
+						outputChannel.appendLine(`Result: ${JSON.stringify(skillResult, null, 2)}`);
+					}
+				},
+				// onError
+				(stepIndex, block, error) => {
+					outputChannel.appendLine(`\nError at step ${stepIndex + 1}: ${error.message}`);
+					vscode.window.showErrorMessage(`Playbook execution failed at step ${stepIndex + 1}: ${error.stack}`);
+					this.refresh();
+				},
+				// onComplete
+				() => {
+					outputChannel.appendLine('\n=== Playbook Execution Completed ===');
+					vscode.window.showInformationMessage('Playbook execution completed successfully.');
+					this.refresh();
+				}
+			);
+		} catch (error) {
+			console.error('Unexpected error during playbook execution:', error);
+			resetExecutionState(editorUri);
+			this.refresh();
+			vscode.window.showErrorMessage('Unexpected error during playbook execution');
+		}
+	}
+	/**
 	 * Event emitter for CodeLens changes
 	 */
 	private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
@@ -174,94 +255,14 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext, codeL
 	console.log('Registering playbook commands...');
 	
 	// Register the play command
-	const playCommand = vscode.commands.registerCommand(
-		'brainy.playbook.play',
-		async (uri: vscode.Uri) => {
-			console.log('Play command triggered for:', uri.toString());
-			
-			const document = await vscode.workspace.openTextDocument(uri);
-			const editor = vscode.window.activeTextEditor;
-
-			if (!editor || editor.document.uri.toString() !== uri.toString()) {
-				vscode.window.showErrorMessage('No active editor found for the playbook');
-				return;
+		const playCommand = vscode.commands.registerCommand(
+			'brainy.playbook.play',
+			async (uri: vscode.Uri) => {
+				console.log('Play command triggered for:', uri.toString());
+				const document = await vscode.workspace.openTextDocument(uri);
+				await codeLensProvider.runPlaybook(document);
 			}
-
-			const editorUri = uri.toString();
-			
-			// Check current state
-			const currentState = getExecutionState(editorUri);
-			if (currentState !== 'idle' && currentState !== 'error') {
-				vscode.window.showWarningMessage('Playbook is already running or paused');
-				return;
-			}
-
-			// Clear previous error decorations
-			clearErrorDecorations(editor);
-
-			// Parse the playbook
-			const content = document.getText();
-			console.log('Parsing playbook content, length:', content.length);
-			const result = parsePlaybook(content);
-			console.log('Parse result:', { blockCount: result.blocks.length, errorCount: result.errors.length });
-
-			// Check for errors
-			if (result.errors.length > 0) {
-				highlightErrors(editor, result.errors);
-				vscode.window.showErrorMessage(
-					`Cannot play: Playbook has ${result.errors.length} error(s). Please fix them first.`
-				);
-				return;
-			}
-
-			// Set state to running
-			setExecutionState(editorUri, 'running');
-			codeLensProvider.refresh();
-
-			// Show result in output channel
-			const outputChannel = vscode.window.createOutputChannel('Brainy Playbook');
-			outputChannel.clear();
-			outputChannel.appendLine('=== Brainy Playbook Execution Started ===\n');
-			outputChannel.appendLine(`Blocks to execute: ${result.blocks.length}`);
-			outputChannel.show(true);
-
-			vscode.window.showInformationMessage(
-				`Playbook execution started with ${result.blocks.length} block(s).`
-			);
-
-			// Execute playbook
-			try {
-				await executePlaybook(
-					editor,
-					result.blocks,
-					   // onProgress
-					   (stepIndex, block, skillResult) => {
-						   outputChannel.appendLine(`Step ${stepIndex + 1}/${result.blocks.length}: ${block.name}`);
-						   if (skillResult) {
-							   outputChannel.appendLine(`Result: ${JSON.stringify(skillResult, null, 2)}`);
-						   }
-					   },
-					// onError
-					(stepIndex, block, error) => {
-						outputChannel.appendLine(`\nError at step ${stepIndex + 1}: ${error.message}`);
-						vscode.window.showErrorMessage(`Playbook execution failed at step ${stepIndex + 1}: ${error.stack}`);
-						codeLensProvider.refresh();
-					},
-					// onComplete
-					() => {
-						outputChannel.appendLine('\n=== Playbook Execution Completed ===');
-						vscode.window.showInformationMessage('Playbook execution completed successfully.');
-						codeLensProvider.refresh();
-					}
-				);
-			} catch (error) {
-				console.error('Unexpected error during playbook execution:', error);
-				resetExecutionState(editorUri);
-				codeLensProvider.refresh();
-				vscode.window.showErrorMessage('Unexpected error during playbook execution');
-			}
-		}
-	);
+		);
 
 	// Register the pause command
 	const pauseCommand = vscode.commands.registerCommand(
@@ -309,54 +310,7 @@ export function registerPlaybookCommands(context: vscode.ExtensionContext, codeL
 		}
 	);
 
-	// Register the legacy parse command for backward compatibility
-	const parseCommand = vscode.commands.registerCommand(
-		'brainy.playbook.parse',
-		async (uri: vscode.Uri) => {
-			console.log('Parse command triggered for:', uri.toString());
-			
-			const document = await vscode.workspace.openTextDocument(uri);
-			const editor = vscode.window.activeTextEditor;
-
-			if (!editor || editor.document.uri.toString() !== uri.toString()) {
-				vscode.window.showErrorMessage('No active editor found for the playbook');
-				return;
-			}
-
-			// Clear previous error decorations
-			clearErrorDecorations(editor);
-
-			// Parse the playbook
-			const content = document.getText();
-			console.log('Parsing playbook content, length:', content.length);
-			const result = parsePlaybook(content);
-			console.log('Parse result:', { blockCount: result.blocks.length, errorCount: result.errors.length });
-
-			// Log the result to the console
-			console.log('Parsed playbook:', JSON.stringify(result, null, 2));
-
-			// Show result in output channel for better visibility
-			const outputChannel = vscode.window.createOutputChannel('Brainy Playbook');
-			outputChannel.clear();
-			outputChannel.appendLine('=== Brainy Playbook Parse Result ===\n');
-			outputChannel.appendLine(JSON.stringify(result, null, 2));
-			outputChannel.show(true);
-
-			// Highlight errors if any
-			if (result.errors.length > 0) {
-				highlightErrors(editor, result.errors);
-				vscode.window.showWarningMessage(
-					`Playbook parsed with ${result.errors.length} error(s). See output for details.`
-				);
-			} else {
-				vscode.window.showInformationMessage(
-					`Playbook parsed successfully with ${result.blocks.length} block(s).`
-				);
-			}
-		}
-	);
-
-	context.subscriptions.push(playCommand, pauseCommand, stopCommand, parseCommand);
+	context.subscriptions.push(playCommand, pauseCommand, stopCommand);
 	console.log('✓ Playbook commands registered');
 }
 

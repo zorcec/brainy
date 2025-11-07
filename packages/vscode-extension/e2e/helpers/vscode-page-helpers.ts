@@ -68,46 +68,25 @@ async function dismissTrustDialog(page: Page): Promise<void> {
 }
 
 /**
- * Opens a file in the editor
+ * Opens a file in the editor using Quick Open (Ctrl+P)
  */
 export async function openFile(page: Page, filename: string): Promise<void> {
 	await safePageOp(page, async () => {
 		// Dismiss any modal dialogs first (including trust dialog)
-		const modalDialog = page.locator('.monaco-dialog-modal-block');
-		const isModalVisible = await modalDialog.isVisible().catch(() => false);
-		if (isModalVisible) {
-			// Try clicking "Yes, I trust" or similar trust button
-			const trustButton = page.locator('button:has-text("Yes, I trust"), button:has-text("Trust"), .monaco-button.monaco-text-button:has-text("Yes")').first();
-			const hasTrustButton = await trustButton.isVisible({ timeout: 1000 }).catch(() => false);
-			
-			if (hasTrustButton) {
-				console.log('Clicking trust button...');
-				await trustButton.click();
-				await page.waitForTimeout(1000);
-			} else {
-				// Try to dismiss via Escape
-				await page.keyboard.press('Escape').catch(() => {});
-				await page.waitForTimeout(500);
-			}
-		}
-
-		// Make sure explorer is visible
-		const explorerView = page.locator('[id="workbench.view.explorer"]');
-		const isVisible = await explorerView.isVisible().catch(() => false);
+		await dismissTrustDialog(page);
 		
-		if (!isVisible) {
-			await page.keyboard.press('Control+Shift+E').catch(() => {});
-			await page.waitForTimeout(1000);
-		}
+		// Use Quick Open to open the file (more reliable than tree navigation)
+		await page.keyboard.press('Control+P');
+		await page.waitForTimeout(500);
 		
-		// Wait for file tree to be ready
-		await page.waitForTimeout(1000);
+		// Type the filename
+		await page.keyboard.type(filename);
+		await page.waitForTimeout(500);
 		
-		// Click the file in the tree with force option to handle overlays
-		const fileItem = page.locator(`.monaco-list-row:has-text("${filename}")`);
-		await fileItem.click({ force: true });
+		// Press Enter to open the file
+		await page.keyboard.press('Enter');
 		
-		// Wait longer for file to open and extension to process it
+		// Wait for file to open and extension to process it
 		await page.waitForTimeout(3000);
 		
 		// Additional wait for CodeLens to appear
@@ -159,17 +138,23 @@ export async function isPlayButtonVisible(page: Page): Promise<boolean> {
  * Clicks the play button CodeLens or triggers parse command via command palette as fallback
  */
 export async function clickPlayButton(page: Page): Promise<void> {
-	await safePageOp(page, async () => {
-		// Always use command palette to trigger parse command for testing
-		// This is more reliable than trying to find and click CodeLens
-		console.log('Triggering parse command via command palette');
-		await page.keyboard.press('Control+Shift+P');
-		await page.waitForTimeout(800);
-		await page.keyboard.type('Brainy: Parse Playbook', { delay: 50 });
-		await page.waitForTimeout(500);
-		await page.keyboard.press('Enter');
-		await page.waitForTimeout(2500);
-	}, undefined);
+			await safePageOp(page, async () => {
+				// Execute the playbook using the VS Code command palette
+				console.log('Executing playbook via command: brainy.runCurrentPlaybook');
+				await page.keyboard.press('Control+Shift+P');
+				// Wait for command palette input to be visible
+				const paletteInput = page.locator('.quick-input-widget input');
+				await paletteInput.waitFor({ state: 'visible', timeout: 3000 });
+				await paletteInput.fill('>Brainy: Run Current Playbook');
+
+				// Wait for the command to appear in the list and select it
+				const commandItem = page.locator('.quick-input-list .monaco-list-row').filter({ hasText: 'Brainy: Run Current Playbook' }).first();
+				await commandItem.waitFor({ state: 'visible', timeout: 3000 });
+				await commandItem.click();
+
+				// Optionally, wait for some indication that execution started (e.g., notification or output)
+				// await page.waitForSelector('.notification-list-item-message', { timeout: 5000 });
+			}, undefined);
 }
 
 /**
@@ -331,6 +316,36 @@ export async function getNotifications(page: Page): Promise<string[]> {
 		
 		return messages;
 	}, []);
+}
+
+/**
+ * Waits for a notification containing the specified text to appear
+ * @param page The Playwright page
+ * @param text The text to search for in notifications (case-insensitive)
+ * @param timeout Maximum time to wait in milliseconds (default: 10000)
+ * @returns true if notification found, false if timeout
+ */
+export async function waitForNotification(page: Page, text: string, timeout: number = 10000): Promise<boolean> {
+	return await safePageOp(page, async () => {
+		const startTime = Date.now();
+		const searchText = text.toLowerCase();
+		
+		while (Date.now() - startTime < timeout) {
+			const notifications = await getNotifications(page);
+			const found = notifications.some(n => n.toLowerCase().includes(searchText));
+			
+			if (found) {
+				console.log(`Found notification containing: "${text}"`);
+				return true;
+			}
+			
+			// Wait a bit before checking again
+			await page.waitForTimeout(500);
+		}
+		
+		console.log(`Timeout waiting for notification containing: "${text}"`);
+		return false;
+	}, false);
 }
 
 /**
