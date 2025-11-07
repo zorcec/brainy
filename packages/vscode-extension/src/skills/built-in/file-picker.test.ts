@@ -52,7 +52,7 @@ describe('file-picker skill', () => {
 			canSelectFolders: false,
 			canSelectMany: true
 		});
-		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFiles', '/path/to/file1.txt\n/path/to/file2.txt');
+		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFiles', 'Files selected\n- /path/to/file1.txt\n- /path/to/file2.txt');
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('agent');
 		expect(result.messages[0].content).toContain('2 files');
@@ -76,7 +76,7 @@ describe('file-picker skill', () => {
 			canSelectFolders: false,
 			canSelectMany: false
 		});
-		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFile', '/path/to/file.txt');
+		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFile', 'Files selected\n- /path/to/file.txt');
 		expect(result.messages[0].content).toContain('1 file');
 		expect(result.messages[0].content).not.toContain('files');
 	});
@@ -280,7 +280,7 @@ describe('file-picker skill', () => {
 			variable: 'selectedFiles'
 		});
 
-		const expectedPaths = '/path/to/file with spaces.txt\n/path/to/file-with-dashes.txt\n/path/to/file_with_underscores.txt';
+		const expectedPaths = 'Files selected\n- /path/to/file with spaces.txt\n- /path/to/file-with-dashes.txt\n- /path/to/file_with_underscores.txt';
 		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFiles', expectedPaths);
 	});
 
@@ -296,7 +296,7 @@ describe('file-picker skill', () => {
 			variable: 'selectedFile'
 		});
 
-		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFile', 'C:\\Users\\test\\file.txt');
+		expect(mockApi.setVariable).toHaveBeenCalledWith('selectedFile', 'Files selected\n- C:\\Users\\test\\file.txt');
 	});
 
 	it('should handle many files selection', async () => {
@@ -314,6 +314,7 @@ describe('file-picker skill', () => {
 		expect(result.messages[0].content).toContain('100 files');
 		
 		const storedPaths = (mockApi.setVariable as any).mock.calls[0][1];
-		expect(storedPaths.split('\n')).toHaveLength(100);
+		// New format has "Files selected" header + 100 file lines = 101 lines total
+		expect(storedPaths.split('\n')).toHaveLength(101);
 	});
 });

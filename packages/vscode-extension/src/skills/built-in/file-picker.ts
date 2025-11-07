@@ -86,11 +86,49 @@ export const filePickerSkill: Skill = {
 			};
 		}
 		
-		// Convert URIs to file paths and join with newlines
-		const paths = selectedUris.map(uri => uri.fsPath).join('\n');
+		// Check Node.js fs availability for directory detection
+		let fs: typeof import('fs');
+		try {
+			fs = require('fs');
+		} catch {
+			// In web environment, fall back to simple path formatting without directory detection
+			const paths = selectedUris.map(uri => uri.fsPath).join('\n');
+			api.setVariable(variable, paths);
+			
+			const count = selectedUris.length;
+			const itemType = canSelectFolders && !canSelectFiles ? 'folder' : 
+			                 canSelectFiles && !canSelectFolders ? 'file' : 'item';
+			const message = `Selected ${count} ${itemType}${count !== 1 ? 's' : ''}`;
+			
+			return {
+				messages: [{
+					role: 'agent',
+					content: message
+				}]
+			};
+		}
 		
-		// Store paths in variable
-		api.setVariable(variable, paths);
+		// Format paths with directory indicator
+		const formattedPaths = selectedUris.map(uri => {
+			let isDirectory = false;
+			try {
+				// Try to check if it's a directory (may fail if path doesn't exist)
+				isDirectory = fs.lstatSync(uri.fsPath).isDirectory();
+			} catch {
+				// If lstat fails, assume it's a file
+				isDirectory = false;
+			}
+			
+			const relativePath = uri.fsPath.startsWith(process.cwd()) 
+				? './' + uri.fsPath.slice(process.cwd().length + 1)
+				: uri.fsPath;
+			return `- ${relativePath}${isDirectory ? ' (directory)' : ''}`;
+		});
+		
+		const output = `Files selected\n${formattedPaths.join('\n')}`;
+		
+		// Store formatted output in variable
+		api.setVariable(variable, output);
 		
 		// Return confirmation message
 		const count = selectedUris.length;

@@ -41,6 +41,7 @@ export const fileSkill: Skill = {
 		{ name: 'path', description: 'File path (relative or absolute)', required: true },
 		{ name: 'content', description: 'File content (required for write action)', required: false }
 	],
+	registerAsTool: true,
 	
 	async execute(api: SkillApi, params: SkillParams): Promise<SkillResult> {
 		// Check if fs is available (Node.js environment)

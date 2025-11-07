@@ -16,6 +16,7 @@ import { BrainyCompletionProvider } from './markdown/completionProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
 import { refreshSkills } from './skills/skillScanner';
 import { getAllBuiltInSkills, registerSkills } from './skills';
+import { registerSkillsAsTools } from './skills/toolRegistration';
 
 // Helper function to safely join paths
 function joinPath(base: string, ...parts: string[]): string {
@@ -120,6 +121,12 @@ export async function activate(context: vscode.ExtensionContext) {
   const builtInSkills = getAllBuiltInSkills();
   registerSkills(builtInSkills);
   console.log(`✓ Registered ${builtInSkills.length} built-in skills in parameters registry`);
+
+  // Register skills as tools (only those with registerAsTool: true)
+  console.log('Registering skills as tools...');
+  const toolDisposables = await registerSkillsAsTools(builtInSkills);
+  context.subscriptions.push(...toolDisposables);
+  console.log(`✓ Registered ${toolDisposables.length} skills as tools`);
 
   // Initialize skills scanner with built-in skills only
   console.log('Setting up skills scanner...');

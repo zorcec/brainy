@@ -40,6 +40,7 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 		/**
 		 * Sends a request to the model and returns the response.
 		 * Automatically includes conversation context from the selected context.
+		 * By default, all available tools are included unless explicitly overridden.
 		 * 
 		 * @param role - Message role ('user' or 'assistant')
 		 * @param content - Message content
@@ -57,12 +58,18 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			const context = await getContextFromStore();
 			const contextMessages: any[] = context ? context.messages : [];
 			
+			// Determine which tools to use:
+			// - If tools is undefined, use all available tools
+			// - If tools is explicitly set (including empty array), use the provided value
+			const allTools = await this.getAllAvailableTools();
+			const tools = options?.tools !== undefined ? options.tools : allTools;
+			
 			const response = await modelSendRequest({
 				role,
 				content,
-					model,
+				model,
 				context: contextMessages,
-				tools: options?.tools
+				tools
 			});
 			return { response: response.reply };
 		},

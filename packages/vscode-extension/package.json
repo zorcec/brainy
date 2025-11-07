@@ -30,6 +30,31 @@
     "*"
   ],
   "contributes": {
+    "languageModelTools": [
+      {
+        "name": "file",
+        "displayName": "File Operations",
+        "modelDescription": "Read, write and delete files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "description": "Action to perform (read|write|delete)"
+            },
+            "path": {
+              "type": "string",
+              "description": "File path (relative or absolute)"
+            },
+            "content": {
+              "type": "string",
+              "description": "File content (required for write action)"
+            }
+          },
+          "required": ["action", "path"]
+        }
+      }
+    ],
     "commands": [
       {
         "command": "brainy.configure",

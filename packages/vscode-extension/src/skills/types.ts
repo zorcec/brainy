@@ -274,6 +274,15 @@ export interface Skill {
 	params?: SkillParameter[];
 
 	/**
+	 * Whether to register this skill as a VS Code Language Model tool.
+	 * When true, the skill will be available to LLM calls via vscode.lm.registerTool().
+	 * When false or undefined, the skill will not be registered as a tool.
+	 * 
+	 * @default false
+	 */
+	registerAsTool?: boolean;
+
+	/**
 	 * Executes the skill with the provided API and parameters.
 	 * 
 	 * @param api - API object for interacting with VSCode extension and models

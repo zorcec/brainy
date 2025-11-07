@@ -56,7 +56,7 @@ describe('skillApi', () => {
 				content: 'Test content',
 				model: 'gpt-4o',
 				context: [],
-				tools: undefined
+				tools: [] // All available tools (empty array in test)
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -73,7 +73,7 @@ describe('skillApi', () => {
 				content: 'Test content',
 				model: undefined,
 				context: [],
-				tools: undefined
+				tools: [] // All available tools (empty array in test)
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
@@ -99,8 +99,9 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'assistant',
 				content: 'Assistant content',
-				modelId: undefined,
-				context: []
+				model: undefined,
+				context: [],
+				tools: [] // All available tools (empty array in test)
 			});
 			expect(result).toEqual({ response: 'Assistant response' });
 		});
@@ -249,9 +250,9 @@ describe('skillApi', () => {
 			expect(modelClient.sendRequest).toHaveBeenCalledWith({
 				role: 'user',
 				content: 'Test content',
-				modelId: undefined,
+				model: undefined,
 				context: [],
-				tools: undefined
+				tools: [] // All available tools (empty array in test)
 			});
 			expect(result).toEqual({ response: 'Test response' });
 		});
