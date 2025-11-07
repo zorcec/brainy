@@ -1,93 +1,94 @@
 # Brainy — Knowledge Assistant
 
-[project-overview.md](./project-overview.md) — High-level project summary, architecture, and main features.
+[Project Overview](./project-overview.md) — High-level summary, architecture, and main features.
 
-A monorepo project for the Brainy knowledge assistant, including a server with SQLite vector search and a VS Code extension.
+Brainy is a monorepo for a knowledge assistant, including a server with SQLite vector search and a VS Code extension.
 
-## Contribution
+## Contribution & Documentation
 
- See [Information Directory README](./information/README.md) for documentation structure
- See [Server README](./packages/server/README.md) and [VS Code Extension README](./packages/vscode-extension/README.md) for implementation details
- See [SkillApi Usage Examples](./information/project/docs/skillapi-usage-examples.md) for skill development and API usage
- See [Testing Best Practices for Built-in Skills](./information/project/docs/testing-best-practices-for-skills.md) for how to write and maintain skill tests
+- See [Information Directory README](./information/README.md) for documentation structure.
+- See [Server README](./packages/server/README.md) and [VS Code Extension README](./packages/vscode-extension/README.md) for implementation details.
+- See [SkillApi Usage Examples](./information/project/docs/skillapi-usage-examples.md) for skill development and API usage.
+- See [Testing Best Practices for Built-in Skills](./information/project/docs/testing-best-practices-for-skills.md) for skill test guidelines.
+- See [Information Index](./information/index.md) for a full list of documentation files.
+- See [Tickets Index](./information/tickets/tasks-collection.md) for epics and user stories.
 
 ## Project Structure
 
 ```
 brainy/
 ├── .github/                  # GitHub config, workflows, prompts
-│   └── prompts/              # Prompt instruction files
+│   ├── instructions/         # AI agent and coding instructions
+│   └── prompts/              # Prompt instruction files for Copilot and LLMs
 ├── .specify/                 # Project specification and automation configs
-│   ├── templates/            # Templates for scaffolding
-│   ├── scripts/              # Automation scripts
-│   │   └── bash/             # Bash scripts
-│   └── memory/               # Memory/cache for automation tools
+│   ├── templates/            # Scaffolding templates for new features and docs
+│   ├── scripts/              # Automation scripts (bash, node, etc.)
+│   │   └── bash/             # Bash scripts for setup and maintenance
+│   └── memory/               # Memory/cache for automation tools and agents
 ├── information/              # Research, concept, and technical docs
-│   ├── project/              # Project overview and preparation
-│   │   └── preparation/      # Foundational research and examples
+│   ├── index.md              # Index of all documentation files
+│   ├── README.md             # Information directory overview
+│   ├── project/              # Project overview, architecture, and preparation
+│   │   ├── overview.md       # High-level project summary
+│   │   ├── docs/             # API usage, skill development, testing guides
+│   │   └── preparation/      # Foundational research, concept ideas, workflows
 │   │       └── md-graph-example/ # Example markdowns for search concepts
-│   └── tickets/              # User stories and epics
-│       ├── 001-initiate-the-structure/
-│       ├── 002-markdown-parser/
-│       ├── 003-skills-system/
-│       └── 004-context-manager/
+│   └── tickets/              # User stories, epics, and implementation plans
+│       ├── ideas.md          # Idea backlog
+│       ├── plan.md           # Roadmap and planning
+│       ├── tasks-collection.md # Index of tickets and tasks
+│       ├── 001-initiate-the-structure/ # Initial setup epics
+│       ├── 002-markdown-parser/        # Markdown parser development
+│       ├── 003-skills-system/          # Skills system development
+│       ├── 004-md-support/             # Markdown support features
+│       ├── 005-e2e-tests-optimization/ # E2E test optimization
+│       ├── 006-playbook-execution-engine/ # Playbook execution engine
+│       ├── 007-epic-improve-e2e-tests-setup/ # E2E test setup improvements
+│       ├── 008-skills-system-expansion/ # Skills system expansion
+│       └── other/                      # Miscellaneous tickets
 ├── packages/
-│   ├── server/              # Backend server (README: ./packages/server/README.md)
-│   └── vscode-extension/    # VS Code extension (README: ./packages/vscode-extension/README.md)
-├── packages/
-│   ├── server/               # Brainy server (API, SQLite vector search)
+│   ├── server/               # Backend server (README: ./packages/server/README.md)
+│   │   ├── package.json      # Server package config
+│   │   ├── README.md         # Server documentation
+│   │   ├── tsconfig.json     # TypeScript config
 │   │   ├── src/              # Source files
-│   │   │   ├── db/           # Database logic
+│   │   │   ├── db/           # Database logic and models
 │   │   │   └── routes/       # API route handlers
 │   │   ├── dist/             # Built files
 │   │   └── examples/         # Example markdown knowledge base files
-│   └── vscode-extension/     # VS Code extension
-│       ├── src/              # Source files
+│   └── vscode-extension/     # VS Code extension (README: ./packages/vscode-extension/README.md)
+│       ├── package.json      # Extension package config
+│       ├── README.md         # Extension documentation
+│       ├── tsconfig.json     # TypeScript config
+│       ├── vitest.config.ts  # Vitest test config
+│       ├── src/              # Extension source files
 │       │   ├── parser/       # Markdown parser (annotations, flags, etc.)
 │       │   └── skills/       # Skills system (API, model client, skill runner)
 │       ├── e2e/              # End-to-end tests
+│       │   ├── README.md     # E2E test documentation
+│       │   ├── FIXTURES.md   # E2E fixtures architecture
 │       │   └── test-project/ # Test project with sample playbooks and skills
 │       │       └── .brainy/  # Test workspace configuration
 │       │           └── skills/ # Example skills (execute.js, execute.ts)
-│       └── dist/             # Built files
-├── test-results/             # Test result outputs and logs
+│       ├── test-results/     # E2E test outputs and logs
+│       └── dist/             # Built extension files
+├── test-results/             # Workspace-wide test result outputs and logs
+├── playwright-report/        # Playwright E2E test reports and traces
 ├── package.json              # Root workspace config
 └── playwright.config.ts      # E2E test config
 ```
 
-## Built-in Skills
+### Directory Details
 
-Brainy includes built-in skills that are always available:
-
-- **execute**: Execute the next code block
-- **file**: Read, write, and delete files
-- **context**: Manage context state
-- **model**: Select LLM model
-- **task**: Send prompts to LLM
-- **input**: Get user input via dialog
-- **file-picker**: Select files or folders using a file picker dialog
-- **specification**: Open a text document for editing large content (specifications, documentation)
-
-All skills execute in-process and are bundled with the extension.
-
-## Setup
-
-Install dependencies for all packages:
-
-```bash
-npm install
-```
-
-## Build
-
-Build all packages:
-
-```bash
-npm run build
-```
-
-## Test
-
+- **.github/**: Project automation, agent instructions, and prompt files for Copilot/LLMs.
+- **.specify/**: Specification-driven development, scaffolding, and automation scripts.
+- **information/**: All documentation, research, concept notes, and tickets. Includes indexes and guides for navigation.
+- **packages/server/**: Node.js backend with SQLite vector search, API routes, and example knowledge bases.
+- **packages/vscode-extension/**: VS Code extension source, skills system, markdown parser, E2E tests, and documentation.
+- **test-results/**: Aggregated test outputs and logs for all packages.
+- **playwright-report/**: Playwright E2E test reports, traces, and debugging artifacts.
+- **package.json**: Root workspace configuration and scripts.
+- **playwright.config.ts**: Playwright E2E test configuration.
 Run unit tests (574 tests passing):
 
 ```bash
@@ -157,7 +158,7 @@ node packages/server/dist/server.js
 
 ## Next Steps
 
-This scaffold provides the foundation for building the Brainy knowledge assistant. 
+This scaffold provides the foundation for building the Brainy knowledge assistant.
 
 **Completed:**
 - ✅ Markdown parser for annotations, flags, and workflow definitions
@@ -168,7 +169,7 @@ This scaffold provides the foundation for building the Brainy knowledge assistan
 2. Context combination and management
 3. Vector embedding generation and storage
 4. Hybrid search functionality
-3. VS Code extension commands for indexing and searching
-4. Integration between extension and server
+5. VS Code extension commands for indexing and searching
+6. Integration between extension and server
 
-See `information/tickets/` directory for detailed epics and user stories.
+See [Information Index](./information/index.md) and [Tickets Index](./information/tickets/tasks-collection.md) for detailed epics and user stories.
