@@ -26,6 +26,115 @@ This extension integrates the Brainy knowledge assistant into Visual Studio Code
 - Unit tests: `src/extension.test.ts`
 - E2E tests: `e2e/`
 
+## Local Project Skills
+
+Brainy supports project-specific skills that you can define in your workspace. These skills are automatically discovered and loaded from the `.skills/` folder at the root of your workspace.
+
+### Creating Local Skills
+
+1. Create a `.skills/` folder in your workspace root
+2. Add TypeScript files (`.ts`) with your skill implementations
+3. Each skill must export an object matching the `Skill` interface:
+
+```typescript
+// .skills/my-skill.ts
+export const mySkill = {
+  name: 'my-skill',
+  description: 'Does something useful',
+  async execute(api, params) {
+    // Your skill logic here
+    // Use api.sendRequest() to interact with LLMs
+    // Use api.setVariable() to store values
+    return { messages: [{ role: 'assistant', content: 'Result' }] };
+  }
+};
+```
+
+### Skill Interface
+
+Skills must implement the following interface:
+
+```typescript
+interface Skill {
+  name: string;
+  description: string;
+  execute(api: SkillApi, params: SkillParams): Promise<SkillResult>;
+}
+```
+
+### SkillApi Methods
+
+The `api` parameter provides access to extension functionality:
+
+- `sendRequest(role, content, modelId?, options?)` - Send requests to LLMs
+- `selectChatModel(modelId)` - Select a chat model globally
+- `getAllAvailableTools()` - Get all available VSCode language model tools
+- `getParsedBlocks()` - Get all parsed blocks from the current playbook
+- `getCurrentBlockIndex()` - Get the index of the currently executing block
+- `setVariable(name, value)` - Set a variable value
+- `getVariable(name)` - Get a variable value
+- `openInputDialog(prompt)` - Prompt user for input
+- `addToContext(role, content)` - Add a message to the active context
+- `getContext()` - Get the current context messages
+- `openFileDialog(options)` - Open a file picker dialog
+- `openDocumentForEditing(content?, language?)` - Open a document for editing
+
+### Using Local Skills in Playbooks
+
+Once created, local skills can be used in playbooks just like built-in skills:
+
+```markdown
+@my-skill --param1 "value1" --param2 "value2"
+```
+
+### Skill Management Commands
+
+- **Brainy: List Available Skills** - Shows all available skills (built-in and local)
+- **Brainy: Reload Skills** - Rescans the `.skills/` folder and refreshes the skill list
+
+### Skill Validation
+
+The extension automatically validates local skills and shows errors in hover tooltips:
+- Hover over a skill annotation to see validation status
+- Errors include transpilation errors, syntax errors, and missing exports
+- Valid skills show a green checkmark with the skill name
+
+### Example Local Skill
+
+```typescript
+// .skills/api-fetch.ts
+export const apiFetchSkill = {
+  name: 'api-fetch',
+  description: 'Fetches data from an API endpoint',
+  async execute(api, params) {
+    const url = params.url;
+    if (!url) {
+      throw new Error('URL parameter is required');
+    }
+    
+    const response = await fetch(url);
+    const data = await response.text();
+    
+    // Store in variable if specified
+    if (params.variable) {
+      api.setVariable(params.variable, data);
+    }
+    
+    return { 
+      messages: [{ 
+        role: 'assistant', 
+        content: `Fetched data from ${url}` 
+      }] 
+    };
+  }
+};
+```
+
+Use in playbook:
+```markdown
+@api-fetch --url "https://api.example.com/data" --variable "apiData"
+```
+
 
 ## Built-in Skills
 

@@ -111,7 +111,11 @@ export {
 	getAvailableSkills,
 	refreshSkills,
 	isSkillAvailable,
-	resetSkillScanner
+	resetSkillScanner,
+	getLocalSkills,
+	isLocalSkill,
+	watchSkillFiles,
+	scanLocalSkills
 } from './skillScanner';
 
 // Re-export built-in skills registry

@@ -17,7 +17,8 @@
 import * as vscode from 'vscode';
 import { parseAnnotations } from '../parser';
 import { getBuiltInSkill, isBuiltInSkill } from '../skills/built-in';
-import { isSkillAvailable } from '../skills/skillScanner';
+import { isSkillAvailable, isLocalSkill } from '../skills/skillScanner';
+import { validateLocalSkill } from '../skills/skillLoader';
 
 /**
  * Hover provider for displaying skill information.
@@ -61,7 +62,37 @@ export class SkillHoverProvider implements vscode.HoverProvider {
 			return undefined;
 		}
 
-		// Get skill information
+		// For local skills, validate and show errors if any
+		if (isLocalSkill(block.name)) {
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			if (workspaceFolders && workspaceFolders.length > 0) {
+				const workspaceRoot = workspaceFolders[0].uri.fsPath;
+				const validation = validateLocalSkill(block.name, workspaceRoot);
+				
+				if (!validation.valid) {
+					const markdown = new vscode.MarkdownString();
+					markdown.isTrusted = true;
+					markdown.appendMarkdown(`## @${block.name} *(Local Skill)*\n\n`);
+					markdown.appendMarkdown(`❌ **Validation Error**\n\n`);
+					markdown.appendCodeblock(validation.error || 'Unknown error', 'text');
+					if (validation.stack) {
+						markdown.appendMarkdown(`\n**Stack Trace:**\n`);
+						markdown.appendCodeblock(validation.stack, 'text');
+					}
+					return new vscode.Hover(markdown);
+				}
+				
+				// Valid local skill
+				const markdown = new vscode.MarkdownString();
+				markdown.isTrusted = true;
+				markdown.appendMarkdown(`## @${block.name} *(Local Skill)*\n\n`);
+				markdown.appendMarkdown(`✅ Valid local skill from \`.skills/${block.name}.ts\`\n\n`);
+				markdown.appendMarkdown(`This is a project-specific skill. Check the source file for documentation.`);
+				return new vscode.Hover(markdown);
+			}
+		}
+
+		// Get skill information for built-in skills
 		const skillInfo = getSkillInfo(block.name);
 		if (!skillInfo) {
 			return undefined;

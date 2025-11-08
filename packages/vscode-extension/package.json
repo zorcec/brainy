@@ -63,6 +63,14 @@
       {
         "command": "brainy.runCurrentPlaybook",
         "title": "Brainy: Run Current Playbook"
+      },
+      {
+        "command": "brainy.listSkills",
+        "title": "Brainy: List Available Skills"
+      },
+      {
+        "command": "brainy.reloadSkills",
+        "title": "Brainy: Reload Skills"
       }
     ],
     "semanticTokenTypes": [

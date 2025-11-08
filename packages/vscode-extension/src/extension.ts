@@ -14,8 +14,8 @@ import {
 import { SkillHoverProvider } from './markdown/skillHoverProvider';
 import { BrainyCompletionProvider } from './markdown/completionProvider';
 import { PlaybookCodeLensProvider, registerPlaybookCommands } from './markdown/playButton';
-import { refreshSkills } from './skills/skillScanner';
-import { getAllBuiltInSkills, registerSkills } from './skills';
+import { refreshSkills, watchSkillFiles, getAvailableSkills, getLocalSkills } from './skills/skillScanner';
+import { getAllBuiltInSkills, registerSkills, isBuiltInSkill } from './skills';
 import { registerSkillsAsTools } from './skills/toolRegistration';
 
 // Helper function to safely join paths
@@ -128,10 +128,28 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(...toolDisposables);
   console.log(`✓ Registered ${toolDisposables.length} skills as tools`);
 
-  // Initialize skills scanner with built-in skills only
+  // Initialize skills scanner with built-in and local skills
   console.log('Setting up skills scanner...');
-  refreshSkills();
-  console.log('✓ Built-in skills loaded');
+  if (workspaceFolders && workspaceFolders.length > 0) {
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    refreshSkills(workspaceRoot);
+    console.log('✓ Built-in and local skills loaded');
+    
+    // Watch for changes in .skills/ folder
+    try {
+      const watcher = watchSkillFiles(workspaceRoot, () => {
+        console.log('Local skills changed, refreshing...');
+        refreshSkills(workspaceRoot);
+      });
+      context.subscriptions.push(watcher);
+      console.log('✓ Watching .skills/ folder for changes');
+    } catch (err) {
+      console.warn('Failed to setup skill file watcher:', err);
+    }
+  } else {
+    refreshSkills();
+    console.log('✓ Built-in skills loaded (no workspace)');
+  }
 
   // Register play button for .brainy.md files
   console.log('Registering CodeLens provider for .brainy.md files...');
@@ -187,6 +205,51 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       })
     );
+
+  // Register skill management commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('brainy.listSkills', async () => {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      const workspaceRoot = workspaceFolders && workspaceFolders.length > 0 
+        ? workspaceFolders[0].uri.fsPath 
+        : undefined;
+      
+      const allSkills = getAvailableSkills();
+      const localSkillNames = getLocalSkills();
+      
+      let message = `**Available Skills (${allSkills.length})**\n\n`;
+      message += `**Built-in Skills:** ${allSkills.filter((s: string) => isBuiltInSkill(s)).join(', ')}\n\n`;
+      
+      if (localSkillNames.length > 0) {
+        message += `**Local Skills:** ${localSkillNames.join(', ')}\n`;
+        message += `(from .skills/ folder)`;
+      } else {
+        message += `**Local Skills:** None found in .skills/ folder`;
+      }
+      
+      vscode.window.showInformationMessage(message);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('brainy.reloadSkills', async () => {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showWarningMessage('No workspace folder found. Only built-in skills available.');
+        refreshSkills();
+        return;
+      }
+      
+      const workspaceRoot = workspaceFolders[0].uri.fsPath;
+      refreshSkills(workspaceRoot);
+      
+      const localSkills = getLocalSkills();
+      
+      vscode.window.showInformationMessage(
+        `Skills reloaded! Found ${localSkills.length} local skill(s).`
+      );
+    })
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('brainy.configure', async () => {

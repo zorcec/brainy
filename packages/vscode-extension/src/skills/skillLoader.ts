@@ -2,45 +2,110 @@
  * Module: skills/skillLoader.ts
  *
  * Description:
- *   Skill loader for loading and executing built-in skills in-process.
- *   Only supports built-in skills (shipped with extension).
+ *   Skill loader for loading and executing built-in and local skills in-process.
+ *   Supports built-in skills (shipped with extension) and local skills (.skills/ folder).
  *   Skills execute synchronously in the same process as the extension.
  *
  * Usage:
  *   import { loadSkill, executeSkill } from './skills/skillLoader';
  *   
- *   const skill = await loadSkill('file');
+ *   const skill = await loadSkill('file', workspaceRoot);
  *   const result = await executeSkill(skill, { action: 'read', path: './test.txt' });
  */
 
+import * as path from 'path';
 import { SkillParams, SkillResult, Skill } from './types';
 import { isBuiltInSkill, getBuiltInSkill } from './built-in';
 import { createSkillApi } from './skillApi';
+import { isLocalSkill } from './skillScanner';
+import { transpileSkill } from './transpiler';
 
 
 /**
- * Loads a built-in skill by name.
+ * Loads a skill (built-in or local) by name.
  *
  * @param skillName - Name of the skill to load
+ * @param workspaceRoot - Optional workspace root path for loading local skills
  * @returns Promise resolving to the skill instance
- * @throws Error if the skill cannot be found
+ * @throws Error if the skill cannot be found or loaded
  */
-export async function loadSkill(skillName: string): Promise<Skill> {
+export async function loadSkill(skillName: string, workspaceRoot?: string): Promise<Skill> {
 	if (!skillName || typeof skillName !== 'string') {
 		throw new Error('Skill name must be a non-empty string');
 	}
 
-	// Check built-in skills
-	if (!isBuiltInSkill(skillName)) {
-		throw new Error(`Skill '${skillName}' not found. Only built-in skills are supported.`);
+	// Check built-in skills first (priority)
+	if (isBuiltInSkill(skillName)) {
+		const skill = getBuiltInSkill(skillName);
+		if (!skill) {
+			throw new Error(`Built-in skill '${skillName}' is registered but not found.`);
+		}
+		return skill;
 	}
 
-	const skill = getBuiltInSkill(skillName);
-	if (!skill) {
-		throw new Error(`Built-in skill '${skillName}' is registered but not found.`);
+	// Check local skills if workspace root is provided
+	if (workspaceRoot && isLocalSkill(skillName)) {
+		return await loadLocalSkill(skillName, workspaceRoot);
 	}
 
-	return skill;
+	throw new Error(`Skill '${skillName}' not found. Check that the skill exists in built-in skills or .skills/ folder.`);
+}
+
+/**
+ * Loads a local skill from the .skills/ folder.
+ * Transpiles TypeScript to JavaScript and evaluates it.
+ *
+ * @param skillName - Name of the local skill
+ * @param workspaceRoot - Workspace root path
+ * @returns Promise resolving to the skill instance
+ * @throws Error if the skill file cannot be read, transpiled, or evaluated
+ */
+async function loadLocalSkill(skillName: string, workspaceRoot: string): Promise<Skill> {
+	const skillPath = path.join(workspaceRoot, '.skills', `${skillName}.ts`);
+	
+	try {
+		// Read the skill file
+		const fs = require('fs');
+		if (!fs.existsSync(skillPath)) {
+			throw new Error(`Skill file not found: ${skillPath}`);
+		}
+		
+		const tsCode = fs.readFileSync(skillPath, 'utf8');
+		
+		// Transpile TypeScript to JavaScript
+		const jsCode = transpileSkill(tsCode);
+		
+		// Evaluate the skill code
+		// The skill must export a skill object with name, description, and execute
+		const module: any = { exports: {} };
+		const exports = module.exports;
+		
+		// Create a wrapper function to capture exports
+		const wrappedCode = `(function(module, exports) { ${jsCode} })`;
+		const fn = eval(wrappedCode);
+		fn(module, exports);
+		
+		// Extract the skill object
+		// Skills can export as: export const mySkill = { ... } or module.exports = { ... }
+		let skill: Skill | undefined;
+		
+		// Check for named exports (export const skillName = ...)
+		if (module.exports && typeof module.exports === 'object') {
+			const exportedValues = Object.values(module.exports);
+			skill = exportedValues.find(val => 
+				val && typeof val === 'object' && 'execute' in val
+			) as Skill | undefined;
+		}
+		
+		if (!skill || typeof skill.execute !== 'function') {
+			throw new Error(`Invalid skill: must export an object with an execute function`);
+		}
+		
+		return skill;
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to load local skill '${skillName}': ${errorMessage}`);
+	}
 }
 
 /**
@@ -71,13 +136,15 @@ export async function executeSkill(
  *
  * @param skillName - Name of the skill to execute
  * @param params - Parameters to pass to the skill
+ * @param workspaceRoot - Optional workspace root path for loading local skills
  * @returns Promise resolving to the skill result (SkillResult object)
  */
 export async function runSkill(
 	skillName: string,
-	params: SkillParams
+	params: SkillParams,
+	workspaceRoot?: string
 ): Promise<SkillResult> {
-	const skill = await loadSkill(skillName);
+	const skill = await loadSkill(skillName, workspaceRoot);
 	return await executeSkill(skill, params);
 }
 
@@ -88,3 +155,65 @@ export function resetSkillLoader(): void {
 	// No state to reset in the new implementation
 }
 
+/**
+ * Validates a local skill file without executing it.
+ * Used for error checking and hover tooltips.
+ *
+ * @param skillName - Name of the local skill
+ * @param workspaceRoot - Workspace root path
+ * @returns Validation result with success flag and error message if failed
+ */
+export function validateLocalSkill(skillName: string, workspaceRoot: string): { 
+	valid: boolean; 
+	error?: string;
+	stack?: string;
+} {
+	const skillPath = path.join(workspaceRoot, '.skills', `${skillName}.ts`);
+	
+	try {
+		// Read the skill file
+		const fs = require('fs');
+		if (!fs.existsSync(skillPath)) {
+			return { valid: false, error: `Skill file not found: ${skillPath}` };
+		}
+		
+		const tsCode = fs.readFileSync(skillPath, 'utf8');
+		
+		// Transpile TypeScript to JavaScript
+		const jsCode = transpileSkill(tsCode);
+		
+		// Evaluate the skill code
+		const module: any = { exports: {} };
+		const exports = module.exports;
+		
+		const wrappedCode = `(function(module, exports) { ${jsCode} })`;
+		const fn = eval(wrappedCode);
+		fn(module, exports);
+		
+		// Check for valid skill export
+		if (module.exports && typeof module.exports === 'object') {
+			const exportedValues = Object.values(module.exports);
+			const skill = exportedValues.find(val => 
+				val && typeof val === 'object' && 'execute' in val
+			);
+			
+			if (!skill || typeof (skill as any).execute !== 'function') {
+				return { 
+					valid: false, 
+					error: 'Invalid skill: must export an object with an execute function'
+				};
+			}
+		} else {
+			return { 
+				valid: false, 
+				error: 'Invalid skill: must export an object with an execute function'
+			};
+		}
+		
+		return { valid: true };
+	} catch (err) {
+		const error = err instanceof Error ? err.message : String(err);
+		const stack = err instanceof Error ? err.stack : undefined;
+		return { valid: false, error, stack };
+	}
+}

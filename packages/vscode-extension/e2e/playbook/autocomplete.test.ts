@@ -131,33 +131,7 @@ test.describe('Variable Support in Execute Skill', () => {
 		expect(content).toContain('@execute');
 	});
 
-	test.skip('should store output in variable when flag is provided', async ({ vscPage }) => {
-		// This test is skipped because the execute skill requires child_process module
-		// which is not available in the VS Code Web environment used for e2e tests
-		// The functionality is covered by unit tests in execute.test.ts
-		
-		await vscPage.openFile('execute-test.brainy.md');
-		
-		// Click play button to execute the playbook
-		await vscPage.clickPlayButton();
-		
-		// Wait for execution to complete
-		await vscPage.page.waitForTimeout(3000);
-		
-		// Check for notifications (execution should complete successfully)
-		const notifications = await vscPage.getNotifications();
-		expect(Array.isArray(notifications)).toBe(true);
-		
-		// If there are notifications, they should not indicate critical errors
-		// (execute skill with --variable should work)
-		const hasBlockingError = notifications.some(n => 
-			n.toLowerCase().includes('failed') || 
-			n.toLowerCase().includes('error') ||
-			n.toLowerCase().includes('cannot')
-		);
-		
-		// Note: We can't easily verify the variable is stored without inspecting internal state
-		// But we can verify the playbook executes without errors
-		expect(hasBlockingError).toBe(false);
-	});
+	// This test is skipped because the execute skill requires child_process module
+	// which may not be available in all test environments. The functionality is
+	// covered by unit tests in execute.test.ts where the module can be properly mocked.
 });
