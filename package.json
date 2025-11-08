@@ -10,19 +10,18 @@
     "test:watch": "vitest --exclude '**/e2e/**'",
     "e2e": "npm run build && xvfb-run -a npx playwright test",
     "e2e:headed": "npm run build && npx playwright test --headed",
-    "build:vsix": "cd packages/vscode-extension && npx vsce package"
+    "build:vsix": "cd packages/vscode-extension && npx --yes @vscode/vsce package --baseContentUrl https://github.com/zorcec/brainy/blob/main/packages/vscode-extension --baseImagesUrl https://github.com/zorcec/brainy/raw/main/packages/vscode-extension"
   },
   "dependencies": {
-    "better-sqlite3": "^12.2.0",
-    "zod": "^4.1.5"
+    "better-sqlite3": "^12.4.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.56.1",
     "@types/better-sqlite3": "^7.6.13",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/test-web": "^0.0.74",
-    "electron": "^38.0.0",
-    "vsce": "^2.15.0"
+    "@vscode/test-web": "^0.0.75",
+    "electron": "^39.1.1"
   }
 }

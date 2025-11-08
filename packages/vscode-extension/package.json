@@ -4,6 +4,12 @@
   "description": "VS Code extension for Brainy knowledge assistant",
   "version": "0.0.1",
   "publisher": "brainy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zorcec/brainy.git",
+    "directory": "packages/vscode-extension"
+  },
+  "homepage": "https://github.com/zorcec/brainy#readme",
   "main": "dist/extension.js",
   "browser": "dist/extension.js",
   "types": "dist/extension.d.ts",
