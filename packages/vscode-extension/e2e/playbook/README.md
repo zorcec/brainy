@@ -50,9 +50,3 @@ npx playwright test --ui
 # View last report
 npx playwright show-report
 ```
-
-## Test Results
-
-Current status: ✅ **21 passed, 2 skipped**
-
-The skipped tests are for features not yet fully supported in VS Code Web (error decorations and hover tooltips).
