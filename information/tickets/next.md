@@ -1,0 +1,1 @@
+- If "planText" is after a plainText, concat to one message (so multiple gets into one message)
