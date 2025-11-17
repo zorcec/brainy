@@ -241,7 +241,8 @@ async function executeBlock(
 		   }
 	   }
 	   
-	   const result = await executeSkill(skill, params);
+	   // Pass blocks and currentIndex to executeSkill so skills can access playbook context
+	   const result = await executeSkill(skill, params, blocks, blockIndex);
 	   console.log(`Executed skill: ${block.name}`, result);
 	   
 	   // Automatically add skill result messages to context

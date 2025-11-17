@@ -101,7 +101,8 @@ describe('taskSkill', () => {
 			addToContext() {},
 			async getContext() { return []; },
 			async openFileDialog() { return undefined; },
-			async openTextDocument() { return ''; }
+			async openTextDocument() { return ''; },
+			getWorkspaceRoot() { return '/test/workspace'; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test' })).rejects.toThrow('LLM timeout');
@@ -124,7 +125,8 @@ describe('taskSkill', () => {
 			addToContext() {},
 			async getContext() { return []; },
 			async openFileDialog() { return undefined; },
-			async openTextDocument() { return ''; }
+			async openTextDocument() { return ''; },
+			getWorkspaceRoot() { return '/test/workspace'; }
 		};
 
 		await expect(taskSkill.execute(errorApi, { prompt: 'Test', model: 'invalid' })).rejects.toThrow('Invalid model ID');

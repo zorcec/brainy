@@ -18,6 +18,7 @@ import { SkillParams, SkillResult, Skill } from './types';
 import { isBuiltInSkill, getBuiltInSkill } from './built-in';
 import { createSkillApi } from './skillApi';
 import { isLocalSkill } from './skillScanner';
+import type { AnnotationBlock } from '../parser';
 import { transpileSkill } from './transpiler';
 
 
@@ -109,23 +110,30 @@ async function loadLocalSkill(skillName: string, workspaceRoot: string): Promise
 }
 
 /**
- * Executes a skill in-process.
+ * Executes a loaded skill with given parameters.
+ * Creates a SkillApi instance and passes it to the skill's execute function.
+ * Now supports passing blocks and currentIndex for skills that need access to the playbook context.
  *
- * @param skill - The skill instance from loadSkill
+ * @param skill - The skill to execute
  * @param params - Parameters to pass to the skill
+ * @param blocks - Optional array of all parsed blocks from the playbook
+ * @param currentIndex - Optional index of the currently executing block
  * @returns Promise resolving to the skill result (SkillResult object)
  * @throws Error if skill execution fails
  */
 export async function executeSkill(
 	skill: Skill,
-	params: SkillParams
+	params: SkillParams,
+	blocks?: AnnotationBlock[],
+	currentIndex?: number
 ): Promise<SkillResult> {
 	if (!skill || !skill.execute) {
 		throw new Error('Invalid skill: must have an execute function');
 	}
 
 	// Create the API instance for this skill execution
-	const api = createSkillApi();
+	// Pass blocks and currentIndex if provided, otherwise use defaults
+	const api = createSkillApi(blocks || [], currentIndex || 0);
 
 	// Execute the skill in-process
 	return await skill.execute(api, params);

@@ -151,6 +151,15 @@ export function createMockSkillApi(): SkillApi {
 		 */
 		openTextDocument: vi.fn(async (content, language) => {
 			return content || 'mock document content';
+		}),
+
+		/**
+		 * Mock implementation of getWorkspaceRoot.
+		 * By default, returns '/mock/workspace/root'.
+		 * Override with mockReturnValue() or mockImplementation() as needed.
+		 */
+		getWorkspaceRoot: vi.fn(() => {
+			return '/mock/workspace/root';
 		})
 	};
 }

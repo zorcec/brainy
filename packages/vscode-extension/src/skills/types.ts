@@ -204,6 +204,15 @@ export interface SkillApi {
 	 * @throws Error if the user cancels
 	 */
 	openTextDocument(content?: string, language?: string): Promise<string>;
+
+	/**
+	 * Gets the workspace root path.
+	 * This is the file system path of the first workspace folder.
+	 * 
+	 * @returns Workspace root path as a string
+	 * @throws Error if no workspace folder is open
+	 */
+	getWorkspaceRoot(): string;
 }
 
 /**

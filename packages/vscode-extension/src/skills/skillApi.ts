@@ -237,6 +237,20 @@ export function createSkillApi(blocks: AnnotationBlock[] = [], currentIndex: num
 			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 			
 			return finalContent;
+		},
+
+		/**
+		 * Gets the workspace root path.
+		 * 
+		 * @returns Workspace root path as a string
+		 * @throws Error if no workspace folder is open
+		 */
+		getWorkspaceRoot() {
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			if (!workspaceFolders || workspaceFolders.length === 0) {
+				throw new Error('No workspace folder open');
+			}
+			return workspaceFolders[0].uri.fsPath;
 		}
 	};
 }
