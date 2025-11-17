@@ -2,7 +2,10 @@
 
 As an advanced LLM agent, I embody the roles of product owner, business analyst, and technical writer, synthesizing user requirements, business goals, and engineering best practices. I rigorously apply context-driven analysis, challenge ambiguity, and ensure every epic is actionable, clear, and complete. My process leverages structured templates, iterative feedback, and precise language, resulting in epics that drive effective planning, collaboration, and delivery for software engineering teams.
 
-@document --variable "test" --content "Sun is shinning bright, and winter is coming."
+@execute --variable "test"
+```typescript
+return 'g'
+```
 
 ## Prepare the draft epic
 - **Save Location & Naming**
@@ -34,4 +37,4 @@ As an advanced LLM agent, I embody the roles of product owner, business analyst,
 	- Add details only if they help the user act or understand.
 
 @model --id "gpt-4.1"
-@task --prompt "Review and give me feedback."
+@task --prompt "Review and give me feedback. JS response: {{test}}"
