@@ -1,33 +1,17 @@
-
-# Title
-<Short, action-oriented summary of the epic>
-
 ## Blogline (Short Abstract)
 <1–2 sentences summarizing the epic’s purpose and value>
 
-## Audience & Stakeholders
-<Who will benefit from this epic? Who are the main stakeholders?>
-
 ## WHY
-<Rationale, business value, and context>
+<Rationale, business value, context, functional requirements and overview>
 - What problem does this epic solve?
 - What are the key benefits?
 - Why are we doing this?
 
-## Functional Requirements
-<What must be delivered? (Features, use cases)>
-
-## Non-Functional Requirements
-<Performance, reliability, security, maintainability, etc.>
-
-## Success & Completion
-<What must be true for the epic to be considered “done” and how will success be measured?>
+## Functional and Non-Functional Requirements
+<Features, Use-cases, Performance, reliability, security, maintainability, etc. Use (functional) / (non-functional) as prefix.>
 
 ## Stories
-<List related stories (with links or references) that implement parts of this epic. When drafting the epic, suggest and prefill story names in the implementation order.>
-
-## Dependencies
-<On what does this epic depend? What are the blockers or prerequisites?>
+<Suggested story names in the implementation order. Less stories with more detail is preferred.>
 
 ## Out of Scope
 <What is explicitly not included?>
