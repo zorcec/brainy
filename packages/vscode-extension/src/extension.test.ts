@@ -20,7 +20,7 @@ vi.mock('vscode', () => {
       dispose: vi.fn()
     }))
   };
-  
+
   class MockSemanticTokensLegend {
     tokenTypes: string[];
     tokenModifiers: string[];
@@ -35,7 +35,7 @@ vi.mock('vscode', () => {
     constructor(legend: MockSemanticTokensLegend) {
       this.legend = legend;
     }
-    push() {}
+    push() { }
     build() {
       return { data: new Uint32Array([]) };
     }
@@ -67,11 +67,11 @@ vi.mock('vscode', () => {
 
   class MockEventEmitter {
     private listeners: Set<Function> = new Set();
-    
+
     fire(data?: any) {
       this.listeners.forEach(listener => listener(data));
     }
-    
+
     get event() {
       return (listener: Function) => {
         this.listeners.add(listener);
@@ -81,12 +81,23 @@ vi.mock('vscode', () => {
   }
 
   return {
-    window: { 
+    RelativePattern: class {
+      base: string;
+      pattern: string;
+      constructor(base: any, pattern: string) {
+        this.base = base;
+        this.pattern = pattern;
+      }
+    },
+    lm: {
+      registerTool: vi.fn(),
+    },
+    window: {
       showInformationMessage: vi.fn(),
       showErrorMessage: vi.fn(),
       showWarningMessage: vi.fn()
     },
-    commands: { 
+    commands: {
       registerCommand: vi.fn((id, callback) => {
         // Store callback for testing
         if (id === 'brainy.configure') {
@@ -125,8 +136,8 @@ describe('Extension', () => {
   let testDir: string;
 
   // Mock start/stopBrainyServer
-  const startSpy = vi.spyOn(brainyServerManager, 'startBrainyServer').mockImplementation(() => {});
-  const stopSpy = vi.spyOn(brainyServerManager, 'stopBrainyServer').mockImplementation(() => {});
+  const startSpy = vi.spyOn(brainyServerManager, 'startBrainyServer').mockImplementation(() => { });
+  const stopSpy = vi.spyOn(brainyServerManager, 'stopBrainyServer').mockImplementation(() => { });
 
   beforeEach(() => {
     resetConfiguration();
@@ -159,7 +170,7 @@ describe('Extension', () => {
     const context = {
       subscriptions: [],
     } as any;
-    
+
     return extension.activate(context).then(() => {
       expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
         'brainy.configure',
