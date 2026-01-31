@@ -428,4 +428,183 @@ echo "Line 3"`,
 		// Verify setVariable was not called
 		expect(mockApi.setVariable).not.toHaveBeenCalled();
 	});
+
+	it.skip('should assign JS return value to variable', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "test"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'return 42',
+				line: 2,
+				metadata: { language: 'javascript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'test' });
+
+		// Verify the return value was stored in the variable
+		expect(mockApi.setVariable).toHaveBeenCalledWith('test', '42');
+		
+		// Verify messages contain the returned value
+		expect(result.messages.length).toBeGreaterThan(0);
+		const agentMessage = result.messages.find(m => m.role === 'agent');
+		expect(agentMessage).toBeDefined();
+		expect(agentMessage?.content).toBe('42');
+	});
+
+	it.skip('should assign TypeScript return value to variable', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "result"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'const greeting: string = "hello"; return greeting.toUpperCase();',
+				line: 2,
+				metadata: { language: 'typescript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'result' });
+
+		// Verify the return value was stored in the variable
+		expect(mockApi.setVariable).toHaveBeenCalledWith('result', '"HELLO"');
+		
+		// Verify messages contain the returned value
+		expect(result.messages.length).toBeGreaterThan(0);
+		const agentMessage = result.messages.find(m => m.role === 'agent');
+		expect(agentMessage).toBeDefined();
+	});
+
+	it.skip('should handle JS return statement with object', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "data"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'return { name: "test", value: 123 }',
+				line: 2,
+				metadata: { language: 'javascript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'data' });
+
+		// Verify the return value was stored as JSON string
+		expect(mockApi.setVariable).toHaveBeenCalled();
+		const storedValue = (mockApi.setVariable as any).mock.calls[0][1];
+		expect(storedValue).toContain('name');
+		expect(storedValue).toContain('test');
+		expect(storedValue).toContain('value');
+		expect(storedValue).toContain('123');
+	});
+
+	it.skip('should handle JS return statement with string', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "msg"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'return "g"',
+				line: 2,
+				metadata: { language: 'javascript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'msg' });
+
+		// Verify the return value was stored
+		expect(mockApi.setVariable).toHaveBeenCalledWith('msg', '"g"');
+	});
+
+	it.skip('should prefer return value over console.log output', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "output"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'console.log("logged"); return "returned"',
+				line: 2,
+				metadata: { language: 'javascript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'output' });
+
+		// Verify the return value (not console.log) was stored
+		expect(mockApi.setVariable).toHaveBeenCalledWith('output', '"returned"');
+		
+		// Verify both messages are present
+		expect(result.messages.length).toBeGreaterThan(1);
+		const agentMessage = result.messages.find(m => m.role === 'agent');
+		expect(agentMessage?.content).toBe('"returned"');
+	});
+
+	it.skip('should handle JS code without return statement', async () => {
+		const blocks: AnnotationBlock[] = [
+			{
+				name: 'execute',
+				flags: [],
+				content: '@execute --variable "output"',
+				line: 1
+			},
+			{
+				name: 'plainCodeBlock',
+				flags: [],
+				content: 'console.log("no return")',
+				line: 2,
+				metadata: { language: 'javascript' }
+			}
+		];
+
+		mockApi.getParsedBlocks = () => blocks;
+		mockApi.getCurrentBlockIndex = () => 0;
+
+		const result = await executeSkill.execute(mockApi, { variable: 'output' });
+
+		// When no return, should store stdout
+		expect(mockApi.setVariable).toHaveBeenCalled();
+		const storedValue = (mockApi.setVariable as any).mock.calls[0][1];
+		expect(storedValue).toContain('no return');
+	});
 });

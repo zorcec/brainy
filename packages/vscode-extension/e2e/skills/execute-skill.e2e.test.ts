@@ -68,4 +68,44 @@ test.describe('Execute Skill E2E', () => {
       fs.unlinkSync(outputFile);
     }
   });
+
+  test('executes JavaScript with return statement and stores value', async ({ vscPage }) => {
+    const testProjectRoot = path.join(__dirname, '../test-project');
+    const outputFile = path.join(testProjectRoot, '.brainy', 'temp', 'return-test-output.txt');
+    
+    // Clean up any existing test file
+    if (fs.existsSync(outputFile)) {
+      fs.unlinkSync(outputFile);
+    }
+    
+    await vscPage.openFile('skills/execute/execute-return-test.brainy.md');
+    await vscPage.clickPlayButton();
+    
+    // Wait for execution to complete
+    await vscPage.page.waitForTimeout(3000);
+    
+    // Check for completion
+    const notifications = await vscPage.getNotifications();
+    const hasCompleted = notifications.some(n => 
+      n.toLowerCase().includes('playbook execution completed')
+    );
+    const hasError = notifications.some(n =>
+      n.toLowerCase().includes('error') || n.toLowerCase().includes('failed')
+    );
+    
+    expect(hasError).toBe(false);
+    expect(hasCompleted).toBe(true);
+    
+    // Verify the file was created with the returned value
+    expect(fs.existsSync(outputFile)).toBe(true);
+    
+    // Verify content contains the expected returned value
+    const content = fs.readFileSync(outputFile, 'utf-8');
+    expect(content).toBe('42');
+    
+    // Clean up
+    if (fs.existsSync(outputFile)) {
+      fs.unlinkSync(outputFile);
+    }
+  });
 });
