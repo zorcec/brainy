@@ -83,51 +83,51 @@ export const executeSkill: Skill = {
 	params: [
 		{ name: 'variable', description: 'Variable name to store the execution output', required: false }
 	],
-	
+
 	async execute(api: SkillApi, params: SkillParams) {
 		// Check if execSync is available (Node.js environment)
 		if (!execSync) {
 			throw new Error('Execute skill is not available in web/browser environments. This skill requires Node.js.');
 		}
-		
+
 		// Get workspace root for setting working directory
 		const workspaceRoot = api.getWorkspaceRoot();
-		
+
 		// Get current state from API
 		const blocks = api.getParsedBlocks();
 		const currentIndex = api.getCurrentBlockIndex();
-		
+
 		// Find next block
 		const nextIndex = currentIndex + 1;
 		if (nextIndex >= blocks.length) {
 			throw new Error('No code block found after execute skill. Ensure there is a code block immediately following the @execute annotation.');
 		}
-		
+
 		const nextBlock = blocks[nextIndex];
-		
+
 		// Validate it's a code block
 		if (nextBlock.name !== 'plainCodeBlock') {
 			throw new Error(`Next block is not a code block. Found: ${nextBlock.name}. Ensure a code block (enclosed in triple backticks) follows the @execute annotation.`);
 		}
-		
+
 		// Extract language and code
 		const language = nextBlock.metadata?.language;
 		if (!language) {
 			throw new Error('Code block is missing language metadata. Specify a language after the opening backticks (e.g., ```bash).');
 		}
-		
+
 		const code = nextBlock.content;
 		if (!code || code.trim() === '') {
 			throw new Error('Code block is empty. Provide code to execute.');
 		}
-		
+
 		// Check if language is supported
 		const executor = LANGUAGE_EXECUTORS[language.toLowerCase()];
 		if (!executor) {
 			const supported = Object.keys(LANGUAGE_EXECUTORS).join(', ');
 			throw new Error(`Unsupported language: ${language}. Supported languages: ${supported}`);
 		}
-		
+
 		// Execute the code
 		try {
 			// Execute code. executeCode now returns { output, returned }
@@ -188,9 +188,11 @@ function executeCode(code: string, command: string, extension: string, workspace
 
 	try {
 		// If JS/TS, wrap code so it can return a value via a marker
+		// BUT skip wrapping if code contains ES module imports (must be at top level)
 		let codeToWrite = code;
 		const marker = '__BRAINY_RETURN__';
-		if (extension === '.js' || extension === '.ts') {
+		const hasEsModuleImports = /^\s*import\s+/m.test(code);
+		if ((extension === '.js' || extension === '.ts') && !hasEsModuleImports) {
 			// Wrap user code in an async IIFE that captures a returned value and logs a marker + JSON
 			codeToWrite = `(async () => {\ntry {\n  const __brainy_result = await (async () => { ${code}\n  })();\n  // Print marker and JSON-encoded result on its own line\n  try {\n    console.log('${marker}' + JSON.stringify(__brainy_result));\n  } catch(e) {\n    console.log('${marker}' + JSON.stringify(String(__brainy_result)));\n  }\n} catch (err) {\n  console.error(err);\n  process.exit(1);\n}\n})();`;
 		}
